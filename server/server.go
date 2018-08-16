@@ -1,24 +1,48 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
+
+	"github.com/Hurricanezwf/rate-limiter/limiter"
+	"github.com/Hurricanezwf/rate-limiter/proto"
 )
 
+var l limiter.Limiter
+
 func init() {
-	http.HandleFunc("/get", get)
-	http.HandleFunc("/put", put)
-	http.HandleFunc("/close", putAll)
+	http.HandleFunc("/borrow", borrow)
+	http.HandleFunc("/return", return_)
+	http.HandleFunc("/dead", dead)
 }
 
 func Run(addr string) error {
-	return http.ListenAndServe(addr, nil)
+	l = limiter.Default()
+	if err := l.Open(); err != nil {
+		return fmt.Errorf("Open limiter failed, %v", err)
+	}
+
+	// 启动HTTP服务
+	errC := make(chan error, 1)
+
+	go func() {
+		errC <- http.ListenAndServe(addr, nil)
+	}()
+
+	select {
+	case err := <-errC:
+		return fmt.Errorf("Run HTTP Server on %s failed, %v", addr, err)
+	case <-time.After(3 * time.Second):
+	}
+	return nil
 }
 
-// get 获取一次执行权限
-func get(w http.ResponseWriter, req *http.Request) {
+// borrow 获取一次执行权限
+func borrow(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		w.WriteHeader(405)
 		w.Write(ErrMsg("Method `POST` is needed"))
@@ -36,24 +60,37 @@ func get(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// 解析参数
-	var r APIGetReq
+	var r proto.Request
 	if err := json.Unmarshal(b, &r); err != nil {
 		w.WriteHeader(500)
 		w.Write(ErrMsg(err.Error()))
 		return
+	} else {
+		r.Action = proto.ActionBorrow
 	}
+
+	// 尝试获取资格
+	if err := l.Try(&r); err != nil {
+		w.WriteHeader(403)
+		w.Write(ErrMsg(err.Error()))
+		return
+	}
+	w.WriteHeader(200)
+	return
 }
 
-// put 释放一次执行权限
-func put(w http.ResponseWriter, req *http.Request) {
-
+// return_ 释放一次执行权限
+func return_(w http.ResponseWriter, req *http.Request) {
+	// TODO
 }
 
-// close 释放用户的所有占用的权限
-func putAll(w http.ResponseWriter, req *http.Request) {
-
+// dead 释放用户的所有占用的权限
+func dead(w http.ResponseWriter, req *http.Request) {
+	// TODO
 }
 
 func ErrMsg(format string, v ...interface{}) []byte {
-	return []byte{fmt.Sprintf(format, v)}
+	buf := bytes.NewBuffer(nil)
+	buf.WriteString(fmt.Sprintf(format, v...))
+	return buf.Bytes()
 }

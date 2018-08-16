@@ -1,4 +1,4 @@
-package raft
+package limiter
 
 import raftlib "github.com/hashicorp/raft"
 
