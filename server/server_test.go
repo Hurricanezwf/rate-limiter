@@ -55,3 +55,22 @@ func TestBorrow(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 }
+
+func TestReturn(t *testing.T) {
+	tIdMd5 := md5.Sum([]byte("create_host"))
+	cIdMd5 := md5.Sum([]byte("zwf"))
+	tId = ResourceTypeID(tIdMd5[:])
+	cId = ClientID(cIdMd5[:])
+
+	url := fmt.Sprintf("http://%s/v1/return", hostAddr)
+	opt := utils.HttpOptions{
+		Body: Request{
+			RCID: ResourceID("462ec3705249fd4358a1bcd02ce5e43f_rc#0"),
+			CID:  cId,
+		},
+	}
+
+	if err := utils.HttpPost(url, &opt, nil); err != nil {
+		t.Fatal(err.Error())
+	}
+}

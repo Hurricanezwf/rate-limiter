@@ -33,7 +33,7 @@ type Limiter interface {
 	Open() error
 
 	//
-	Do(r *Request) error
+	Do(r *Request) Response
 
 	//
 	raftlib.FSM
@@ -140,8 +140,8 @@ func (l *limiterV1) Apply(log *raftlib.Log) interface{} {
 			}
 
 			// 尝试执行命令
-			if err := l.Do(&r); err != nil {
-				return fmt.Errorf("Try apply command failed, %v", err)
+			if rp := l.Do(&r); rp.Err != nil {
+				return fmt.Errorf("Try apply command failed, %v", rp.Err)
 			}
 		}
 	default:
@@ -174,18 +174,20 @@ func (l *limiterV1) Restore(rc io.ReadCloser) error {
 }
 
 // Do 执行请求
-func (l *limiterV1) Do(r *Request) error {
+func (l *limiterV1) Do(r *Request) (rp Response) {
 	switch r.Action {
 	case ActionRegistQuota:
-		return l.doRegistQuota(r)
+		rp.Err = l.doRegistQuota(r)
 	case ActionBorrow:
-		return l.doBorrow(r)
+		rp.Result, rp.Err = l.doBorrow(r)
 	case ActionReturn:
-		return l.doReturn(r)
+		rp.Err = l.doReturn(r)
 	case ActionDead:
-		return l.doReturnAll(r)
+		rp.Err = l.doReturnAll(r)
+	default:
+		rp.Err = errors.New("Action handler not found")
 	}
-	return errors.New("Action handler not found")
+	return rp
 }
 
 // doRegistQuota 注册资源配额
@@ -235,59 +237,57 @@ func (l *limiterV1) doRegistQuota(r *Request) error {
 	return nil
 }
 
-func (l *limiterV1) doBorrow(r *Request) error {
+// doBorrow 借一个资源返回
+func (l *limiterV1) doBorrow(r *Request) (string, error) {
 	// check required
-	if len(r.TID) <= 0 {
-		return errors.New("Missing `tId` field value")
-	}
 	if len(r.CID) <= 0 {
-		return errors.New("Missing `cId` field value")
+		return "", errors.New("Missing `cId` field value")
 	}
 	if r.Expire <= 0 {
-		return errors.New("Missing `expire` field value")
+		return "", errors.New("Missing `expire` field value")
 	}
 
 	// check leader
 	if l.IsLeader() == false {
-		return ErrNotLeader
+		return "", ErrNotLeader
 	}
 
 	// try borrow
 	tIdHex := hex.EncodeToString(r.TID)
 	m, ok := l.meta[tIdHex]
 	if !ok {
-		return fmt.Errorf("ResourceType(%s) is not registed", tIdHex)
+		return "", fmt.Errorf("ResourceType(%s) is not registed", tIdHex)
 	}
-	rcId, err := m.Borrow(r.TID, r.CID, r.Expire)
+	rcId, err := m.Borrow(r.CID, r.Expire)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// commit changes
 	if g.EnableRaft {
 		cmd, err := json.Marshal(r)
 		if err != nil {
-			return err
+			return "", err
 		}
 
 		future := l.raft.Apply(cmd, g.RaftTimeout)
 		if err = future.Error(); err != nil {
-			return fmt.Errorf("Raft apply error, %v", err)
+			return "", fmt.Errorf("Raft apply error, %v", err)
 		}
 		if rp := future.Response(); rp != nil {
-			return fmt.Errorf("Raft apply response error, %v", rp)
+			return "", fmt.Errorf("Raft apply response error, %v", rp)
 		}
 	}
 
 	glog.V(1).Infof("Client[%x] borrow '%s' for %d seconds OK", r.CID, rcId, r.Expire)
 
-	return nil
+	return string(rcId), nil
 }
 
 func (l *limiterV1) doReturn(r *Request) error {
 	// check required
-	if len(r.TID) <= 0 {
-		return errors.New("Missing `tId` field value")
+	if len(r.RCID) <= 0 {
+		return errors.New("Missing `rcId` field value")
 	}
 	if len(r.CID) <= 0 {
 		return errors.New("Missing `cId` field value")
@@ -304,7 +304,7 @@ func (l *limiterV1) doReturn(r *Request) error {
 	if !ok {
 		return fmt.Errorf("ResourceType(%s) is not registed", tIdHex)
 	}
-	if err := m.Return(r.TID, r.CID); err != nil {
+	if err := m.Return(r.CID, r.RCID); err != nil {
 		return err
 	}
 
@@ -323,6 +323,8 @@ func (l *limiterV1) doReturn(r *Request) error {
 			return fmt.Errorf("Raft apply response error, %v", rp)
 		}
 	}
+
+	glog.V(1).Infof("Client[%x] return '%s' OK", r.CID, r.RCID, r.Expire)
 
 	return nil
 }

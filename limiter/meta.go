@@ -1,7 +1,6 @@
 package limiter
 
 import (
-	"bytes"
 	"container/list"
 	"encoding/hex"
 	"fmt"
@@ -20,10 +19,10 @@ func NewLimiterMeta(tId ResourceTypeID, quota int) LimiterMeta {
 type LimiterMeta interface {
 	// Borrow 申请一次执行资格，如果成功返回nil
 	// expire 表示申请的资源的自动回收时间
-	Borrow(tId ResourceTypeID, cId ClientID, expire int64) (ResourceID, error)
+	Borrow(cId ClientID, expire int64) (ResourceID, error)
 
 	// Return 归还执行资格，如果成功返回nil
-	Return(tId ResourceTypeID, cId ClientID) error
+	Return(cId ClientID, rcId ResourceID) error
 
 	// ReturnAll 归还某个用户所有的执行资格，通常在用户主动关闭的时候
 	ReturnAll(cId ClientID) error
@@ -60,10 +59,10 @@ type limiterMetaV1 struct {
 
 	// 资源调度队列
 	mutex     sync.RWMutex
-	canBorrow *list.List                // 可借的资源队列
-	recycled  *list.List                // 已回收的资源队列
-	used      map[string][]borrowRecord // 正被使用的资源队列 clientIDHex ==> []borrowRecord
-	usedCount int                       // 正被使用的资源数量统计
+	canBorrow *list.List            // 可借的资源队列
+	recycled  *list.List            // 已回收的资源队列
+	used      map[string]*list.List // 正被使用的资源队列 clientIDHex ==> []borrowRecord
+	usedCount int                   // 正被使用的资源数量统计
 }
 
 func newLimiterMetaV1(tId ResourceTypeID, quota int) *limiterMetaV1 {
@@ -72,7 +71,7 @@ func newLimiterMetaV1(tId ResourceTypeID, quota int) *limiterMetaV1 {
 		quota:     quota,
 		canBorrow: list.New(),
 		recycled:  list.New(),
-		used:      make(map[string][]borrowRecord),
+		used:      make(map[string]*list.List),
 		usedCount: 0,
 	}
 
@@ -83,11 +82,8 @@ func newLimiterMetaV1(tId ResourceTypeID, quota int) *limiterMetaV1 {
 	return m
 }
 
-func (m *limiterMetaV1) Borrow(tId ResourceTypeID, cId ClientID, expire int64) (ResourceID, error) {
-	if bytes.Compare(tId, m.tId) != 0 {
-		return "", fmt.Errorf("ResourceType(%s) is not consist with %s", tId, m.tId)
-	}
-
+// Borrow 借资源
+func (m *limiterMetaV1) Borrow(cId ClientID, expire int64) (ResourceID, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -114,7 +110,12 @@ func (m *limiterMetaV1) Borrow(tId ResourceTypeID, cId ClientID, expire int64) (
 	}
 
 	cIdHex := hex.EncodeToString(cId)
-	m.used[cIdHex] = append(m.used[cIdHex], record)
+	link := m.used[cIdHex]
+	if link == nil {
+		link = list.New()
+	}
+	link.PushBack(record)
+	m.used[cIdHex] = link
 	m.usedCount++
 
 	glog.V(2).Info("Client(%s) borrow %s OK, expireAt %d", cIdHex, record.RCID, record.ExpireAt)
@@ -122,8 +123,40 @@ func (m *limiterMetaV1) Borrow(tId ResourceTypeID, cId ClientID, expire int64) (
 	return rcId, nil
 }
 
-func (m *limiterMetaV1) Return(tId ResourceTypeID, cId ClientID) error {
-	// TODO:
+// Return 归还资源
+func (m *limiterMetaV1) Return(cId ClientID, rcId ResourceID) error {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	// 安全性检测
+	if m.recycled.Len() >= m.quota {
+		return fmt.Errorf("There's something wrong, recycled queue len(%d) >= quota(%d)", m.recycled.Len(), m.quota)
+	}
+
+	cIdHex := hex.EncodeToString(cId)
+	link := m.used[cIdHex]
+	if link == nil {
+		return fmt.Errorf("There's something wrong, recycle queue for client[%s] is nil", cIdHex)
+	}
+
+	// 从borrow队列删除
+	find := false
+	for node := link.Front(); node != nil; node = node.Next() {
+		record := node.Value.(borrowRecord)
+		if record.RCID == rcId {
+			find = true
+			link.Remove(node)
+			break
+		}
+	}
+
+	// 添加到回收队列
+	if find {
+		m.recycled.PushBack(rcId)
+	} else {
+		glog.Warningf("No resource[%s] found at used queue. client=%s", rcId, cIdHex)
+	}
+
 	return nil
 }
 

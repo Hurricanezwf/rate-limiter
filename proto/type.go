@@ -22,7 +22,13 @@ type ActionType uint8
 type Request struct {
 	Action ActionType     `json:"action,omitempty"`
 	TID    ResourceTypeID `json:"tId,omitempty"`
+	RCID   ResourceID     `json:"rcId,omitempty"`
 	CID    ClientID       `json:"cId,omitempty"`
 	Expire int64          `json:"expire,omitempty"`
 	Quota  int            `json:"quota,omitempty"`
+}
+
+type Response struct {
+	Err    error
+	Result interface{}
 }
