@@ -23,7 +23,7 @@ func init() {
 
 // Run 启动HTTP服务
 func Run(addr string) error {
-	l = limiter.Default()
+	l = limiter.New()
 	if err := l.Open(); err != nil {
 		return fmt.Errorf("Open limiter failed, %v", err)
 	}
@@ -72,7 +72,7 @@ func borrow(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// 尝试获取资格
-	if err := l.Try(&r); err != nil {
+	if err := l.Do(&r); err != nil {
 		w.WriteHeader(403)
 		w.Write(ErrMsg(err.Error()))
 		return

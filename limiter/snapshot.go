@@ -17,6 +17,6 @@ func (s *LimiterSnapshot) Persist(sink raftlib.SnapshotSink) error {
 	return nil
 }
 
-func (s *LimiterSnapshot) Relase() {
+func (s *LimiterSnapshot) Release() {
 	// TODO
 }

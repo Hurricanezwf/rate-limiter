@@ -9,11 +9,14 @@ var (
 	// RaftServer配置文件
 	RaftClusterConfFile = "raft-cluster.json"
 
-	// 存放Raft文件的目录，默认"./raft"
-	RaftDir = "./raft"
+	// 存放Raft文件的目录，默认"./raft-root"
+	RaftDir = "./raft-root"
 
 	// Raft监听地址
 	RaftBind string
+
+	// LocalID 本地ID
+	LocalID = "NODE-0"
 
 	// Raft的TCP连接池最大数
 	RaftTCPMaxPool = 3

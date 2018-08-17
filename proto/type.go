@@ -1,13 +1,20 @@
 package proto
 
 const (
-	ActionBorrow = ActionType(0x01)
-	ActionReturn = ActionType(0x02)
-	ActionDead   = ActionType(0x03)
+	ActionRegistQuota = ActionType(0x01)
+	ActionBorrow      = ActionType(0x02)
+	ActionReturn      = ActionType(0x03)
+	ActionDead        = ActionType(0x04)
 )
 
 // 请求路径的ID
 type RequestPathID []byte
+
+// 资源类型ID
+type ResourceTypeID []byte
+
+// 资源ID
+type ResourceID string
 
 // 客户端ID
 type ClientID []byte
@@ -16,7 +23,9 @@ type ClientID []byte
 type ActionType uint8
 
 type Request struct {
-	Action ActionType    `json:"action,omitempty"`
-	CID    ClientID      `json:"cId,omitempty"`
-	PID    RequestPathID `json:"pId,omitempty"`
+	Action ActionType     `json:"action,omitempty"`
+	TID    ResourceTypeID `json:"tId,omitempty"`
+	CID    ClientID       `json:"cId,omitempty"`
+	Expire int64          `json:"expire,omitempty"`
+	Quota  int            `json:"quota,omitempty"`
 }
