@@ -20,7 +20,7 @@ func NewLimiterMeta(tId ResourceTypeID, quota int) LimiterMeta {
 type LimiterMeta interface {
 	// Borrow 申请一次执行资格，如果成功返回nil
 	// expire 表示申请的资源的自动回收时间
-	Borrow(tId ResourceTypeID, cId ClientID, expire int64) error
+	Borrow(tId ResourceTypeID, cId ClientID, expire int64) (ResourceID, error)
 
 	// Return 归还执行资格，如果成功返回nil
 	Return(tId ResourceTypeID, cId ClientID) error
@@ -83,9 +83,9 @@ func newLimiterMetaV1(tId ResourceTypeID, quota int) *limiterMetaV1 {
 	return m
 }
 
-func (m *limiterMetaV1) Borrow(tId ResourceTypeID, cId ClientID, expire int64) error {
+func (m *limiterMetaV1) Borrow(tId ResourceTypeID, cId ClientID, expire int64) (ResourceID, error) {
 	if bytes.Compare(tId, m.tId) != 0 {
-		return fmt.Errorf("ResourceType(%s) is not consist with %s", tId, m.tId)
+		return "", fmt.Errorf("ResourceType(%s) is not consist with %s", tId, m.tId)
 	}
 
 	m.mutex.Lock()
@@ -93,19 +93,22 @@ func (m *limiterMetaV1) Borrow(tId ResourceTypeID, cId ClientID, expire int64) e
 
 	// 校验额度
 	if m.usedCount >= m.quota {
-		return ErrQuotaNotEnough
+		return "", ErrQuotaNotEnough
 	}
 
 	// 尝试借资源并做记录
 	rc := m.canBorrow.Front()
 	if rc == nil {
 		panic("Exception: Resource is nil")
+	} else {
+		m.canBorrow.Remove(rc)
 	}
 
 	nowTs := time.Now().Unix()
+	rcId := rc.Value.(ResourceID)
 	record := borrowRecord{
 		CID:      cId,
-		RCID:     rc.Value.(ResourceID),
+		RCID:     rcId,
 		BorrowAt: nowTs,
 		ExpireAt: nowTs + expire,
 	}
@@ -116,7 +119,7 @@ func (m *limiterMetaV1) Borrow(tId ResourceTypeID, cId ClientID, expire int64) e
 
 	glog.V(2).Info("Client(%s) borrow %s OK, expireAt %d", cIdHex, record.RCID, record.ExpireAt)
 
-	return nil
+	return rcId, nil
 }
 
 func (m *limiterMetaV1) Return(tId ResourceTypeID, cId ClientID) error {

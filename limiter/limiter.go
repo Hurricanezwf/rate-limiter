@@ -230,7 +230,7 @@ func (l *limiterV1) doBorrow(r *Request) error {
 	if !ok {
 		return fmt.Errorf("ResourceType(%s) is not registed", tIdHex)
 	}
-	if err := m.Borrow(r.TID, r.CID, r.Expire); err != nil {
+	if _, err := m.Borrow(r.TID, r.CID, r.Expire); err != nil {
 		return err
 	}
 

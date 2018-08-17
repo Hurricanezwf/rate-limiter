@@ -7,9 +7,6 @@ const (
 	ActionDead        = ActionType(0x04)
 )
 
-// 请求路径的ID
-type RequestPathID []byte
-
 // 资源类型ID
 type ResourceTypeID []byte
 
