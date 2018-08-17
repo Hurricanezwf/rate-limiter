@@ -16,9 +16,10 @@ import (
 var l limiter.Limiter
 
 func init() {
-	http.HandleFunc("/borrow", borrow)
-	http.HandleFunc("/return", return_)
-	http.HandleFunc("/dead", dead)
+	http.HandleFunc("/v1/registQuota", registQuota)
+	http.HandleFunc("/v1/borrow", borrow)
+	http.HandleFunc("/v1/return", return_)
+	http.HandleFunc("/v1/dead", dead)
 }
 
 // Run 启动HTTP服务
@@ -41,6 +42,45 @@ func Run(addr string) error {
 	case <-time.After(3 * time.Second):
 	}
 	return nil
+}
+
+// registQuota 注册资源配额
+func registQuota(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		w.WriteHeader(405)
+		w.Write(ErrMsg("Method `POST` is needed"))
+		return
+	}
+
+	// 读取body
+	b, err := ioutil.ReadAll(req.Body)
+	defer req.Body.Close()
+
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write(ErrMsg(err.Error()))
+		return
+	}
+
+	// 解析参数
+	var r proto.Request
+	if err := json.Unmarshal(b, &r); err != nil {
+		w.WriteHeader(500)
+		w.Write(ErrMsg(err.Error()))
+		return
+	} else {
+		r.Action = proto.ActionRegistQuota
+	}
+
+	// 尝试获取资格
+	if err := l.Do(&r); err != nil {
+		w.WriteHeader(403)
+		w.Write(ErrMsg(err.Error()))
+		return
+	}
+	w.WriteHeader(200)
+	return
+
 }
 
 // borrow 获取一次执行权限

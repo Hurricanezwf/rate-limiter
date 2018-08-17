@@ -12,6 +12,9 @@ var (
 	// 存放Raft文件的目录，默认"./raft-root"
 	RaftDir = "./raft-root"
 
+	// EnableRaft 是否开启Raft
+	EnableRaft = false
+
 	// Raft监听地址
 	RaftBind string
 

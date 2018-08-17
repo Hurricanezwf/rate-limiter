@@ -14,13 +14,17 @@ import (
 
 	"github.com/Hurricanezwf/rate-limiter/g"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
+	"github.com/Hurricanezwf/toolbox/logging/glog"
 	raftlib "github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
 )
 
 // New new one default limiter
 func New() Limiter {
-	return &limiterV1{}
+	return &limiterV1{
+		mutex: &sync.RWMutex{},
+		meta:  make(map[string]LimiterMeta),
+	}
 }
 
 // Limiter is an abstract of rate limiter
@@ -39,7 +43,7 @@ type Limiter interface {
 // It use raft to ensure consistency among all nodes
 type limiterV1 struct {
 	// 读写锁保护meta
-	mutex sync.RWMutex
+	mutex *sync.RWMutex
 
 	// 按照资源类型进行分类
 	meta map[string]LimiterMeta // ResourceID ==> LimiterMeta
@@ -49,6 +53,12 @@ type limiterV1 struct {
 }
 
 func (l *limiterV1) Open() error {
+	if g.EnableRaft == false {
+		glog.Info("Raft is disabled")
+		return nil
+	}
+
+	// ---------------- Raft集群初始化 ----------------- //
 	// 加载集群配置
 	confJson := filepath.Join(g.ConfDir, g.RaftClusterConfFile)
 	clusterConf, err := raftlib.ReadConfigJSON(confJson)
@@ -107,14 +117,14 @@ func (l *limiterV1) Open() error {
 	}
 
 	// 变量初始化
-	l.mutex.Lock()
 	l.raft = raft
-	l.meta = make(map[string]LimiterMeta)
-	l.mutex.Unlock()
 	return nil
 }
 
 func (l *limiterV1) IsLeader() bool {
+	if g.EnableRaft == false {
+		return true
+	}
 	return l.raft.State() == raftlib.Leader
 }
 
@@ -204,6 +214,24 @@ func (l *limiterV1) doRegistQuota(r *Request) error {
 		l.meta[tIdHex] = NewLimiterMeta(r.TID, r.Quota)
 	}
 
+	// commit changes
+	if g.EnableRaft {
+		cmd, err := json.Marshal(r)
+		if err != nil {
+			return err
+		}
+
+		future := l.raft.Apply(cmd, g.RaftTimeout)
+		if err = future.Error(); err != nil {
+			return fmt.Errorf("Raft apply error, %v", err)
+		}
+		if rp := future.Response(); rp != nil {
+			return fmt.Errorf("Raft apply response error, %v", rp)
+		}
+	}
+
+	glog.V(1).Infof("Regist quota for rcType '%x' OK, total:%d", r.TID, r.Quota)
+
 	return nil
 }
 
@@ -230,23 +258,28 @@ func (l *limiterV1) doBorrow(r *Request) error {
 	if !ok {
 		return fmt.Errorf("ResourceType(%s) is not registed", tIdHex)
 	}
-	if _, err := m.Borrow(r.TID, r.CID, r.Expire); err != nil {
-		return err
-	}
-
-	// commit changes
-	cmd, err := json.Marshal(r)
+	rcId, err := m.Borrow(r.TID, r.CID, r.Expire)
 	if err != nil {
 		return err
 	}
 
-	future := l.raft.Apply(cmd, g.RaftTimeout)
-	if err = future.Error(); err != nil {
-		return fmt.Errorf("Raft apply error, %v", err)
+	// commit changes
+	if g.EnableRaft {
+		cmd, err := json.Marshal(r)
+		if err != nil {
+			return err
+		}
+
+		future := l.raft.Apply(cmd, g.RaftTimeout)
+		if err = future.Error(); err != nil {
+			return fmt.Errorf("Raft apply error, %v", err)
+		}
+		if rp := future.Response(); rp != nil {
+			return fmt.Errorf("Raft apply response error, %v", rp)
+		}
 	}
-	if rp := future.Response(); rp != nil {
-		return fmt.Errorf("Raft apply response error, %v", rp)
-	}
+
+	glog.V(1).Infof("Client[%x] borrow '%s' for %d seconds OK", r.CID, rcId, r.Expire)
 
 	return nil
 }
@@ -276,17 +309,19 @@ func (l *limiterV1) doReturn(r *Request) error {
 	}
 
 	// commit changes
-	cmd, err := json.Marshal(r)
-	if err != nil {
-		return err
-	}
+	if g.EnableRaft {
+		cmd, err := json.Marshal(r)
+		if err != nil {
+			return err
+		}
 
-	future := l.raft.Apply(cmd, g.RaftTimeout)
-	if err = future.Error(); err != nil {
-		return fmt.Errorf("Raft apply error, %v", err)
-	}
-	if rp := future.Response(); rp != nil {
-		return fmt.Errorf("Raft apply response error, %v", rp)
+		future := l.raft.Apply(cmd, g.RaftTimeout)
+		if err = future.Error(); err != nil {
+			return fmt.Errorf("Raft apply error, %v", err)
+		}
+		if rp := future.Response(); rp != nil {
+			return fmt.Errorf("Raft apply response error, %v", rp)
+		}
 	}
 
 	return nil
@@ -313,17 +348,19 @@ func (l *limiterV1) doReturnAll(r *Request) error {
 	}
 
 	// commit changes
-	cmd, err := json.Marshal(r)
-	if err != nil {
-		return err
-	}
+	if g.EnableRaft {
+		cmd, err := json.Marshal(r)
+		if err != nil {
+			return err
+		}
 
-	future := l.raft.Apply(cmd, g.RaftTimeout)
-	if err = future.Error(); err != nil {
-		return fmt.Errorf("Raft apply error, %v", err)
-	}
-	if rp := future.Response(); rp != nil {
-		return fmt.Errorf("Raft apply response error, %v", rp)
+		future := l.raft.Apply(cmd, g.RaftTimeout)
+		if err = future.Error(); err != nil {
+			return fmt.Errorf("Raft apply error, %v", err)
+		}
+		if rp := future.Response(); rp != nil {
+			return fmt.Errorf("Raft apply response error, %v", rp)
+		}
 	}
 
 	return nil
