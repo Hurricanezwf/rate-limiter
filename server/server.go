@@ -12,6 +12,7 @@ import (
 	"github.com/Hurricanezwf/rate-limiter/proto"
 )
 
+// Rate limiter实例
 var l limiter.Limiter
 
 func init() {
@@ -20,6 +21,7 @@ func init() {
 	http.HandleFunc("/dead", dead)
 }
 
+// Run 启动HTTP服务
 func Run(addr string) error {
 	l = limiter.Default()
 	if err := l.Open(); err != nil {
