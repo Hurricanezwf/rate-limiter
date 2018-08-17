@@ -1,5 +1,7 @@
 package g
 
+import "time"
+
 var (
 	// 配置目录
 	ConfDir = "./conf"
@@ -12,4 +14,10 @@ var (
 
 	// Raft监听地址
 	RaftBind string
+
+	// Raft的TCP连接池最大数
+	RaftTCPMaxPool = 3
+
+	// Raft的超时时间
+	RaftTimeout = 10 * time.Second
 )

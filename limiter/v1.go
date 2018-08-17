@@ -1,6 +1,7 @@
 package limiter
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,7 +9,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/Hurricanezwf/rate-limiter/g"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
@@ -24,9 +24,6 @@ type limiterV1 struct {
 
 	//
 	raft *raftlib.Raft
-
-	//
-	raftApplyTimeout time.Duration
 
 	//
 	handlers map[ActionType]actionHandler
@@ -46,11 +43,11 @@ func (l *limiterV1) Open() error {
 		return err
 	}
 	transport, err := raftlib.NewTCPTransport(
-		g.RaftBind,     // bindAddr
-		addr,           // advertise
-		3,              // maxPool
-		10*time.Second, // timeout
-		os.Stderr,      // logOutput
+		g.RaftBind,       // bindAddr
+		addr,             // advertise
+		g.RaftTCPMaxPool, // maxPool
+		g.RaftTimeout,    // timeout
+		os.Stderr,        // logOutput
 	)
 	if err != nil {
 		return fmt.Errorf("Create tcp transport failed, %v", err)
@@ -69,7 +66,7 @@ func (l *limiterV1) Open() error {
 	}
 
 	// 创建Raft实例
-	l.raft, err = raftlib.NewRaft(
+	raft, err = raftlib.NewRaft(
 		raftlib.DefaultConfig(),
 		l,
 		boltDB,
@@ -82,9 +79,71 @@ func (l *limiterV1) Open() error {
 	}
 
 	// 启动集群
-	future := l.raft.BootstrapCluster(clusterConf)
+	future := raft.BootstrapCluster(clusterConf)
 	if err = future.Error(); err != nil {
 		return fmt.Errorf("Bootstrap raft cluster failed, %v", err)
+	}
+
+	// 变量初始化
+	l.meta = NewLimiterMeta()
+	l.raft = raft
+	l.handlers = map[string]actionHandler{
+		ActionBorrow: l.tryBorrow,
+		ActionReturn: l.tryReturn,
+		ActionDead:   l.tryReturnAll,
+	}
+	return nil
+}
+
+func (l *limiterV1) IsLeader() bool {
+	return l.raft.State() == raftlib.Leader
+}
+
+// Apply 主要接收从其他结点过来的已提交的操作日志，然后应用到本结点
+func (l *limiterV1) Apply(log *raftlib.Log) interface{} {
+	switch log.Type {
+	case raftlib.LogCommand:
+		{
+			// 解析远端传过来的命令日志
+			var r Request
+			if err := json.Unmarshal(log.Data, &r); err != nil {
+				return fmt.Errorf("Bad request format for raft command, %v", err)
+			}
+
+			// 尝试执行命令
+			if err := l.Try(&r); err != nil {
+				return fmt.Errorf("Try apply command failed, %v", err)
+			}
+		}
+	default:
+		return fmt.Errorf("Unknown LogType(%v)", log.Type)
+	}
+	return nil
+}
+
+// Snapshot 获取对FSM进行快照操作的实例
+func (l *limiterV1) Snapshot() (raftlib.FSMSnapshot, error) {
+	data, err := l.meta.Bytes()
+	if err != nil {
+		return nil, err
+	}
+	return NewLimiterSnapshot(data), nil
+}
+
+// Restore 从快照中恢复LimiterFSM
+func (l *limiterV1) Restore(rc io.ReadCloser) error {
+	defer rc.Close()
+
+	// 从文件读取快照内容
+	buf := bytes.NewBuffer(nil)
+	_, err := buf.ReadFrom(rc)
+	if err != nil {
+		return err
+	}
+
+	// Load到对象中
+	if err = l.meta.LoadFrom(buf.Bytes()); err != nil {
+		return err
 	}
 	return nil
 }
@@ -96,28 +155,6 @@ func (l *limiterV1) Try(r *Request) error {
 		return errors.New("Action handler not found")
 	}
 	return h(r)
-}
-
-func (l *limiterV1) IsLeader() bool {
-	return l.raft.State() == raftlib.Leader
-}
-
-// Apply 主要接收从其他结点过来的已提交的操作日志，然后应用到本结点
-func (l *limiterV1) Apply(log *raftlib.Log) interface{} {
-	// TODO
-	return nil
-}
-
-// Snapshot 获取对FSM进行快照操作的实例
-func (l *limiterV1) Snapshot() (raftlib.FSMSnapshot, error) {
-	// TODO:
-	return nil, nil
-}
-
-// Restore 从快照中恢复LimiterFSM
-func (l *limiterV1) Restore(io.ReadCloser) error {
-	// TODO:
-	return nil
 }
 
 func (l *limiterV1) tryBorrow(r *Request) error {
@@ -145,7 +182,7 @@ func (l *limiterV1) tryBorrow(r *Request) error {
 		return err
 	}
 
-	future := l.raft.Apply(cmd, l.raftApplyTimeout)
+	future := l.raft.Apply(cmd, g.RaftTimeout)
 	if err = future.Error(); err != nil {
 		return fmt.Errorf("Raft apply error, %v", err)
 	}
