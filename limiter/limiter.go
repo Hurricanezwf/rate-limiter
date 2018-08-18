@@ -34,7 +34,7 @@ type Limiter interface {
 	Open() error
 
 	//
-	Do(r *Request) Response
+	Do(r *Request, commit bool) Response
 
 	//
 	raftlib.FSM
@@ -158,7 +158,7 @@ func (l *limiterV1) Apply(log *raftlib.Log) interface{} {
 			}
 
 			// 尝试执行命令
-			if rp := l.Do(&r); rp.Err != nil {
+			if rp := l.Do(&r, false); rp.Err != nil {
 				return fmt.Errorf("Try apply command failed, %v", rp.Err)
 			}
 		}
@@ -192,24 +192,28 @@ func (l *limiterV1) Restore(rc io.ReadCloser) error {
 }
 
 // Do 执行请求
-func (l *limiterV1) Do(r *Request) (rp Response) {
+func (l *limiterV1) Do(r *Request, commit bool) (rp Response) {
 	switch r.Action {
 	case ActionRegistQuota:
-		rp.Err = l.doRegistQuota(r)
+		rp.Err = l.doRegistQuota(r, commit)
 	case ActionBorrow:
-		rp.Result, rp.Err = l.doBorrow(r)
+		rp.Result, rp.Err = l.doBorrow(r, commit)
 	case ActionReturn:
-		rp.Err = l.doReturn(r)
+		rp.Err = l.doReturn(r, commit)
 	case ActionDead:
-		rp.Err = l.doReturnAll(r)
+		rp.Err = l.doReturnAll(r, commit)
 	default:
 		rp.Err = errors.New("Action handler not found")
+	}
+
+	if rp.Err != nil {
+		glog.Warningf("Limiter: %v", rp.Err)
 	}
 	return rp
 }
 
 // doRegistQuota 注册资源配额
-func (l *limiterV1) doRegistQuota(r *Request) error {
+func (l *limiterV1) doRegistQuota(r *Request, commit bool) error {
 	// check required
 	if len(r.TID) <= 0 {
 		return errors.New("Missing `tId` field value")
@@ -235,7 +239,7 @@ func (l *limiterV1) doRegistQuota(r *Request) error {
 	}
 
 	// commit changes
-	if g.EnableRaft {
+	if g.EnableRaft && commit {
 		cmd, err := json.Marshal(r)
 		if err != nil {
 			return err
@@ -256,7 +260,7 @@ func (l *limiterV1) doRegistQuota(r *Request) error {
 }
 
 // doBorrow 借一个资源返回
-func (l *limiterV1) doBorrow(r *Request) (string, error) {
+func (l *limiterV1) doBorrow(r *Request, commit bool) (string, error) {
 	// check required
 	if len(r.CID) <= 0 {
 		return "", errors.New("Missing `cId` field value")
@@ -282,7 +286,7 @@ func (l *limiterV1) doBorrow(r *Request) (string, error) {
 	}
 
 	// commit changes
-	if g.EnableRaft {
+	if g.EnableRaft && commit {
 		cmd, err := json.Marshal(r)
 		if err != nil {
 			return "", err
@@ -297,12 +301,12 @@ func (l *limiterV1) doBorrow(r *Request) (string, error) {
 		}
 	}
 
-	glog.V(1).Infof("Client[%s] borrow '%s' for %d seconds OK", r.CID.String(), rcId, r.Expire)
+	//glog.V(1).Infof("Client[%s] borrow '%s' for %d seconds OK", r.CID.String(), rcId, r.Expire)
 
 	return string(rcId), nil
 }
 
-func (l *limiterV1) doReturn(r *Request) error {
+func (l *limiterV1) doReturn(r *Request, commit bool) error {
 	// check required
 	if len(r.RCID) <= 0 {
 		return errors.New("Missing `rcId` field value")
@@ -316,8 +320,12 @@ func (l *limiterV1) doReturn(r *Request) error {
 		return ErrNotLeader
 	}
 
-	// try borrow
-	tIdHex := r.TID.String()
+	// try return
+	tId, err := resolveResourceID(r.RCID)
+	if err != nil {
+		return fmt.Errorf("Resolve resource id failed, %v", err)
+	}
+	tIdHex := tId.String()
 	m, ok := l.meta[tIdHex]
 	if !ok {
 		return fmt.Errorf("ResourceType(%s) is not registed", tIdHex)
@@ -327,7 +335,7 @@ func (l *limiterV1) doReturn(r *Request) error {
 	}
 
 	// commit changes
-	if g.EnableRaft {
+	if g.EnableRaft && commit {
 		cmd, err := json.Marshal(r)
 		if err != nil {
 			return err
@@ -342,12 +350,12 @@ func (l *limiterV1) doReturn(r *Request) error {
 		}
 	}
 
-	glog.V(1).Infof("Client[%s] return '%s' OK", r.CID.String(), r.RCID, r.Expire)
+	//glog.V(1).Infof("Client[%s] return '%s' OK", r.CID.String(), r.RCID)
 
 	return nil
 }
 
-func (l *limiterV1) doReturnAll(r *Request) error {
+func (l *limiterV1) doReturnAll(r *Request, commit bool) error {
 	if len(r.CID) <= 0 {
 		return errors.New("Missing `cId` field value")
 	}
@@ -368,7 +376,7 @@ func (l *limiterV1) doReturnAll(r *Request) error {
 	}
 
 	// commit changes
-	if g.EnableRaft {
+	if g.EnableRaft && commit {
 		cmd, err := json.Marshal(r)
 		if err != nil {
 			return err

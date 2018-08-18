@@ -73,7 +73,7 @@ func registQuota(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// 尝试获取资格
-	if rp := l.Do(&r); rp.Err != nil {
+	if rp := l.Do(&r, true); rp.Err != nil {
 		w.WriteHeader(403)
 		w.Write(ErrMsg(rp.Err.Error()))
 	} else {
@@ -111,7 +111,7 @@ func borrow(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// 尝试获取资格
-	if rp := l.Do(&r); rp.Err != nil {
+	if rp := l.Do(&r, true); rp.Err != nil {
 		w.WriteHeader(403)
 		w.Write(ErrMsg(rp.Err.Error()))
 	} else {
@@ -151,7 +151,7 @@ func return_(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// 尝试获取资格
-	if rp := l.Do(&r); rp.Err != nil {
+	if rp := l.Do(&r, true); rp.Err != nil {
 		w.WriteHeader(403)
 		w.Write(ErrMsg(rp.Err.Error()))
 	} else {

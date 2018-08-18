@@ -7,7 +7,7 @@ import (
 	"syscall"
 
 	"github.com/Hurricanezwf/rate-limiter/server"
-	_ "github.com/Hurricanezwf/toolbox/logging"
+	"github.com/Hurricanezwf/toolbox/logging"
 	"github.com/Hurricanezwf/toolbox/logging/glog"
 )
 
@@ -18,6 +18,10 @@ func main() {
 	defer glog.Flush()
 
 	glog.Infof("Be starting, wait a while...")
+
+	if err := logging.Reset(logging.LogWayConsole, "", 5); err != nil {
+		glog.Fatalf(err.Error())
+	}
 
 	if err := server.Run(addr); err != nil {
 		glog.Fatalf(err.Error())

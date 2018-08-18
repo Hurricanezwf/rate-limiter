@@ -2,7 +2,10 @@ package limiter
 
 import (
 	"container/list"
+	"encoding/hex"
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -117,7 +120,7 @@ func (m *limiterMetaV1) Borrow(cId ClientID, expire int64) (ResourceID, error) {
 	m.used[cIdHex] = link
 	m.usedCount++
 
-	glog.V(2).Info("Client(%s) borrow %s OK, expireAt %d", cIdHex, record.RCID, record.ExpireAt)
+	glog.V(1).Infof("Client[%s] borrow %s OK, period:%ds, expireAt:%d", cIdHex, record.RCID, expire, record.ExpireAt)
 
 	return rcId, nil
 }
@@ -135,25 +138,36 @@ func (m *limiterMetaV1) Return(cId ClientID, rcId ResourceID) error {
 	cIdHex := cId.String()
 	link := m.used[cIdHex]
 	if link == nil {
-		return fmt.Errorf("There's something wrong, recycle queue for client[%s] is nil", cIdHex)
+		return fmt.Errorf("There's something wrong, no client['%s'] found in used queue", cIdHex)
 	}
 
-	// 从borrow队列删除
+	// 实施归还
 	find := false
 	for node := link.Front(); node != nil; node = node.Next() {
+		// 找到指定的借出记录
 		record := node.Value.(borrowRecord)
-		if record.RCID == rcId {
-			find = true
-			link.Remove(node)
-			break
+		if record.RCID != rcId {
+			continue
 		}
+
+		// 移出used列表加入到recycled队列
+		find = true
+		link.Remove(node)
+		m.recycled.PushBack(rcId)
+		m.usedCount--
+
+		glog.V(3).Infof("Client[%s] return %s to recycle.", cIdHex, rcId)
+
+		// 如果该client没有借入记录，则从map中删除，防止map累积增长
+		if link.Len() <= 0 {
+			delete(m.used, cIdHex)
+		}
+		break
 	}
 
-	// 添加到回收队列
-	if find {
-		m.recycled.PushBack(rcId)
-	} else {
+	if !find {
 		glog.Warningf("No resource[%s] found at used queue. client=%s", rcId, cIdHex)
+		return ErrNotFound
 	}
 
 	return nil
@@ -164,6 +178,7 @@ func (m *limiterMetaV1) ReturnAll(cId ClientID) error {
 	return nil
 }
 
+// Recycle 检测used队列中的过期资源是否可重用
 func (m *limiterMetaV1) Recycle() {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -197,7 +212,7 @@ func (m *limiterMetaV1) Recycle() {
 	if count := m.recycled.Len(); count > 0 {
 		m.canBorrow.PushBackList(m.recycled)
 		m.recycled.Init()
-		glog.V(1).Infof("Delivery %d resources to canBorrow queue", count)
+		glog.V(1).Infof("Refresh %d resources to canBorrow queue because of client's return", count)
 	}
 }
 
@@ -213,4 +228,17 @@ func (m *limiterMetaV1) Decode(b []byte) error {
 
 func makeResourceID(tId ResourceTypeID, idx int) ResourceID {
 	return ResourceID(fmt.Sprintf("%s_rc#%d", tId.String(), idx))
+}
+
+func resolveResourceID(rcId ResourceID) (ResourceTypeID, error) {
+	arr := strings.Split(string(rcId), "_")
+	if len(arr) != 2 {
+		return nil, errors.New("Bad ResourceID")
+	}
+
+	tId, err := hex.DecodeString(arr[0])
+	if err != nil {
+		return nil, err
+	}
+	return ResourceTypeID(tId), nil
 }
