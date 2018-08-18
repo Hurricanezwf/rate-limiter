@@ -1,5 +1,7 @@
 package proto
 
+import "encoding/hex"
+
 const (
 	ActionRegistQuota = ActionType(0x01)
 	ActionBorrow      = ActionType(0x02)
@@ -10,11 +12,19 @@ const (
 // 资源类型ID
 type ResourceTypeID []byte
 
+func (id ResourceTypeID) String() string {
+	return hex.EncodeToString(id)
+}
+
 // 资源ID
 type ResourceID string
 
 // 客户端ID
 type ClientID []byte
+
+func (id ClientID) String() string {
+	return hex.EncodeToString(id)
+}
 
 // Action类型
 type ActionType uint8

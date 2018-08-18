@@ -2,7 +2,6 @@ package limiter
 
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/Hurricanezwf/rate-limiter/g"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
@@ -24,6 +24,7 @@ func New() Limiter {
 	return &limiterV1{
 		mutex: &sync.RWMutex{},
 		meta:  make(map[string]LimiterMeta),
+		stopC: make(chan struct{}),
 	}
 }
 
@@ -50,74 +51,90 @@ type limiterV1 struct {
 
 	//
 	raft *raftlib.Raft
+
+	//
+	stopC chan struct{}
 }
 
 func (l *limiterV1) Open() error {
-	if g.EnableRaft == false {
-		glog.Info("Raft is disabled")
-		return nil
-	}
-
 	// ---------------- Raft集群初始化 ----------------- //
-	// 加载集群配置
-	confJson := filepath.Join(g.ConfDir, g.RaftClusterConfFile)
-	clusterConf, err := raftlib.ReadConfigJSON(confJson)
-	if err != nil {
-		return fmt.Errorf("Load raft servers' config failed, %v", err)
+	if g.EnableRaft {
+		// 加载集群配置
+		confJson := filepath.Join(g.ConfDir, g.RaftClusterConfFile)
+		clusterConf, err := raftlib.ReadConfigJSON(confJson)
+		if err != nil {
+			return fmt.Errorf("Load raft servers' config failed, %v", err)
+		}
+
+		raftConf := raftlib.DefaultConfig()
+		raftConf.LocalID = raftlib.ServerID(g.LocalID)
+
+		// 创建Raft网络传输
+		addr, err := net.ResolveTCPAddr("tcp", g.RaftBind)
+		if err != nil {
+			return err
+		}
+		transport, err := raftlib.NewTCPTransport(
+			g.RaftBind,       // bindAddr
+			addr,             // advertise
+			g.RaftTCPMaxPool, // maxPool
+			g.RaftTimeout,    // timeout
+			os.Stderr,        // logOutput
+		)
+		if err != nil {
+			return fmt.Errorf("Create tcp transport failed, %v", err)
+		}
+
+		// 创建持久化Log Entry存储引擎
+		boltDB, err := raftboltdb.NewBoltStore(filepath.Join(g.RaftDir, "raft.db"))
+		if err != nil {
+			return fmt.Errorf("Create log store failed, %v", err)
+		}
+
+		// 创建持久化快照存储引擎
+		snapshotStore, err := raftlib.NewFileSnapshotStore(g.RaftDir, 3, os.Stderr)
+		if err != nil {
+			return fmt.Errorf("Create file snapshot store failed, %v", err)
+		}
+
+		// 创建Raft实例
+		raft, err := raftlib.NewRaft(
+			raftConf,
+			l,
+			boltDB,
+			boltDB,
+			snapshotStore,
+			transport,
+		)
+		if err != nil {
+			return fmt.Errorf("Create raft instance failed, %v", err)
+		}
+
+		// 启动集群
+		future := raft.BootstrapCluster(clusterConf)
+		if err = future.Error(); err != nil {
+			return fmt.Errorf("Bootstrap raft cluster failed, %v", err)
+		}
+
+		// 变量初始化
+		l.raft = raft
+	} else {
+		glog.Info("Raft is disabled")
 	}
 
-	raftConf := raftlib.DefaultConfig()
-	raftConf.LocalID = raftlib.ServerID(g.LocalID)
+	// ---------------------- 定时回收&重用资源 ---------------------- //
+	go func() {
+		ticker := time.NewTicker(time.Second)
+		for {
+			select {
+			case <-l.stopC:
+				return
+			case <-ticker.C:
+				l.recycle()
+			}
+		}
+	}()
 
-	// 创建Raft网络传输
-	addr, err := net.ResolveTCPAddr("tcp", g.RaftBind)
-	if err != nil {
-		return err
-	}
-	transport, err := raftlib.NewTCPTransport(
-		g.RaftBind,       // bindAddr
-		addr,             // advertise
-		g.RaftTCPMaxPool, // maxPool
-		g.RaftTimeout,    // timeout
-		os.Stderr,        // logOutput
-	)
-	if err != nil {
-		return fmt.Errorf("Create tcp transport failed, %v", err)
-	}
-
-	// 创建持久化Log Entry存储引擎
-	boltDB, err := raftboltdb.NewBoltStore(filepath.Join(g.RaftDir, "raft.db"))
-	if err != nil {
-		return fmt.Errorf("Create log store failed, %v", err)
-	}
-
-	// 创建持久化快照存储引擎
-	snapshotStore, err := raftlib.NewFileSnapshotStore(g.RaftDir, 3, os.Stderr)
-	if err != nil {
-		return fmt.Errorf("Create file snapshot store failed, %v", err)
-	}
-
-	// 创建Raft实例
-	raft, err := raftlib.NewRaft(
-		raftConf,
-		l,
-		boltDB,
-		boltDB,
-		snapshotStore,
-		transport,
-	)
-	if err != nil {
-		return fmt.Errorf("Create raft instance failed, %v", err)
-	}
-
-	// 启动集群
-	future := raft.BootstrapCluster(clusterConf)
-	if err = future.Error(); err != nil {
-		return fmt.Errorf("Bootstrap raft cluster failed, %v", err)
-	}
-
-	// 变量初始化
-	l.raft = raft
 	return nil
 }
 
@@ -209,7 +226,7 @@ func (l *limiterV1) doRegistQuota(r *Request) error {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 
-	tIdHex := hex.EncodeToString(r.TID)
+	tIdHex := r.TID.String()
 	if _, existed := l.meta[tIdHex]; existed {
 		return ErrExisted
 	} else {
@@ -232,7 +249,7 @@ func (l *limiterV1) doRegistQuota(r *Request) error {
 		}
 	}
 
-	glog.V(1).Infof("Regist quota for rcType '%x' OK, total:%d", r.TID, r.Quota)
+	glog.V(1).Infof("Regist quota for rcType '%s' OK, total:%d", r.TID.String(), r.Quota)
 
 	return nil
 }
@@ -253,7 +270,7 @@ func (l *limiterV1) doBorrow(r *Request) (string, error) {
 	}
 
 	// try borrow
-	tIdHex := hex.EncodeToString(r.TID)
+	tIdHex := r.TID.String()
 	m, ok := l.meta[tIdHex]
 	if !ok {
 		return "", fmt.Errorf("ResourceType(%s) is not registed", tIdHex)
@@ -279,7 +296,7 @@ func (l *limiterV1) doBorrow(r *Request) (string, error) {
 		}
 	}
 
-	glog.V(1).Infof("Client[%x] borrow '%s' for %d seconds OK", r.CID, rcId, r.Expire)
+	glog.V(1).Infof("Client[%s] borrow '%s' for %d seconds OK", r.CID.String(), rcId, r.Expire)
 
 	return string(rcId), nil
 }
@@ -299,7 +316,7 @@ func (l *limiterV1) doReturn(r *Request) error {
 	}
 
 	// try borrow
-	tIdHex := hex.EncodeToString(r.TID)
+	tIdHex := r.TID.String()
 	m, ok := l.meta[tIdHex]
 	if !ok {
 		return fmt.Errorf("ResourceType(%s) is not registed", tIdHex)
@@ -324,7 +341,7 @@ func (l *limiterV1) doReturn(r *Request) error {
 		}
 	}
 
-	glog.V(1).Infof("Client[%x] return '%s' OK", r.CID, r.RCID, r.Expire)
+	glog.V(1).Infof("Client[%s] return '%s' OK", r.CID.String(), r.RCID, r.Expire)
 
 	return nil
 }
@@ -340,7 +357,7 @@ func (l *limiterV1) doReturnAll(r *Request) error {
 	}
 
 	// try borrow
-	tIdHex := hex.EncodeToString(r.TID)
+	tIdHex := r.TID.String()
 	m, ok := l.meta[tIdHex]
 	if !ok {
 		return fmt.Errorf("ResourceType(%s) is not registed", tIdHex)
@@ -366,4 +383,14 @@ func (l *limiterV1) doReturnAll(r *Request) error {
 	}
 
 	return nil
+}
+
+func (l *limiterV1) recycle() {
+	// map内容没有被修改，所以这里是读锁
+	l.mutex.RLock()
+	defer l.mutex.RUnlock()
+
+	for _, m := range l.meta {
+		m.Recycle()
+	}
 }

@@ -124,7 +124,41 @@ func borrow(w http.ResponseWriter, req *http.Request) {
 
 // return_ 释放一次执行权限
 func return_(w http.ResponseWriter, req *http.Request) {
-	// TODO
+	if req.Method != http.MethodPost {
+		w.WriteHeader(405)
+		w.Write(ErrMsg("Method `POST` is needed"))
+		return
+	}
+
+	// 读取body
+	b, err := ioutil.ReadAll(req.Body)
+	defer req.Body.Close()
+
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write(ErrMsg(err.Error()))
+		return
+	}
+
+	// 解析参数
+	var r proto.Request
+	if err := json.Unmarshal(b, &r); err != nil {
+		w.WriteHeader(500)
+		w.Write(ErrMsg(err.Error()))
+		return
+	} else {
+		r.Action = proto.ActionReturn
+	}
+
+	// 尝试获取资格
+	if rp := l.Do(&r); rp.Err != nil {
+		w.WriteHeader(403)
+		w.Write(ErrMsg(rp.Err.Error()))
+	} else {
+		w.WriteHeader(200)
+	}
+	return
+
 }
 
 // dead 释放用户的所有占用的权限

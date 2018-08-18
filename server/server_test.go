@@ -27,7 +27,7 @@ func TestRegist(t *testing.T) {
 	opt := utils.HttpOptions{
 		Body: Request{
 			TID:   tId,
-			Quota: 10,
+			Quota: 1,
 		},
 	}
 

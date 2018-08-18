@@ -2,7 +2,6 @@ package limiter
 
 import (
 	"container/list"
-	"encoding/hex"
 	"fmt"
 	"sync"
 	"time"
@@ -27,11 +26,11 @@ type LimiterMeta interface {
 	// ReturnAll 归还某个用户所有的执行资格，通常在用户主动关闭的时候
 	ReturnAll(cId ClientID) error
 
-	// Bytes 将控制器数据序列化，用于持久化
-	Bytes() ([]byte, error)
+	// Recycle 清理到期未还的资源并且将recycled队列的资源投递到canBorrow队列
+	Recycle()
 
-	// LoadFrom 将二进制数据反序列化成该结构
-	LoadFrom([]byte) error
+	// 继承Serializer接口
+	Serializer
 }
 
 // borrowRecord 资源借出记录
@@ -88,7 +87,7 @@ func (m *limiterMetaV1) Borrow(cId ClientID, expire int64) (ResourceID, error) {
 	defer m.mutex.Unlock()
 
 	// 校验额度
-	if m.usedCount >= m.quota {
+	if m.canBorrow.Len() <= 0 {
 		return "", ErrQuotaNotEnough
 	}
 
@@ -109,7 +108,7 @@ func (m *limiterMetaV1) Borrow(cId ClientID, expire int64) (ResourceID, error) {
 		ExpireAt: nowTs + expire,
 	}
 
-	cIdHex := hex.EncodeToString(cId)
+	cIdHex := cId.String()
 	link := m.used[cIdHex]
 	if link == nil {
 		link = list.New()
@@ -133,7 +132,7 @@ func (m *limiterMetaV1) Return(cId ClientID, rcId ResourceID) error {
 		return fmt.Errorf("There's something wrong, recycled queue len(%d) >= quota(%d)", m.recycled.Len(), m.quota)
 	}
 
-	cIdHex := hex.EncodeToString(cId)
+	cIdHex := cId.String()
 	link := m.used[cIdHex]
 	if link == nil {
 		return fmt.Errorf("There's something wrong, recycle queue for client[%s] is nil", cIdHex)
@@ -165,16 +164,48 @@ func (m *limiterMetaV1) ReturnAll(cId ClientID) error {
 	return nil
 }
 
-func (m *limiterMetaV1) Bytes() ([]byte, error) {
+func (m *limiterMetaV1) Recycle() {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	// 回收过期资源
+	nowTs := time.Now().Unix()
+	for client, link := range m.used {
+		if m.usedCount < 0 {
+			panic("There's something wrong, usedCount < 0")
+		}
+		for record := link.Front(); record != nil; {
+			next := record.Next()
+			v := record.Value.(borrowRecord)
+			if nowTs >= v.ExpireAt {
+				// 过期后，从used队列移到canBorrow队列(在过期资源清理和资源重用的周期一致时才可以这样做)
+				link.Remove(record)
+				m.usedCount--
+				m.canBorrow.PushBack(v.RCID)
+				glog.V(1).Infof("'%s' borrowed by client['%s'] is expired, force to recycle", v.RCID, client)
+			}
+			record = next
+		}
+	}
+
+	// 资源重用
+	if count := m.recycled.Len(); count > 0 {
+		m.canBorrow.PushBackList(m.recycled)
+		m.recycled.Init()
+		glog.V(1).Infof("Delivery %d resources to canBorrow queue", count)
+	}
+}
+
+func (m *limiterMetaV1) Encode() ([]byte, error) {
 	// TODO:
 	return nil, nil
 }
 
-func (m *limiterMetaV1) LoadFrom(b []byte) error {
+func (m *limiterMetaV1) Decode(b []byte) error {
 	// TODO:
 	return nil
 }
 
 func makeResourceID(tId ResourceTypeID, idx int) ResourceID {
-	return ResourceID(fmt.Sprintf("%x_rc#%d", tId, idx))
+	return ResourceID(fmt.Sprintf("%s_rc#%d", tId.String(), idx))
 }
