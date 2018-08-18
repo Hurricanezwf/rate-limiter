@@ -47,7 +47,8 @@ type limiterV1 struct {
 	mutex *sync.RWMutex
 
 	// 按照资源类型进行分类
-	meta map[string]LimiterMeta // ResourceID ==> LimiterMeta
+	// ResourceID ==> LimiterMeta
+	meta map[string]LimiterMeta
 
 	//
 	raft *raftlib.Raft

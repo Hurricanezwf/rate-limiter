@@ -186,6 +186,11 @@ func (m *limiterMetaV1) Recycle() {
 			}
 			record = next
 		}
+
+		// 删除冗余，防止map无限扩张
+		if link.Len() <= 0 {
+			delete(m.used, client)
+		}
 	}
 
 	// 资源重用
