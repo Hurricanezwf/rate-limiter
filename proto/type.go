@@ -7,7 +7,7 @@ import (
 )
 
 // Action类型
-type ActionType uint8
+type ActionType byte
 
 // 资源类型ID
 type ResourceTypeID []byte
@@ -24,21 +24,31 @@ func (id ResourceTypeID) Encode() ([]byte, error) {
 	if len(id) > math.MaxUint8 {
 		return nil, errors.New("ResourceTypeID overflow")
 	}
-	encoded := make([]byte, len(id)+1)
-	encoded[0] = uint8(len(id))
+	encoded := make([]byte, len(id)+2)
+	encoded[0] = ValueTypeResourceTypeID
+	encoded[1] = uint8(len(id))
 	if len(id) > 0 {
-		copy(encoded[1:], id[:])
+		copy(encoded[2:], id[:])
 	}
 	return encoded, nil
 }
 
 func (id ResourceTypeID) Decode(b []byte) ([]byte, error) {
-	if len(b) < 1 {
+	if len(b) < 2 {
 		return b, errors.New("Bad ResourceTypeID byte sequence")
 	}
-	rcTypeIdLen := int(b[0])
-	id = ResourceTypeID(b[1 : 1+rcTypeIdLen])
-	return b[1+rcTypeIdLen:], nil
+	if vType := b[0]; vType != ValueTypeResourceTypeID {
+		return b, errors.New("Value type not match")
+	}
+
+	rcTypeIdLen := int(b[1])
+	if len(b) > 2 {
+		id = ResourceTypeID(b[2 : 2+rcTypeIdLen])
+		b = b[2+rcTypeIdLen:]
+	} else {
+		b = nil
+	}
+	return b, nil
 }
 
 // 资源ID
@@ -52,21 +62,31 @@ func (id ResourceID) Encode() ([]byte, error) {
 	if len(id) > math.MaxUint8 {
 		return nil, errors.New("ResourceID overflow")
 	}
-	encoded := make([]byte, len(id)+1)
-	encoded[0] = uint8(len(id))
+	encoded := make([]byte, len(id)+2)
+	encoded[0] = ValueTypeResourceID
+	encoded[1] = byte(len(id))
 	if len(id) > 0 {
-		copy(encoded[1:], []byte(id)[:])
+		copy(encoded[2:], []byte(id)[:])
 	}
 	return encoded, nil
 }
 
 func (id ResourceID) Decode(b []byte) ([]byte, error) {
-	if len(b) < 1 {
+	if len(b) < 2 {
 		return b, errors.New("Bad ResouceID byte sequence")
 	}
-	rcIdLen := int(b[0])
-	id = ResourceID(b[1 : 1+rcIdLen])
-	return b[1+rcIdLen:], nil
+	if vType := b[0]; vType != ValueTypeResourceID {
+		return b, errors.New("Valut type not match")
+	}
+
+	rcIdLen := int(b[1])
+	if len(b) > 2 {
+		id = ResourceID(b[2 : 2+rcIdLen])
+		b = b[2+rcIdLen:]
+	} else {
+		b = nil
+	}
+	return b, nil
 }
 
 // 客户端ID
@@ -84,19 +104,29 @@ func (id ClientID) Encode() ([]byte, error) {
 	if len(id) > math.MaxUint8 {
 		return nil, errors.New("ClientID overflow")
 	}
-	encoded := make([]byte, len(id)+1)
-	encoded[0] = uint8(len(id))
+	encoded := make([]byte, len(id)+2)
+	encoded[0] = ValueTypeClientID
+	encoded[1] = byte(len(id))
 	if len(id) > 0 {
-		copy(encoded[1:], id[:])
+		copy(encoded[2:], id[:])
 	}
 	return encoded, nil
 }
 
 func (id ClientID) Decode(b []byte) ([]byte, error) {
-	if len(b) < 1 {
+	if len(b) < 2 {
 		return b, errors.New("Bad ClientID byte sequence")
 	}
-	clientIdLen := int(b[0])
-	id = ClientID(b[1 : 1+clientIdLen])
-	return b[1+clientIdLen:], nil
+	if vType := b[0]; vType != ValueTypeClientID {
+		return b, errors.New("Value type not match")
+	}
+
+	clientIdLen := int(b[1])
+	if len(b) > 2 {
+		id = ClientID(b[2 : 2+clientIdLen])
+		b = b[2+clientIdLen:]
+	} else {
+		b = nil
+	}
+	return b, nil
 }

@@ -14,3 +14,16 @@ const (
 	ActionReturn      = ActionType(0x03) // 在所有结点进行归还资源的操作
 	ActionDead        = ActionType(0x04)
 )
+
+// 值类型
+const (
+	ValueTypeUnknown        byte = 0x00
+	ValueTypeString         byte = 0x01
+	ValueTypeUint8          byte = 0x02
+	ValueTypeUint32         byte = 0x03
+	ValueTypeUint64         byte = 0x04
+	ValueTypeResourceID     byte = 0x05
+	ValueTypeResourceTypeID byte = 0x06
+	ValueTypeClientID       byte = 0x07
+	ValueTypeBorrowRecord   byte = 0x08
+)

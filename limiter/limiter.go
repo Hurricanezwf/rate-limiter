@@ -434,7 +434,7 @@ func (l *limiterV1) doReturn(r *Request, commit bool) error {
 	l.mutex.RLock()
 	defer l.mutex.RUnlock()
 
-	tId, err := resolveResourceID(r.RCID)
+	tId, err := ResolveResourceID(r.RCID)
 	if err != nil {
 		return fmt.Errorf("Resolve resource id failed, %v", err)
 	}
