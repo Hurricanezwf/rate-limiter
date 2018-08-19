@@ -19,7 +19,7 @@ func NewLimiterMeta(tId ResourceTypeID, quota uint32) LimiterMeta {
 
 func NewLimiterMetaFromBytes(b []byte) (LimiterMeta, error) {
 	var m limiterMetaV1
-	if err := m.Decode(b); err != nil {
+	if _, err := m.Decode(b); err != nil {
 		return nil, err
 	}
 	return &m, nil
@@ -229,9 +229,9 @@ func (m *limiterMetaV1) Encode() ([]byte, error) {
 	return nil, nil
 }
 
-func (m *limiterMetaV1) Decode(b []byte) error {
+func (m *limiterMetaV1) Decode(b []byte) ([]byte, error) {
 	// TODO:
-	return nil
+	return b, nil
 }
 
 func makeResourceID(tId ResourceTypeID, idx uint32) ResourceID {
