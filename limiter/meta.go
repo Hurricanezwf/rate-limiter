@@ -13,7 +13,7 @@ import (
 	"github.com/Hurricanezwf/toolbox/logging/glog"
 )
 
-func NewLimiterMeta(tId ResourceTypeID, quota int) LimiterMeta {
+func NewLimiterMeta(tId ResourceTypeID, quota uint32) LimiterMeta {
 	return newLimiterMetaV1(tId, quota)
 }
 
@@ -65,7 +65,7 @@ type limiterMetaV1 struct {
 	tId ResourceTypeID
 
 	// 拥有的原始资源配额
-	quota int
+	quota uint32
 
 	// 资源调度队列
 	mutex     sync.RWMutex
@@ -75,7 +75,7 @@ type limiterMetaV1 struct {
 	usedCount int                   // 正被使用的资源数量统计
 }
 
-func newLimiterMetaV1(tId ResourceTypeID, quota int) *limiterMetaV1 {
+func newLimiterMetaV1(tId ResourceTypeID, quota uint32) *limiterMetaV1 {
 	m := &limiterMetaV1{
 		tId:       tId,
 		quota:     quota,
@@ -86,7 +86,7 @@ func newLimiterMetaV1(tId ResourceTypeID, quota int) *limiterMetaV1 {
 	}
 
 	// 初始化等量可借的配额资源
-	for i := 0; i < quota; i++ {
+	for i := uint32(0); i < quota; i++ {
 		m.canBorrow.PushBack(makeResourceID(tId, i))
 	}
 	return m
@@ -139,7 +139,7 @@ func (m *limiterMetaV1) Return(cId ClientID, rcId ResourceID) error {
 	defer m.mutex.Unlock()
 
 	// 安全性检测
-	if m.recycled.Len() >= m.quota {
+	if uint32(m.recycled.Len()) >= m.quota {
 		return fmt.Errorf("There's something wrong, recycled queue len(%d) >= quota(%d)", m.recycled.Len(), m.quota)
 	}
 
@@ -234,7 +234,7 @@ func (m *limiterMetaV1) Decode(b []byte) error {
 	return nil
 }
 
-func makeResourceID(tId ResourceTypeID, idx int) ResourceID {
+func makeResourceID(tId ResourceTypeID, idx uint32) ResourceID {
 	return ResourceID(fmt.Sprintf("%s_rc#%d", tId.String(), idx))
 }
 

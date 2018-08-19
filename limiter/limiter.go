@@ -226,6 +226,7 @@ func (l *limiterV1) Snapshot() (raftlib.FSMSnapshot, error) {
 		buf.Write(b[:len(b)])
 	}
 
+	glog.V(3).Infof("Snapshot Data: %v", buf.Bytes())
 	return NewLimiterSnapshot(buf.Bytes()), nil
 }
 

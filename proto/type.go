@@ -28,7 +28,7 @@ type Request struct {
 	RCID   ResourceID     `json:"rcId,omitempty"`
 	CID    ClientID       `json:"cId,omitempty"`
 	Expire int64          `json:"expire,omitempty"`
-	Quota  int            `json:"quota,omitempty"`
+	Quota  uint32         `json:"quota,omitempty"`
 }
 
 type Response struct {

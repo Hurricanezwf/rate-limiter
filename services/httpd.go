@@ -16,6 +16,7 @@ func init() {
 	http.HandleFunc("/v1/borrow", borrow)
 	http.HandleFunc("/v1/return", return_)
 	http.HandleFunc("/v1/dead", dead)
+	http.HandleFunc("/v1/snapshot", snapshot)
 }
 
 // runHttpd 启动HTTP服务
@@ -149,12 +150,24 @@ func return_(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(200)
 	}
 	return
-
 }
 
 // dead 释放用户的所有占用的权限
 func dead(w http.ResponseWriter, req *http.Request) {
 	// TODO
+}
+
+// snapshot 对元数据做快照
+func snapshot(w http.ResponseWriter, req *http.Request) {
+	_, err := l.Snapshot()
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+	} else {
+		w.WriteHeader(200)
+		w.Write([]byte("Snapshot OK"))
+	}
+	return
 }
 
 func ErrMsg(format string, v ...interface{}) []byte {
