@@ -1,5 +1,11 @@
 package proto
 
+// 魔数
+var MagicNumber = [1]byte{0x66}
+
+// 快照协议版本
+var ProtocolVersion = [1]byte{0x01}
+
 // Raft结点间通信的动作类型
 const (
 	ActionSnapshot    = ActionType(0xff) // 在所有结点对元数据进行快照处理

@@ -17,6 +17,14 @@ func NewLimiterMeta(tId ResourceTypeID, quota int) LimiterMeta {
 	return newLimiterMetaV1(tId, quota)
 }
 
+func NewLimiterMetaFromBytes(b []byte) (LimiterMeta, error) {
+	var m limiterMetaV1
+	if err := m.Decode(b); err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
 // 需要支持并发安全
 type LimiterMeta interface {
 	// Borrow 申请一次执行资格，如果成功返回nil
