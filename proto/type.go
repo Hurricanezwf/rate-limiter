@@ -2,13 +2,6 @@ package proto
 
 import "encoding/hex"
 
-const (
-	ActionRegistQuota = ActionType(0x01)
-	ActionBorrow      = ActionType(0x02)
-	ActionReturn      = ActionType(0x03)
-	ActionDead        = ActionType(0x04)
-)
-
 // 资源类型ID
 type ResourceTypeID []byte
 

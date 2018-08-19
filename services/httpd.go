@@ -1,4 +1,4 @@
-package server
+package services
 
 import (
 	"bytes"
@@ -8,12 +8,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Hurricanezwf/rate-limiter/limiter"
 	"github.com/Hurricanezwf/rate-limiter/proto"
 )
-
-// Rate limiter实例
-var l limiter.Limiter
 
 func init() {
 	http.HandleFunc("/v1/registQuota", registQuota)
@@ -22,13 +18,8 @@ func init() {
 	http.HandleFunc("/v1/dead", dead)
 }
 
-// Run 启动HTTP服务
-func Run(addr string) error {
-	l = limiter.New()
-	if err := l.Open(); err != nil {
-		return fmt.Errorf("Open limiter failed, %v", err)
-	}
-
+// runHttpd 启动HTTP服务
+func runHttpd(addr string) error {
 	// 启动HTTP服务
 	errC := make(chan error, 1)
 
@@ -38,7 +29,7 @@ func Run(addr string) error {
 
 	select {
 	case err := <-errC:
-		return fmt.Errorf("Run HTTP Server on %s failed, %v", addr, err)
+		return err
 	case <-time.After(3 * time.Second):
 	}
 	return nil

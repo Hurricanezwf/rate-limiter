@@ -32,7 +32,7 @@ type LimiterMeta interface {
 	// Recycle 清理到期未还的资源并且将recycled队列的资源投递到canBorrow队列
 	Recycle()
 
-	// 继承Serializer接口
+	// 组合Serializer接口
 	Serializer
 }
 

@@ -1,4 +1,4 @@
-package server
+package services
 
 import (
 	"crypto/md5"
