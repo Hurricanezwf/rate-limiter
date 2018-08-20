@@ -6,8 +6,21 @@ import (
 
 func TestString(t *testing.T) {
 	s := NewString("world")
-	s.Decode(nil)
-	t.Logf("%s\n", s.Value())
+
+	// encode
+	bt, err := s.Encode()
+	if err != nil {
+		t.Fatal(err.Error())
+	} else {
+		t.Logf("After Encoded: %#v\n", bt)
+	}
+
+	// decode
+	if _, err = s.Decode(bt); err != nil {
+		t.Fatal(err.Error())
+	} else {
+		t.Logf("After Decoded: %#v\n", s.Value())
+	}
 }
 
 func TestBytes(t *testing.T) {
