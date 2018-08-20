@@ -1,5 +1,7 @@
 package encoding
 
+import "encoding/hex"
+
 type Bytes struct {
 	v []byte
 }
@@ -25,6 +27,10 @@ func (bt *Bytes) Set(idx int, bv byte) {
 
 func (bt *Bytes) Value() []byte {
 	return bt.v
+}
+
+func (bt *Bytes) Hex() string {
+	return hex.EncodeToString(bt.v)
 }
 
 func (bt *Bytes) Grow(n int) *Bytes {

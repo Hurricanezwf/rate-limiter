@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Hurricanezwf/rate-limiter/encoder"
 	"github.com/Hurricanezwf/rate-limiter/encoding"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
 	"github.com/Hurricanezwf/toolbox/logging/glog"
@@ -86,7 +85,7 @@ func (m *limiterMetaV1) Borrow(clientId []byte, expire int64) (string, error) {
 		return "", ErrQuotaNotEnough
 	}
 
-	// 尝试借资源并做记录
+	// 从可借队列中取出资源
 	rcIdInterface, ok := m.canBorrow.PopFront()
 	if !ok {
 		panic("Exception: No resource found")
@@ -95,23 +94,30 @@ func (m *limiterMetaV1) Borrow(clientId []byte, expire int64) (string, error) {
 		panic("Exception: Nil resource found")
 	}
 
+	// 构造出借记录
 	rcId := rcIdInterface.(*encoding.String)
 	nowTs := time.Now().Unix()
 	record := borrowRecord{
 		ClientID: encoding.NewBytes(clientId),
 		RCID:     rcId,
-		BorrowAt: nowTs,
-		ExpireAt: nowTs + expire,
+		BorrowAt: encoding.NewInt64(nowTs),
+		ExpireAt: encoding.NewInt64(nowTs + expire),
 	}
 
-	clientIdHex := encoder.BytesToStringHex(clientId)
-	queue := m.used[clientIdHex]
+	// 添加到出借记录列表中
+	var q *encoding.Queue
+	var clientIdHex = record.ClientID.Hex()
+	var queue = m.used.Get(clientIdHex)
+
 	if queue == nil {
-		queue = NewQueue()
+		q = encoding.NewQueue()
+	} else {
+		q = queue.(*encoding.Queue)
 	}
-	queue.PushBack(record)
-	m.used[clientIdHex] = queue
-	m.usedCount++
+
+	q.PushBack(record)
+	m.used.Set(clientIdHex, q)
+	m.usedCount.Incr(uint32(1))
 
 	glog.V(1).Infof("Client[%s] borrow %s OK, period:%ds, expireAt:%d", clientIdHex, record.RCID, expire, record.ExpireAt)
 
@@ -124,36 +130,37 @@ func (m *limiterMetaV1) Return(clientId []byte, rcId string) error {
 	defer m.mutex.Unlock()
 
 	// 安全性检测
-	if uint32(m.recycled.Len()) >= m.quota {
-		return fmt.Errorf("There's something wrong, recycled queue len(%d) >= quota(%d)", m.recycled.Len(), m.quota)
+	if uint32(m.recycled.Len()) >= m.quota.Value() {
+		return fmt.Errorf("There's something wrong, recycled queue len(%d) >= quota(%d)", m.recycled.Len(), m.quota.Value())
 	}
 
-	clientIdHex := encoder.BytesToStringHex(clientId)
-	queue := m.used[clientIdHex]
-	if queue == nil {
+	clientIdHex := encoding.BytesToStringHex(clientId)
+	q := m.used.Get(clientIdHex)
+	if q == nil {
 		return fmt.Errorf("There's something wrong, no client['%s'] found in used queue", clientIdHex)
 	}
 
 	// 实施归还
+	queue := q.(*encoding.Queue)
 	find := false
-	for node := queue.Front(); node != nil; node = node.Next() {
+	for node := queue.Front(); node.IsNil() == false; node = node.Next() {
 		// 找到指定的借出记录
 		record := node.Value.(borrowRecord)
-		if record.RCID != rclientId {
+		if record.RCID.Value() != rcId {
 			continue
 		}
 
 		// 移出used列表加入到recycled队列
 		find = true
 		queue.Remove(node)
-		m.recycled.PushBack(rcId)
-		m.usedCount--
+		m.recycled.PushBack(encoding.NewString(rcId))
+		m.usedCount.Decr(uint32(1))
 
 		glog.V(3).Infof("Client[%s] return %s to recycle.", clientIdHex, rcId)
 
 		// 如果该client没有借入记录，则从map中删除，防止map累积增长
 		if queue.Len() <= 0 {
-			delete(m.used, clientIdHex)
+			m.used.Delete(clientIdHex)
 		}
 		break
 	}
@@ -178,26 +185,38 @@ func (m *limiterMetaV1) Recycle() {
 
 	// 回收过期资源
 	nowTs := time.Now().Unix()
-	for client, queue := range m.used {
-		if m.usedCount < 0 {
+
+	rangeC := make(chan *encoding.KVPair)
+	go m.used.Range(rangeC)
+
+	for {
+		pair, opened := <-rangeC
+		if !opened {
+			break
+		}
+
+		client := pair.K
+		queue := pair.V.(*encoding.Queue)
+
+		if m.usedCount.Value() < 0 {
 			panic("There's something wrong, usedCount < 0")
 		}
 		for record := queue.Front(); record != nil; {
 			next := record.Next()
 			v := record.Value.(borrowRecord)
-			if nowTs >= v.ExpireAt {
+			if nowTs >= v.ExpireAt.Value() {
 				// 过期后，从used队列移到canBorrow队列(在过期资源清理和资源重用的周期一致时才可以这样做)
 				queue.Remove(record)
-				m.usedCount--
+				m.usedCount.Decr(uint32(1))
 				m.canBorrow.PushBack(v.RCID)
-				glog.V(1).Infof("'%s' borrowed by client['%s'] is expired, force to recycle", v.RCID, client)
+				glog.V(1).Infof("'%s' borrowed by client['%s'] is expired, force to recycle", v.RCID.Value(), client)
 			}
 			record = next
 		}
 
 		// 删除冗余，防止map无限扩张
 		if queue.Len() <= 0 {
-			delete(m.used, client)
+			m.used.Delete(client)
 		}
 	}
 
@@ -228,10 +247,10 @@ type borrowRecord struct {
 	RCID *encoding.String
 
 	// 借出时间戳
-	BorrowAt int64
+	BorrowAt *encoding.Int64
 
 	// 到期时间戳
-	ExpireAt int64
+	ExpireAt *encoding.Int64
 }
 
 func (rd *borrowRecord) Encode() ([]byte, error) {

@@ -40,6 +40,10 @@ func (m *Map) Range(ch chan<- *KVPair) {
 	close(ch)
 }
 
+func (m *Map) Delete(k string) {
+	delete(m.v, k)
+}
+
 type KVPair struct {
 	K string
 	V Serializer

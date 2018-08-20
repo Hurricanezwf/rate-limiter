@@ -1,19 +1,21 @@
 package proto
 
+import "encoding/hex"
+
 // Action类型
 type ActionType byte
 
 // 资源类型ID
-//type ResourceTypeID []byte
-//
-//func (id ResourceTypeID) String() string {
-//	return hex.EncodeToString(id)
-//}
-//
-//func (id ResourceTypeID) Len() int {
-//	return len(id)
-//}
-//
+type ResourceTypeID []byte
+
+func (id ResourceTypeID) String() string {
+	return hex.EncodeToString(id)
+}
+
+func (id ResourceTypeID) Len() int {
+	return len(id)
+}
+
 //func (id ResourceTypeID) Encode() ([]byte, error) {
 //	if len(id) > math.MaxUint8 {
 //		return nil, errors.New("ResourceTypeID overflow")
@@ -46,12 +48,12 @@ type ActionType byte
 //}
 
 // 资源ID
-//type ResourceID string
-//
-//func (id ResourceID) Len() int {
-//	return len(id)
-//}
-//
+type ResourceID string
+
+func (id ResourceID) Len() int {
+	return len(id)
+}
+
 //func (id ResourceID) Encode() ([]byte, error) {
 //	if len(id) > math.MaxUint8 {
 //		return nil, errors.New("ResourceID overflow")
@@ -84,16 +86,16 @@ type ActionType byte
 //}
 
 // 客户端ID
-//type ClientID []byte
-//
-//func (id ClientID) String() string {
-//	return hex.EncodeToString(id)
-//}
-//
-//func (id ClientID) Len() int {
-//	return len(id)
-//}
-//
+type ClientID []byte
+
+func (id ClientID) String() string {
+	return hex.EncodeToString(id)
+}
+
+func (id ClientID) Len() int {
+	return len(id)
+}
+
 //func (id ClientID) Encode() ([]byte, error) {
 //	if len(id) > math.MaxUint8 {
 //		return nil, errors.New("ClientID overflow")

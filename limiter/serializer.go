@@ -1,11 +1,6 @@
 package limiter
 
 import (
-	"bytes"
-	"encoding/binary"
-	"errors"
-	"fmt"
-
 	. "github.com/Hurricanezwf/rate-limiter/proto"
 )
 
@@ -52,54 +47,54 @@ import (
 // > [1 byte]  element_1's len
 // > [N bytes] element_1's content
 // > ...
-func (q *Queue) Encode() ([]byte, error) {
-	header := make([]byte, 5)
-	header[0] = byte(q.vType)
-	binary.BigEndian.PutUint32(header[1:5], uint32(q.List.Len()))
+//func (q *Queue) Encode() ([]byte, error) {
+//	header := make([]byte, 5)
+//	header[0] = byte(q.vType)
+//	binary.BigEndian.PutUint32(header[1:5], uint32(q.List.Len()))
+//
+//	buf := bytes.NewBuffer(nil)
+//	buf.Write(header)
+//
+//	for e := q.List.Front(); e != nil; e = e.Next() {
+//		rcId := e.Value.(ResourceID)
+//		rcIdBytes, err := rcId.Encode()
+//		if err != nil {
+//			return nil, fmt.Errorf("Encode ResourceID(%s) to bytes failed, %v", rcId, err)
+//		}
+//		buf.Write(rcIdBytes)
+//	}
+//	return buf.Bytes(), nil
+//}
 
-	buf := bytes.NewBuffer(nil)
-	buf.Write(header)
-
-	for e := q.List.Front(); e != nil; e = e.Next() {
-		rcId := e.Value.(ResourceID)
-		rcIdBytes, err := rcId.Encode()
-		if err != nil {
-			return nil, fmt.Errorf("Encode ResourceID(%s) to bytes failed, %v", rcId, err)
-		}
-		buf.Write(rcIdBytes)
-	}
-	return buf.Bytes(), nil
-}
-
-func (q *Queue) Decode(b []byte) ([]byte, error) {
-	if len(b) < 5 {
-		return b, errors.New("Bad Queue byte sequence")
-	}
-
-	vType := b[0]
-	if vType != q.vType {
-		panic(fmt.Sprintf("ValueType(%v) != %v", vType, q.vType))
-	}
-
-	q.Init()
-
-	queueLen := binary.BigEndian.Uint32(b[1:6])
-	queueBytes := b[6 : 6+queueLen]
-	remainingBytes := b[6+queueLen:]
-
-	for i := uint32(0); i < queueLen; i++ {
-		if len(queueBytes) <= 0 {
-			return b, fmt.Errorf("Missing queue data in byte sequence, %d should have, missing %d elements", queueLen, queueLen-i)
-		}
-
-		var err error
-		var rcId ResourceID
-
-		queueBytes, err = rcId.Decode(queueBytes)
-		if err != nil {
-			return b, err
-		}
-		q.PushBack(rcId)
-	}
-	return remainingBytes, nil
-}
+//func (q *Queue) Decode(b []byte) ([]byte, error) {
+//	if len(b) < 5 {
+//		return b, errors.New("Bad Queue byte sequence")
+//	}
+//
+//	vType := b[0]
+//	if vType != q.vType {
+//		panic(fmt.Sprintf("ValueType(%v) != %v", vType, q.vType))
+//	}
+//
+//	q.Init()
+//
+//	queueLen := binary.BigEndian.Uint32(b[1:6])
+//	queueBytes := b[6 : 6+queueLen]
+//	remainingBytes := b[6+queueLen:]
+//
+//	for i := uint32(0); i < queueLen; i++ {
+//		if len(queueBytes) <= 0 {
+//			return b, fmt.Errorf("Missing queue data in byte sequence, %d should have, missing %d elements", queueLen, queueLen-i)
+//		}
+//
+//		var err error
+//		var rcId ResourceID
+//
+//		queueBytes, err = rcId.Decode(queueBytes)
+//		if err != nil {
+//			return b, err
+//		}
+//		q.PushBack(rcId)
+//	}
+//	return remainingBytes, nil
+//}

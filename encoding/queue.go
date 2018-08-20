@@ -42,6 +42,12 @@ func (q *Queue) PushBackQueue(q2 *Queue) {
 	q.l.PushBackList(q2.l)
 }
 
+func (q *Queue) Remove(e QueueElement) {
+	if e.IsNil() == false {
+		q.l.Remove(e.element)
+	}
+}
+
 func (q *Queue) Encode() ([]byte, error) {
 	// TODO:
 	return nil, nil
