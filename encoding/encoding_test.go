@@ -25,6 +25,13 @@ func TestUint32(t *testing.T) {
 	t.Logf("%v\n", b.Value())
 }
 
+func TestInt64(t *testing.T) {
+	i := NewInt64(int64(89))
+	i.Decode(nil)
+	i.Incr(1)
+	t.Logf("%v\n", i.Value())
+}
+
 func TestQueue(t *testing.T) {
 	q := NewQueue()
 	q.PushBack(NewString("zwf"))
@@ -39,5 +46,31 @@ func TestQueue(t *testing.T) {
 	for e := q.Front(); e.IsNil() == false; e = e.Next() {
 		v := e.Value().(*String)
 		t.Logf("%s\n", v.Value())
+	}
+}
+
+func TestMap(t *testing.T) {
+	m := NewMap()
+	m.Set("name", NewString("lkx"))
+	m.Set("name2", NewString("bug"))
+	m.Set("name3r", NewString("lkx"))
+	m.Decode(nil)
+
+	v, ok := m.Get("name")
+	if !ok {
+		t.Fatal("Not found")
+	} else {
+		t.Logf("name:%v\n\n----------------------------------\n", v.(*String).Value())
+	}
+
+	ch := make(chan *KVPair)
+	go m.Range(ch)
+
+	for {
+		pair, ok := <-ch
+		if !ok {
+			break
+		}
+		t.Logf("name:%v\n", pair.V.(*String).Value())
 	}
 }

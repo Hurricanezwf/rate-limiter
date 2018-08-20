@@ -22,3 +22,11 @@ func (u *Uint32) Decode(b []byte) ([]byte, error) {
 func (u *Uint32) Value() uint32 {
 	return u.v
 }
+
+func (u *Uint32) Incr(delta uint32) {
+	u.v += delta
+}
+
+func (u *Uint32) Decr(delta uint32) {
+	u.v -= delta
+}

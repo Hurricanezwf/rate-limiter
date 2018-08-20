@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Hurricanezwf/rate-limiter/encoder"
+	"github.com/Hurricanezwf/rate-limiter/encoding"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
 	"github.com/Hurricanezwf/toolbox/logging/glog"
 )
@@ -38,38 +39,39 @@ type LimiterMeta interface {
 	Recycle()
 
 	// 组合Serializer接口
-	Serializer
+	encoding.Serializer
 }
 
 // limiterMetaV1 is an implement of LimiterMeta interface
 type limiterMetaV1 struct {
 	// 所属的资源类型
-	rcTypeId []byte
+	rcTypeId *encoding.Bytes
 
 	// 拥有的原始资源配额
-	quota uint32
+	quota *encoding.Uint32
 
 	// 资源调度队列
 	mutex     sync.RWMutex
-	canBorrow *Queue            // 可借的资源队列
-	recycled  *Queue            // 已回收的资源队列
-	used      map[string]*Queue // 正被使用的资源队列 clientIDHex ==> borrowRecord queue
-	usedCount uint32            // 正被使用的资源数量统计
+	canBorrow *encoding.Queue  // 可借的资源队列
+	recycled  *encoding.Queue  // 已回收的资源队列
+	used      *encoding.Map    // 已借出资源的记录队列. clientIdHex ==> borrowRecord queue
+	usedCount *encoding.Uint32 // 正被使用的资源数量统计
 }
 
 func newLimiterMetaV1(rcTypeId []byte, quota uint32) *limiterMetaV1 {
 	m := &limiterMetaV1{
-		rcTypeId:  rcTypeId,
-		quota:     quota,
-		canBorrow: NewQueue(),
-		recycled:  NewQueue(),
-		used:      make(map[string]*Queue),
-		usedCount: uint32(0),
+		rcTypeId:  encoding.NewBytes(rcTypeId),
+		quota:     encoding.NewUint32(quota),
+		canBorrow: encoding.NewQueue(),
+		recycled:  encoding.NewQueue(),
+		used:      encoding.NewMap(),
+		usedCount: encoding.NewUint32(uint32(0)),
 	}
 
 	// 初始化等量可借的配额资源
 	for i := uint32(0); i < quota; i++ {
-		m.canBorrow.PushBack(MakeResourceID(rcTypeId, i))
+		rcId := MakeResourceID(rcTypeId, i)
+		m.canBorrow.PushBack(encoding.NewString(rcId))
 	}
 	return m
 }
@@ -93,10 +95,10 @@ func (m *limiterMetaV1) Borrow(clientId []byte, expire int64) (string, error) {
 		panic("Exception: Nil resource found")
 	}
 
-	rcId := rcIdInterface.(string)
+	rcId := rcIdInterface.(*encoding.String)
 	nowTs := time.Now().Unix()
 	record := borrowRecord{
-		ClientID: clientId,
+		ClientID: encoding.NewBytes(clientId),
 		RCID:     rcId,
 		BorrowAt: nowTs,
 		ExpireAt: nowTs + expire,
@@ -220,10 +222,10 @@ func (m *limiterMetaV1) Decode(b []byte) ([]byte, error) {
 // borrowRecord 资源借出记录
 type borrowRecord struct {
 	// 客户端ID
-	ClientID []byte
+	ClientID *encoding.Bytes
 
 	// 资源ID
-	RCID string
+	RCID *encoding.String
 
 	// 借出时间戳
 	BorrowAt int64
