@@ -114,6 +114,26 @@ func TestQueue(t *testing.T) {
 		v := e.Value().(*String)
 		t.Logf("%s\n", v.Value())
 	}
+
+	// encode
+	b, err := q.Encode()
+	if err != nil {
+		t.Fatal(err.Error())
+	} else {
+		t.Logf("After Encode: %#v\n", b)
+	}
+
+	// decode
+	q.PushBack(NewString("play a trick"))
+	if _, err = q.Decode(b); err != nil {
+		t.Fatal(err.Error())
+	} else {
+		t.Logf("After Decode: \n")
+		for e := q.Front(); e.IsNil() == false; e = e.Next() {
+			v := e.Value().(*String)
+			t.Logf("%s\n", v.Value())
+		}
+	}
 }
 
 func TestMap(t *testing.T) {
