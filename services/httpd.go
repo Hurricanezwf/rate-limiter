@@ -31,7 +31,7 @@ func runHttpd(addr string) error {
 	select {
 	case err := <-errC:
 		return err
-	case <-time.After(3 * time.Second):
+	case <-time.After(time.Second):
 	}
 	return nil
 }

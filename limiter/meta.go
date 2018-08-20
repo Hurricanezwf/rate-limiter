@@ -53,7 +53,7 @@ type limiterMetaV1 struct {
 	mutex     sync.RWMutex
 	canBorrow *encoding.Queue  // 可借的资源队列
 	recycled  *encoding.Queue  // 已回收的资源队列
-	used      *encoding.Map    // 已借出资源的记录队列. clientIdHex ==> *borrowRecord queue
+	used      *encoding.Map    // 已借出资源的记录队列. clientIdHex ==> *BorrowRecord queue
 	usedCount *encoding.Uint32 // 正被使用的资源数量统计
 }
 
@@ -97,7 +97,7 @@ func (m *limiterMetaV1) Borrow(clientId []byte, expire int64) (string, error) {
 	// 构造出借记录
 	rcId := rcIdInterface.(*encoding.String)
 	nowTs := time.Now().Unix()
-	record := &borrowRecord{
+	record := &BorrowRecord{
 		ClientID: encoding.NewBytes(clientId),
 		RCID:     rcId,
 		BorrowAt: encoding.NewInt64(nowTs),
@@ -145,7 +145,7 @@ func (m *limiterMetaV1) Return(clientId []byte, rcId string) error {
 	find := false
 	for node := queue.Front(); node.IsNil() == false; node = node.Next() {
 		// 找到指定的借出记录
-		record := node.Value().(*borrowRecord)
+		record := node.Value().(*BorrowRecord)
 		if record.RCID.Value() != rcId {
 			continue
 		}
@@ -203,7 +203,7 @@ func (m *limiterMetaV1) Recycle() {
 		}
 		for record := queue.Front(); record.IsNil() == false; {
 			next := record.Next()
-			v := record.Value().(*borrowRecord)
+			v := record.Value().(*BorrowRecord)
 			if nowTs >= v.ExpireAt.Value() {
 				// 过期后，从used队列移到canBorrow队列(在过期资源清理和资源重用的周期一致时才可以这样做)
 				queue.Remove(record)
@@ -238,8 +238,8 @@ func (m *limiterMetaV1) Decode(b []byte) ([]byte, error) {
 	return b, nil
 }
 
-// borrowRecord 资源借出记录
-type borrowRecord struct {
+// BorrowRecord 资源借出记录
+type BorrowRecord struct {
 	// 客户端ID
 	ClientID *encoding.Bytes
 
@@ -253,12 +253,12 @@ type borrowRecord struct {
 	ExpireAt *encoding.Int64
 }
 
-func (rd *borrowRecord) Encode() ([]byte, error) {
+func (rd *BorrowRecord) Encode() ([]byte, error) {
 	// TODO
 	return nil, nil
 }
 
-func (rd *borrowRecord) Decode(b []byte) ([]byte, error) {
+func (rd *BorrowRecord) Decode(b []byte) ([]byte, error) {
 	// TODO
 	return nil, nil
 }

@@ -1,6 +1,12 @@
 package encoding
 
-import "container/list"
+import (
+	"bytes"
+	"container/list"
+	"encoding/binary"
+	"errors"
+	"fmt"
+)
 
 // Queue implement of Serializer interface{}
 type Queue struct {
@@ -30,13 +36,68 @@ func (q *Queue) Init() {
 // > ...
 // > ...
 func (q *Queue) Encode() ([]byte, error) {
-	// TODO:
-	return nil, nil
+	header := make([]byte, 5)
+
+	// 数据类型
+	header[0] = VTypeQueue
+
+	// 队列长度
+	binary.BigEndian.PutUint32(header[1:5], uint32(q.l.Len()))
+
+	// 写入队列数据
+	buf := bytes.NewBuffer(header)
+	buf.Grow(10240)
+
+	for itr := q.l.Front(); itr != nil; itr = itr.Next() {
+		s := itr.Value.(Serializer)
+		b, err := s.Encode()
+		if err != nil {
+			return nil, fmt.Errorf("Encode queue's data failed, %v", err)
+		}
+		buf.Write(b)
+	}
+
+	return buf.Bytes(), nil
 }
 
 func (q *Queue) Decode(b []byte) ([]byte, error) {
-	// TODO
-	return nil, nil
+	if len(b) < 5 {
+		return nil, errors.New("Bad encoded format for queue, too short")
+	}
+
+	// 数据类型
+	if vType := b[0]; vType != VTypeQueue {
+		return nil, fmt.Errorf("Bad encoded format for queue, VType(%x) don't match %x", vType, VTypeQueue)
+	}
+
+	// 队列长度
+	qLen := binary.BigEndian.Uint32(b[1:5])
+
+	// 解析队列数据
+	q.Init()
+	b = b[5:]
+	for i := uint32(0); i < qLen; i++ {
+		if len(b) < 1 {
+			return nil, errors.New("Bad encoded format for queue's element, too short")
+		}
+
+		// 解析数据类型并获取serializer
+		elementType := b[0]
+		element, err := SerializerFactory(elementType)
+		if err != nil {
+			return nil, fmt.Errorf("Get serializer failed, %v", err)
+		}
+
+		// 解析队列元素
+		b, err = element.Decode(b)
+		if err != nil {
+			return nil, fmt.Errorf("Decode queue's element failed, %v", err)
+		}
+
+		// 加入队列
+		q.PushBack(element)
+	}
+	return b, nil
 }
 
 func (q *Queue) Len() int {
