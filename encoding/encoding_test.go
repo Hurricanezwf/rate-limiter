@@ -46,9 +46,26 @@ func TestUint32(t *testing.T) {
 
 func TestInt64(t *testing.T) {
 	i := NewInt64(int64(89))
-	i.Decode(nil)
+
+	// incr
 	i.Incr(1)
-	t.Logf("%v\n", i.Value())
+	t.Logf("After Incr: %v\n", i.Value())
+
+	// encode
+	b, err := i.Encode()
+	if err != nil {
+		t.Fatal(err.Error())
+	} else {
+		t.Logf("After Encoded: %#v\n", b)
+	}
+
+	// decode
+	i.Incr(1)
+	if _, err = i.Decode(b); err != nil {
+		t.Fatal(err.Error())
+	} else {
+		t.Logf("After Decoded: %v\n", i.Value())
+	}
 }
 
 func TestQueue(t *testing.T) {
