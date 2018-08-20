@@ -12,11 +12,30 @@ func TestString(t *testing.T) {
 
 func TestBytes(t *testing.T) {
 	b := NewBytes([]byte("world"))
-	b.Decode(nil)
-	t.Logf("value:%v, len:%d, cap:%d\n", b.Value(), b.Len(), b.Cap())
+	t.Logf("Origin: %#v, len:%d, cap:%d\n", b.Value(), b.Len(), b.Cap())
 
+	// set
+	b.Set(0, 0x00)
+	t.Logf("After Set: %#v, len:%d, cap:%d\n", b.Value(), b.Len(), b.Cap())
+
+	// grow
 	b.Grow(1024)
-	t.Logf("value:%v, len:%d, cap:%d\n", b.Value(), b.Len(), b.Cap())
+	t.Logf("After Grow: %#v, len:%d, cap:%d\n", b.Value(), b.Len(), b.Cap())
+
+	// encode
+	bt, err := b.Encode()
+	if err != nil {
+		t.Fatal(err.Error())
+	} else {
+		t.Logf("After Encoded: %#v\n", bt)
+	}
+
+	// decode
+	if _, err = b.Decode(bt); err != nil {
+		t.Fatal(err.Error())
+	} else {
+		t.Logf("After Decoded: %#v\n", b.Value())
+	}
 }
 
 func TestUint32(t *testing.T) {
