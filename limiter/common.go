@@ -33,19 +33,15 @@ func ValueTypeMatch(vType byte, v interface{}) (match bool) {
 	return match
 }
 
-func MakeResourceID(tId ResourceTypeID, idx uint32) ResourceID {
-	return ResourceID(fmt.Sprintf("%s_rc#%d", tId.String(), idx))
+func MakeResourceID(rcTypeId []byte, idx uint32) string {
+	return ResourceID(fmt.Sprintf("%x_rc#%d", rcTypeId, idx))
 }
 
-func ResolveResourceID(rcId ResourceID) (ResourceTypeID, error) {
-	arr := strings.Split(string(rcId), "_")
+func ResolveResourceID(rcId string) (rcTypeId []byte, err error) {
+	arr := strings.Split(rcId, "_")
 	if len(arr) != 2 {
 		return nil, errors.New("Bad ResourceID")
 	}
 
-	tId, err := hex.DecodeString(arr[0])
-	if err != nil {
-		return nil, err
-	}
-	return ResourceTypeID(tId), nil
+	return hex.DecodeString(arr[0])
 }

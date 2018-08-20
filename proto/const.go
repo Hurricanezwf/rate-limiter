@@ -17,13 +17,13 @@ const (
 
 // 值类型
 const (
-	ValueTypeUnknown        byte = 0x00
-	ValueTypeString         byte = 0x01
-	ValueTypeUint8          byte = 0x02
-	ValueTypeUint32         byte = 0x03
-	ValueTypeUint64         byte = 0x04
-	ValueTypeResourceID     byte = 0x05
-	ValueTypeResourceTypeID byte = 0x06
-	ValueTypeClientID       byte = 0x07
-	ValueTypeBorrowRecord   byte = 0x08
+	VTypeUnknown byte = 0x00
+	VTypeString  byte = 0x01
+	VTypeUint8   byte = 0x02
+	VTypeUint32  byte = 0x03
+	VTypeUint64  byte = 0x04
+	//ValueTypeResourceID     byte = 0x05
+	//ValueTypeResourceTypeID byte = 0x06
+	//ValueTypeClientID       byte = 0x07
+	//ValueTypeBorrowRecord   byte = 0x08
 )

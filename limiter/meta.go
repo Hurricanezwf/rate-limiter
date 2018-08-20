@@ -5,12 +5,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Hurricanezwf/rate-limiter/encoder"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
 	"github.com/Hurricanezwf/toolbox/logging/glog"
 )
 
-func NewLimiterMeta(tId ResourceTypeID, quota uint32) LimiterMeta {
-	return newLimiterMetaV1(tId, quota)
+func NewLimiterMeta(rcTypeId []byte, quota uint32) LimiterMeta {
+	return newLimiterMetaV1(rcTypeId, quota)
 }
 
 func NewLimiterMetaFromBytes(b []byte) (LimiterMeta, error) {
@@ -25,13 +26,13 @@ func NewLimiterMetaFromBytes(b []byte) (LimiterMeta, error) {
 type LimiterMeta interface {
 	// Borrow 申请一次执行资格，如果成功返回nil
 	// expire 表示申请的资源的自动回收时间
-	Borrow(cId ClientID, expire int64) (ResourceID, error)
+	Borrow(clientId []byte, expire int64) (string, error)
 
 	// Return 归还执行资格，如果成功返回nil
-	Return(cId ClientID, rcId ResourceID) error
+	Return(clientId []byte, rcId string) error
 
 	// ReturnAll 归还某个用户所有的执行资格，通常在用户主动关闭的时候
-	ReturnAll(cId ClientID) error
+	ReturnAll(clientId []byte) error
 
 	// Recycle 清理到期未还的资源并且将recycled队列的资源投递到canBorrow队列
 	Recycle()
@@ -43,7 +44,7 @@ type LimiterMeta interface {
 // limiterMetaV1 is an implement of LimiterMeta interface
 type limiterMetaV1 struct {
 	// 所属的资源类型
-	tId ResourceTypeID
+	rcTypeId []byte
 
 	// 拥有的原始资源配额
 	quota uint32
@@ -56,25 +57,25 @@ type limiterMetaV1 struct {
 	usedCount uint32            // 正被使用的资源数量统计
 }
 
-func newLimiterMetaV1(tId ResourceTypeID, quota uint32) *limiterMetaV1 {
+func newLimiterMetaV1(rcTypeId []byte, quota uint32) *limiterMetaV1 {
 	m := &limiterMetaV1{
-		tId:       tId,
+		rcTypeId:  rcTypeId,
 		quota:     quota,
-		canBorrow: NewQueue(ValueTypeResourceID),
-		recycled:  NewQueue(ValueTypeResourceID),
+		canBorrow: NewQueue(),
+		recycled:  NewQueue(),
 		used:      make(map[string]*Queue),
 		usedCount: uint32(0),
 	}
 
 	// 初始化等量可借的配额资源
 	for i := uint32(0); i < quota; i++ {
-		m.canBorrow.PushBack(MakeResourceID(tId, i))
+		m.canBorrow.PushBack(MakeResourceID(rcTypeId, i))
 	}
 	return m
 }
 
 // Borrow 借资源
-func (m *limiterMetaV1) Borrow(cId ClientID, expire int64) (ResourceID, error) {
+func (m *limiterMetaV1) Borrow(clientId []byte, expire int64) (string, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -84,39 +85,39 @@ func (m *limiterMetaV1) Borrow(cId ClientID, expire int64) (ResourceID, error) {
 	}
 
 	// 尝试借资源并做记录
-	rcIdIntf, ok := m.canBorrow.PopFront()
+	rcIdInterface, ok := m.canBorrow.PopFront()
 	if !ok {
 		panic("Exception: No resource found")
 	}
-	if rcIdIntf == nil {
+	if rcIdInterface == nil {
 		panic("Exception: Nil resource found")
 	}
 
-	rcId := rcIdIntf.(ResourceID)
+	rcId := rcIdInterface.(string)
 	nowTs := time.Now().Unix()
 	record := borrowRecord{
-		CID:      cId,
+		ClientID: clientId,
 		RCID:     rcId,
 		BorrowAt: nowTs,
 		ExpireAt: nowTs + expire,
 	}
 
-	cIdHex := cId.String()
-	queue := m.used[cIdHex]
+	clientIdHex := encoder.BytesToStringHex(clientId)
+	queue := m.used[clientIdHex]
 	if queue == nil {
-		queue = NewQueue(ValueTypeBorrowRecord)
+		queue = NewQueue()
 	}
 	queue.PushBack(record)
-	m.used[cIdHex] = queue
+	m.used[clientIdHex] = queue
 	m.usedCount++
 
-	glog.V(1).Infof("Client[%s] borrow %s OK, period:%ds, expireAt:%d", cIdHex, record.RCID, expire, record.ExpireAt)
+	glog.V(1).Infof("Client[%s] borrow %s OK, period:%ds, expireAt:%d", clientIdHex, record.RCID, expire, record.ExpireAt)
 
 	return rcId, nil
 }
 
 // Return 归还资源
-func (m *limiterMetaV1) Return(cId ClientID, rcId ResourceID) error {
+func (m *limiterMetaV1) Return(clientId []byte, rcId string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -125,10 +126,10 @@ func (m *limiterMetaV1) Return(cId ClientID, rcId ResourceID) error {
 		return fmt.Errorf("There's something wrong, recycled queue len(%d) >= quota(%d)", m.recycled.Len(), m.quota)
 	}
 
-	cIdHex := cId.String()
-	queue := m.used[cIdHex]
+	clientIdHex := encoder.BytesToStringHex(clientId)
+	queue := m.used[clientIdHex]
 	if queue == nil {
-		return fmt.Errorf("There's something wrong, no client['%s'] found in used queue", cIdHex)
+		return fmt.Errorf("There's something wrong, no client['%s'] found in used queue", clientIdHex)
 	}
 
 	// 实施归还
@@ -136,7 +137,7 @@ func (m *limiterMetaV1) Return(cId ClientID, rcId ResourceID) error {
 	for node := queue.Front(); node != nil; node = node.Next() {
 		// 找到指定的借出记录
 		record := node.Value.(borrowRecord)
-		if record.RCID != rcId {
+		if record.RCID != rclientId {
 			continue
 		}
 
@@ -146,24 +147,24 @@ func (m *limiterMetaV1) Return(cId ClientID, rcId ResourceID) error {
 		m.recycled.PushBack(rcId)
 		m.usedCount--
 
-		glog.V(3).Infof("Client[%s] return %s to recycle.", cIdHex, rcId)
+		glog.V(3).Infof("Client[%s] return %s to recycle.", clientIdHex, rcId)
 
 		// 如果该client没有借入记录，则从map中删除，防止map累积增长
 		if queue.Len() <= 0 {
-			delete(m.used, cIdHex)
+			delete(m.used, clientIdHex)
 		}
 		break
 	}
 
 	if !find {
-		glog.Warningf("No resource[%s] found at used queue. client=%s", rcId, cIdHex)
+		glog.Warningf("No resource[%s] found at used queue. client=%s", rcId, clientIdHex)
 		return ErrNotFound
 	}
 
 	return nil
 }
 
-func (m *limiterMetaV1) ReturnAll(cId ClientID) error {
+func (m *limiterMetaV1) ReturnAll(clientId []byte) error {
 	// TODO:
 	return nil
 }
@@ -218,11 +219,11 @@ func (m *limiterMetaV1) Decode(b []byte) ([]byte, error) {
 
 // borrowRecord 资源借出记录
 type borrowRecord struct {
-	// ClientID
-	CID ClientID
+	// 客户端ID
+	ClientID []byte
 
 	// 资源ID
-	RCID ResourceID
+	RCID string
 
 	// 借出时间戳
 	BorrowAt int64

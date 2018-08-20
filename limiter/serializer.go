@@ -2,7 +2,6 @@ package limiter
 
 import (
 	"bytes"
-	"container/list"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -10,52 +9,41 @@ import (
 	. "github.com/Hurricanezwf/rate-limiter/proto"
 )
 
-type Serializer interface {
-	// Encode encode object to []byte
-	Encode() ([]byte, error)
-
-	// Decode decode from []byte to object
-	Decode([]byte) ([]byte, error)
-}
-
-type Queue struct {
-	// 元素类型
-	vType byte
-
-	*list.List
-}
-
-func NewQueue(vType byte) *Queue {
-	return &Queue{
-		List:  list.New(),
-		vType: vType,
-	}
-}
-
-// PushBack push id to the back of the queue
-func (q *Queue) PushBack(v interface{}) {
-	if ValueTypeMatch(q.vType, v) == false {
-		panic(fmt.Sprintf("value's type is not %v", q.vType))
-	}
-	q.List.PushBack(v)
-}
-
-// PopFront if queue is empty, false will be returnded
-func (q *Queue) PopFront() (interface{}, bool) {
-	if q.List.Len() <= 0 {
-		return nil, false
-	}
-	e := q.List.Front()
-	q.List.Remove(e)
-	return e.Value, true
-}
-
-func (q *Queue) PushBackQueue(toPush *Queue) {
-	if q.vType != toPush.vType {
-		panic("ValueType not equal")
-	}
-	q.PushBackList(toPush.List)
-}
+//type Queue struct {
+//	*list.List
+//}
+//
+//func NewQueue(vType byte) *Queue {
+//	return &Queue{
+//		List:  list.New(),
+//		vType: vType,
+//	}
+//}
+//
+//// PushBack push id to the back of the queue
+//func (q *Queue) PushBack(v interface{}) {
+//	if ValueTypeMatch(q.vType, v) == false {
+//		panic(fmt.Sprintf("value's type is not %v", q.vType))
+//	}
+//	q.List.PushBack(v)
+//}
+//
+//// PopFront if queue is empty, false will be returnded
+//func (q *Queue) PopFront() (interface{}, bool) {
+//	if q.List.Len() <= 0 {
+//		return nil, false
+//	}
+//	e := q.List.Front()
+//	q.List.Remove(e)
+//	return e.Value, true
+//}
+//
+//func (q *Queue) PushBackQueue(toPush *Queue) {
+//	if q.vType != toPush.vType {
+//		panic("ValueType not equal")
+//	}
+//	q.PushBackList(toPush.List)
+//}
 
 // Encode encode queue to []byte
 //
