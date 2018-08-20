@@ -40,8 +40,26 @@ func TestBytes(t *testing.T) {
 
 func TestUint32(t *testing.T) {
 	b := NewUint32(uint32(2))
-	b.Decode(nil)
-	t.Logf("%v\n", b.Value())
+
+	// incre
+	b.Incr(uint32(1))
+	t.Logf("After Decode: %v\n", b.Value())
+
+	// encode
+	bt, err := b.Encode()
+	if err != nil {
+		t.Fatal(err.Error())
+	} else {
+		t.Logf("After Encoded: %#v\n", bt)
+	}
+
+	// decode
+	b.Incr(uint32(1))
+	if _, err = b.Decode(bt); err != nil {
+		t.Fatal(err.Error())
+	} else {
+		t.Logf("After Decoded: %v\n", b.Value())
+	}
 }
 
 func TestInt64(t *testing.T) {
