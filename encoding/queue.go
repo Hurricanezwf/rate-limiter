@@ -18,6 +18,17 @@ func (q *Queue) Init() {
 	q.l.Init()
 }
 
+// Encode encode queue to format which used to binary persist
+// Encoded Format:
+// > [1 byte]  data type
+// > [4 bytes] element's count of the queue
+// > --------------------------------------------
+// > [4 bytes] byte count of the first element's encoded result
+// > [N bytes] the first element's encoded result
+// > --------------------------------------------
+// > ...
+// > ...
+// > ...
 func (q *Queue) Encode() ([]byte, error) {
 	// TODO:
 	return nil, nil
