@@ -18,6 +18,20 @@ func (q *Queue) Init() {
 	q.l.Init()
 }
 
+func (q *Queue) Encode() ([]byte, error) {
+	// TODO:
+	return nil, nil
+}
+
+func (q *Queue) Decode(b []byte) ([]byte, error) {
+	// TODO
+	return nil, nil
+}
+
+func (q *Queue) Len() int {
+	return q.l.Len()
+}
+
 func (q *Queue) Front() QueueElement {
 	return QueueElement{
 		element: q.l.Front(),
@@ -46,16 +60,6 @@ func (q *Queue) Remove(e QueueElement) {
 	if e.IsNil() == false {
 		q.l.Remove(e.element)
 	}
-}
-
-func (q *Queue) Encode() ([]byte, error) {
-	// TODO:
-	return nil, nil
-}
-
-func (q *Queue) Decode(b []byte) ([]byte, error) {
-	// TODO
-	return nil, nil
 }
 
 // QueueElement is an element of a queue

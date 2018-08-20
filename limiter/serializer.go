@@ -1,8 +1,6 @@
 package limiter
 
-import (
-	. "github.com/Hurricanezwf/rate-limiter/proto"
-)
+//. "github.com/Hurricanezwf/rate-limiter/proto"
 
 //type Queue struct {
 //	*list.List

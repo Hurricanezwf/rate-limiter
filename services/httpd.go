@@ -8,15 +8,15 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Hurricanezwf/rate-limiter/proto"
+	. "github.com/Hurricanezwf/rate-limiter/proto"
 )
 
 func init() {
+	http.HandleFunc("/v1/snapshot", snapshot) // for test only
 	http.HandleFunc("/v1/registQuota", registQuota)
 	http.HandleFunc("/v1/borrow", borrow)
 	http.HandleFunc("/v1/return", return_)
-	http.HandleFunc("/v1/dead", dead)
-	http.HandleFunc("/v1/snapshot", snapshot)
+	http.HandleFunc("/v1/disconnect", disconnect)
 }
 
 // runHttpd 启动HTTP服务
@@ -55,13 +55,14 @@ func registQuota(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// 解析参数
-	var r proto.Request
-	if err := json.Unmarshal(b, &r); err != nil {
+	var r = Request{
+		Action:      ActionRegistQuota,
+		RegistQuota: &APIRegistQuotaReq{},
+	}
+	if err := json.Unmarshal(b, r.RegistQuota); err != nil {
 		w.WriteHeader(500)
 		w.Write(ErrMsg(err.Error()))
 		return
-	} else {
-		r.Action = proto.ActionRegistQuota
 	}
 
 	// 尝试获取资格
@@ -93,13 +94,14 @@ func borrow(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// 解析参数
-	var r proto.Request
-	if err := json.Unmarshal(b, &r); err != nil {
+	var r = Request{
+		Action: ActionBorrow,
+		Borrow: &APIBorrowReq{},
+	}
+	if err := json.Unmarshal(b, r.Borrow); err != nil {
 		w.WriteHeader(500)
 		w.Write(ErrMsg(err.Error()))
 		return
-	} else {
-		r.Action = proto.ActionBorrow
 	}
 
 	// 尝试获取资格
@@ -107,7 +109,7 @@ func borrow(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(403)
 		w.Write(ErrMsg(rp.Err.Error()))
 	} else {
-		rcId := rp.Result.(string)
+		rcId := rp.Borrow.RCID
 		w.WriteHeader(200)
 		w.Write([]byte(rcId))
 	}
@@ -133,13 +135,14 @@ func return_(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// 解析参数
-	var r proto.Request
-	if err := json.Unmarshal(b, &r); err != nil {
+	var r = Request{
+		Action: ActionReturn,
+		Return: &APIReturnReq{},
+	}
+	if err := json.Unmarshal(b, r.Return); err != nil {
 		w.WriteHeader(500)
 		w.Write(ErrMsg(err.Error()))
 		return
-	} else {
-		r.Action = proto.ActionReturn
 	}
 
 	// 尝试获取资格
@@ -152,8 +155,8 @@ func return_(w http.ResponseWriter, req *http.Request) {
 	return
 }
 
-// dead 释放用户的所有占用的权限
-func dead(w http.ResponseWriter, req *http.Request) {
+// disconnect 释放用户的所有占用的权限
+func disconnect(w http.ResponseWriter, req *http.Request) {
 	// TODO
 }
 

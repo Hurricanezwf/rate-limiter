@@ -20,14 +20,14 @@ var (
 func TestRegist(t *testing.T) {
 	tIdMd5 := md5.Sum([]byte("create_host"))
 	cIdMd5 := md5.Sum([]byte("zwf"))
-	tId = ResourceTypeID(tIdMd5[:])
-	cId = ClientID(cIdMd5[:])
+	tId = tIdMd5[:]
+	cId = cIdMd5[:]
 
 	url := fmt.Sprintf("http://%s/v1/registQuota", hostAddr)
 	opt := utils.HttpOptions{
-		Body: Request{
-			TID:   tId,
-			Quota: 1,
+		Body: APIRegistQuotaReq{
+			RCTypeID: tId,
+			Quota:    1,
 		},
 	}
 
@@ -39,15 +39,15 @@ func TestRegist(t *testing.T) {
 func TestBorrow(t *testing.T) {
 	tIdMd5 := md5.Sum([]byte("create_host"))
 	cIdMd5 := md5.Sum([]byte("zwf"))
-	tId = ResourceTypeID(tIdMd5[:])
-	cId = ClientID(cIdMd5[:])
+	tId = tIdMd5[:]
+	cId = cIdMd5[:]
 
 	url := fmt.Sprintf("http://%s/v1/borrow", hostAddr)
 	opt := utils.HttpOptions{
-		Body: Request{
-			TID:    tId,
-			CID:    cId,
-			Expire: 10,
+		Body: APIBorrowReq{
+			RCTypeID: tId,
+			ClientID: cId,
+			Expire:   10,
 		},
 	}
 
@@ -59,14 +59,14 @@ func TestBorrow(t *testing.T) {
 func TestReturn(t *testing.T) {
 	tIdMd5 := md5.Sum([]byte("create_host"))
 	cIdMd5 := md5.Sum([]byte("zwf"))
-	tId = ResourceTypeID(tIdMd5[:])
-	cId = ClientID(cIdMd5[:])
+	tId = tIdMd5[:]
+	cId = cIdMd5[:]
 
 	url := fmt.Sprintf("http://%s/v1/return", hostAddr)
 	opt := utils.HttpOptions{
-		Body: Request{
-			RCID: ResourceID("462ec3705249fd4358a1bcd02ce5e43f_rc#0"),
-			CID:  cId,
+		Body: APIReturnReq{
+			RCID:     "462ec3705249fd4358a1bcd02ce5e43f_rc#0",
+			ClientID: cId,
 		},
 	}
 

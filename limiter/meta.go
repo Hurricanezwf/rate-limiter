@@ -53,7 +53,7 @@ type limiterMetaV1 struct {
 	mutex     sync.RWMutex
 	canBorrow *encoding.Queue  // 可借的资源队列
 	recycled  *encoding.Queue  // 已回收的资源队列
-	used      *encoding.Map    // 已借出资源的记录队列. clientIdHex ==> borrowRecord queue
+	used      *encoding.Map    // 已借出资源的记录队列. clientIdHex ==> *borrowRecord queue
 	usedCount *encoding.Uint32 // 正被使用的资源数量统计
 }
 
@@ -97,7 +97,7 @@ func (m *limiterMetaV1) Borrow(clientId []byte, expire int64) (string, error) {
 	// 构造出借记录
 	rcId := rcIdInterface.(*encoding.String)
 	nowTs := time.Now().Unix()
-	record := borrowRecord{
+	record := &borrowRecord{
 		ClientID: encoding.NewBytes(clientId),
 		RCID:     rcId,
 		BorrowAt: encoding.NewInt64(nowTs),
@@ -107,9 +107,9 @@ func (m *limiterMetaV1) Borrow(clientId []byte, expire int64) (string, error) {
 	// 添加到出借记录列表中
 	var q *encoding.Queue
 	var clientIdHex = record.ClientID.Hex()
-	var queue = m.used.Get(clientIdHex)
 
-	if queue == nil {
+	queue, exist := m.used.Get(clientIdHex)
+	if !exist || queue == nil {
 		q = encoding.NewQueue()
 	} else {
 		q = queue.(*encoding.Queue)
@@ -121,7 +121,7 @@ func (m *limiterMetaV1) Borrow(clientId []byte, expire int64) (string, error) {
 
 	glog.V(1).Infof("Client[%s] borrow %s OK, period:%ds, expireAt:%d", clientIdHex, record.RCID, expire, record.ExpireAt)
 
-	return rcId, nil
+	return rcId.Value(), nil
 }
 
 // Return 归还资源
@@ -135,8 +135,8 @@ func (m *limiterMetaV1) Return(clientId []byte, rcId string) error {
 	}
 
 	clientIdHex := encoding.BytesToStringHex(clientId)
-	q := m.used.Get(clientIdHex)
-	if q == nil {
+	q, exist := m.used.Get(clientIdHex)
+	if !exist || q == nil {
 		return fmt.Errorf("There's something wrong, no client['%s'] found in used queue", clientIdHex)
 	}
 
@@ -145,7 +145,7 @@ func (m *limiterMetaV1) Return(clientId []byte, rcId string) error {
 	find := false
 	for node := queue.Front(); node.IsNil() == false; node = node.Next() {
 		// 找到指定的借出记录
-		record := node.Value.(borrowRecord)
+		record := node.Value().(*borrowRecord)
 		if record.RCID.Value() != rcId {
 			continue
 		}
@@ -201,9 +201,9 @@ func (m *limiterMetaV1) Recycle() {
 		if m.usedCount.Value() < 0 {
 			panic("There's something wrong, usedCount < 0")
 		}
-		for record := queue.Front(); record != nil; {
+		for record := queue.Front(); record.IsNil() == false; {
 			next := record.Next()
-			v := record.Value.(borrowRecord)
+			v := record.Value().(*borrowRecord)
 			if nowTs >= v.ExpireAt.Value() {
 				// 过期后，从used队列移到canBorrow队列(在过期资源清理和资源重用的周期一致时才可以这样做)
 				queue.Remove(record)
