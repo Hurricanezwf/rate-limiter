@@ -1,10 +1,10 @@
 package proto
 
 // 魔数
-var MagicNumber = [1]byte{0x66}
+var MagicNumber byte = 0x66
 
 // 快照协议版本
-var ProtocolVersion = [1]byte{0x01}
+var ProtocolVersion byte = 0x01
 
 // Raft结点间通信的动作类型
 const (

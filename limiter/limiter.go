@@ -1,6 +1,9 @@
 package limiter
 
 import (
+	"bufio"
+	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -171,7 +174,39 @@ func (l *limiterV1) Apply(log *raftlib.Log) interface{} {
 // Snapshot 获取对FSM进行快照操作的实例
 // |magic_number|version|rctype_count|rc1_total_bytes|rc1_type_bytes|rc1_type_content|rc1_meta_content|...|
 // | 1 Byte     | 1 Byte|   4 Bytes  |  4 Bytes      |  1 Byte      | N Bytes        |  M Bytes       |...|
+//
+// Encode Format:
+// > [1 byte]  magic number
+// > [1 byte]  protocol version
+// > [8 bytes] timestamp
+// > [N bytes] data encoded bytes
 func (l *limiterV1) Snapshot() (raftlib.FSMSnapshot, error) {
+	l.mutex.RLock()
+	defer l.mutex.RUnlock()
+
+	// 编码元数据
+	b, err := l.meta.Encode()
+	if err != nil {
+		glog.Warning(err.Error())
+		return nil, err
+	}
+
+	// 编码时间戳
+	ts, err := encoding.NewInt64(time.Now().Unix()).Encode()
+	if err != nil {
+		glog.Warning(err.Error())
+		return nil, err
+	}
+
+	// 构造快照
+	buf := bytes.NewBuffer(make([]byte, 0, 10+len(b)))
+	buf.WriteByte(MagicNumber)
+	buf.WriteByte(ProtocolVersion)
+	buf.Write(ts)
+	buf.Write(b)
+
+	return NewLimiterSnapshot(buf.Bytes()), nil
+
 	//buf := bytes.NewBuffer(nil)
 	//buf.Grow(10240)
 
@@ -225,12 +260,72 @@ func (l *limiterV1) Snapshot() (raftlib.FSMSnapshot, error) {
 
 	//glog.V(3).Infof("Snapshot Data: %v", buf.Bytes())
 	//return NewLimiterSnapshot(buf.Bytes()), nil
-	return NewLimiterSnapshot(nil), nil
 }
 
 // Restore 从快照中恢复LimiterFSM
 func (l *limiterV1) Restore(rc io.ReadCloser) error {
-	//defer rc.Close()
+	defer rc.Close()
+
+	reader := bufio.NewReader(rc)
+
+	// 读取识别魔数
+	magicNumber, err := reader.ReadByte()
+	if err != nil {
+		glog.Warningf("Read magic number failed, %v", err)
+		return err
+	}
+	if magicNumber != MagicNumber {
+		err = fmt.Errorf("Unknown magic number %x", magicNumber)
+		glog.Warning(err.Error())
+		return err
+	}
+
+	// 读取识别协议版本
+	protocolVersion, err := reader.ReadByte()
+	if err != nil {
+		glog.Warningf("Read protocol version failed, %v", err)
+		return err
+	}
+	if protocolVersion != ProtocolVersion {
+		err = fmt.Errorf("ProtocolVersion(%x) is not match with %x", protocolVersion, ProtocolVersion)
+		glog.Warning(err.Error())
+		return err
+	}
+
+	// 读取快照时间戳
+	ts := make([]byte, 8)
+	n, err := reader.Read(ts)
+	if err != nil {
+		glog.Warningf("Read timestamp failed, %v", err)
+		return err
+	}
+	if n != len(ts) {
+		err = errors.New("Read timestamp failed, missing data")
+		glog.Warning(err.Error())
+		return err
+	}
+	glog.V(1).Infof("Restore from snapshot created at %d", binary.BigEndian.Uint64(ts))
+
+	// 读取元数据并解析
+	buf := bytes.NewBuffer(make([]byte, 0, 10240))
+	_, err = buf.ReadFrom(reader)
+	if err != nil && err != io.EOF {
+		glog.Warningf("Read meta data failed, %v", err)
+		return err
+	}
+
+	meta := encoding.NewMap()
+	if _, err = meta.Decode(buf.Bytes()); err != nil {
+		glog.Warningf("Decode meta data failed, %v", err)
+		return err
+	}
+
+	// 替换元数据
+	l.mutex.Lock()
+	l.meta = meta
+	l.mutex.Unlock()
+
+	return nil
 
 	//// 从文件读取快照内容
 	//buf := bytes.NewBuffer(nil)
@@ -242,7 +337,7 @@ func (l *limiterV1) Restore(rc io.ReadCloser) error {
 
 	//// 解析魔数和版本并核对
 	//if n < 10 {
-	//	return errors.New("Bad snapshot format, it's too short")
+	//	return errors.New("Bad snapshot format, too short")
 	//}
 
 	//snapshot := buf.Bytes()
