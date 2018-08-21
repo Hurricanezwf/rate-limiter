@@ -138,11 +138,11 @@ func TestQueue(t *testing.T) {
 
 func TestMap(t *testing.T) {
 	m := NewMap()
-	m.Set("name", NewString("lkx"))
-	m.Set("name2", NewString("bug"))
-	m.Set("name3r", NewString("lkx"))
+	m.Set("name", NewString("zwf"))
+	m.Set("name3", NewString("lkx"))
 	m.Decode(nil)
 
+	// find map
 	v, ok := m.Get("name")
 	if !ok {
 		t.Fatal("Not found")
@@ -150,14 +150,30 @@ func TestMap(t *testing.T) {
 		t.Logf("name:%v\n\n----------------------------------\n", v.(*String).Value())
 	}
 
-	ch := make(chan *KVPair)
-	go m.Range(ch)
+	// range map
+	quit := make(chan struct{})
+	defer close(quit)
 
-	for {
-		pair, ok := <-ch
-		if !ok {
-			break
-		}
+	for pair := range m.Range(quit) {
 		t.Logf("name:%v\n", pair.V.(*String).Value())
+	}
+
+	// encode map
+	b, err := m.Encode()
+	if err != nil {
+		t.Fatal(err.Error())
+	} else {
+		t.Logf("After Encode: %#v\n", b)
+	}
+
+	// decode map
+	m.Set("pohuai", NewString("ds"))
+	if _, err = m.Decode(b); err != nil {
+		t.Fatal(err.Error())
+	} else {
+		t.Logf("After Decode: \n")
+		for pair := range m.Range(quit) {
+			t.Logf("name:%v\n", pair.V.(*String).Value())
+		}
 	}
 }

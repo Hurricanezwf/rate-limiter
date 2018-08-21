@@ -29,6 +29,7 @@ func (q *Queue) Init() {
 // > [1 byte]  data type
 // > [4 bytes] element's count of the queue
 // > --------------------------------------------
+// > [1 byte]  type of the first element
 // > [4 bytes] byte count of the first element's encoded result
 // > [N bytes] the first element's encoded result
 // > --------------------------------------------
