@@ -520,15 +520,10 @@ func (l *limiterV1) recycle() {
 	l.mutex.RLock()
 	defer l.mutex.RUnlock()
 
-	rangeC := make(chan *encoding.KVPair)
-	go l.meta.Range(rangeC)
+	quitC := make(chan struct{})
+	defer close(quitC)
 
-	for {
-		pair, ok := <-rangeC
-		if !ok {
-			break
-		}
-
+	for pair := range l.meta.Range(quitC) {
 		limiterMeta := pair.V.(LimiterMeta)
 		limiterMeta.Recycle()
 	}

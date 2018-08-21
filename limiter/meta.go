@@ -1,6 +1,9 @@
 package limiter
 
 import (
+	"bytes"
+	"encoding/binary"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -186,15 +189,10 @@ func (m *limiterMetaV1) Recycle() {
 	// 回收过期资源
 	nowTs := time.Now().Unix()
 
-	rangeC := make(chan *encoding.KVPair)
-	go m.used.Range(rangeC)
+	quitC := make(chan struct{})
+	defer close(quitC)
 
-	for {
-		pair, opened := <-rangeC
-		if !opened {
-			break
-		}
-
+	for pair := range m.used.Range(quitC) {
 		client := pair.K
 		queue := pair.V.(*encoding.Queue)
 
@@ -253,12 +251,105 @@ type BorrowRecord struct {
 	ExpireAt *encoding.Int64
 }
 
+// Encode encode BorrowRecord object to format which used to binary persist
+// Encode Format:
+// > [1 byte]  data type
+// > [4 bytes] data len
+// > [N bytes] data content
 func (rd *BorrowRecord) Encode() ([]byte, error) {
-	// TODO
-	return nil, nil
+	// encode ClientID
+	clientIdBytes, err := rd.ClientID.Encode()
+	if err != nil {
+		return nil, fmt.Errorf("Encode BorrowRecord.ClientID failed, %v", err)
+	}
+
+	// encode RCID
+	rcIdBytes, err := rd.RCID.Encode()
+	if err != nil {
+		return nil, fmt.Errorf("Encode BorrowRecordRCID failed, %v", err)
+	}
+
+	// encode BorrowAt
+	borrowAtBytes, err := rd.BorrowAt.Encode()
+	if err != nil {
+		return nil, fmt.Errorf("Encode BorrowRecord.BorrowAt failed, %v", err)
+	}
+
+	// encode ExpireAt
+	expireAtBytes, err := rd.ExpireAt.Encode()
+	if err != nil {
+		return nil, fmt.Errorf("Encode BorrowRecord.ExpireAt failed, %v", err)
+	}
+
+	// calc bytes clount
+	var memberBytesCount int
+	memberBytesCount += len(clientIdBytes)
+	memberBytesCount += len(rcIdBytes)
+	memberBytesCount += len(borrowAtBytes)
+	memberBytesCount += len(expireAtBytes)
+
+	vLen := make([]byte, 4)
+	binary.BigEndian.PutUint32(vLen[0:4], uint32(memberBytesCount))
+
+	// build
+	buf := bytes.NewBuffer(make([]byte, 0, 5+memberBytesCount))
+	buf.WriteByte(encoding.VTypeBorrowRecord)
+	buf.Write(vLen)
+	buf.Write(clientIdBytes)
+	buf.Write(rcIdBytes)
+	buf.Write(borrowAtBytes)
+	buf.Write(expireAtBytes)
+
+	return buf.Bytes(), nil
 }
 
 func (rd *BorrowRecord) Decode(b []byte) ([]byte, error) {
-	// TODO
-	return nil, nil
+	// 校验头部
+	if len(b) < 5 {
+		return nil, errors.New("Bad encoded format for BorrowRecord, too short")
+	}
+
+	// 校验数据类型
+	if vType := b[0]; vType != encoding.VTypeBorrowRecord {
+		return nil, fmt.Errorf("Bad encoded format for BorrowRecord, VType(%x) don't match %x", vType, encoding.VTypeBorrowRecord)
+	}
+
+	// 校验数据长度
+	vLen := binary.BigEndian.Uint32(b[1:5])
+	if uint32(len(b)) < 5+vLen {
+		return nil, errors.New("Bad encoded format for BorrowRecord, too short")
+	}
+
+	var err error
+
+	// 解析ClientID
+	b = b[5:]
+	rd.ClientID = encoding.NewBytes(nil)
+	b, err = rd.ClientID.Decode(b)
+	if err != nil {
+		return nil, fmt.Errorf("Decode BorrowRecord.ClientID failed, %v", err)
+	}
+
+	// 解析RCID
+	rd.RCID = encoding.NewString("")
+	b, err = rd.RCID.Decode(b)
+	if err != nil {
+		return nil, fmt.Errorf("Decode BorrowRecord.RCID failed, %v", err)
+	}
+
+	// 解析BorrowAt
+	rd.BorrowAt = encoding.NewInt64(0)
+	b, err = rd.BorrowAt.Decode(b)
+	if err != nil {
+		return nil, fmt.Errorf("Decode BorrowRecord.BorrowAt failed, %v", err)
+	}
+
+	// 解析ExpireAt
+	rd.ExpireAt = encoding.NewInt64(0)
+	b, err = rd.ExpireAt.Decode(b)
+	if err != nil {
+		return nil, fmt.Errorf("Decode BorrowRecord.ExpireAt failed, %v", err)
+	}
+
+	return b, nil
 }

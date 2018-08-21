@@ -27,7 +27,7 @@ func (i *Int64) Encode() ([]byte, error) {
 
 func (i *Int64) Decode(b []byte) ([]byte, error) {
 	// 校验头部信息
-	if len(b) != 9 {
+	if len(b) < 9 {
 		return nil, errors.New("Bad encoded format for int64")
 	}
 

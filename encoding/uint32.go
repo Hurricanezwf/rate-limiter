@@ -27,7 +27,7 @@ func (u *Uint32) Encode() ([]byte, error) {
 
 func (u *Uint32) Decode(b []byte) ([]byte, error) {
 	// 校验头部信息
-	if len(b) != 5 {
+	if len(b) < 5 {
 		return nil, errors.New("Bad encoded format for uint32")
 	}
 
