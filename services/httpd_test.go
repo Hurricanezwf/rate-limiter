@@ -27,7 +27,7 @@ func TestRegist(t *testing.T) {
 	opt := utils.HttpOptions{
 		Body: APIRegistQuotaReq{
 			RCTypeID: tId,
-			Quota:    1,
+			Quota:    1000,
 		},
 	}
 
@@ -47,7 +47,7 @@ func TestBorrow(t *testing.T) {
 		Body: APIBorrowReq{
 			RCTypeID: tId,
 			ClientID: cId,
-			Expire:   10,
+			Expire:   1000,
 		},
 	}
 
@@ -71,6 +71,16 @@ func TestReturn(t *testing.T) {
 	}
 
 	if err := utils.HttpPost(url, &opt, nil); err != nil {
+		t.Fatal(err.Error())
+	}
+}
+
+func TestSnapshot(t *testing.T) {
+	TestRegist(t)
+	TestBorrow(t)
+	TestBorrow(t)
+
+	if err := utils.HttpGet(fmt.Sprintf("http://%s/v1/snapshot", hostAddr), nil, nil); err != nil {
 		t.Fatal(err.Error())
 	}
 }

@@ -122,7 +122,7 @@ func (m *limiterMetaV1) Borrow(clientId []byte, expire int64) (string, error) {
 	m.used.Set(clientIdHex, q)
 	m.usedCount.Incr(uint32(1))
 
-	glog.V(1).Infof("Client[%s] borrow %s OK, period:%ds, expireAt:%d", clientIdHex, record.RCID, expire, record.ExpireAt)
+	glog.V(1).Infof("Client[%s] borrow %s OK, period:%ds, expireAt:%d", clientIdHex, record.RCID.Value(), expire, record.ExpireAt.Value())
 
 	return rcId.Value(), nil
 }

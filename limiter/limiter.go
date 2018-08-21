@@ -172,9 +172,6 @@ func (l *limiterV1) Apply(log *raftlib.Log) interface{} {
 }
 
 // Snapshot 获取对FSM进行快照操作的实例
-// |magic_number|version|rctype_count|rc1_total_bytes|rc1_type_bytes|rc1_type_content|rc1_meta_content|...|
-// | 1 Byte     | 1 Byte|   4 Bytes  |  4 Bytes      |  1 Byte      | N Bytes        |  M Bytes       |...|
-//
 // Encode Format:
 // > [1 byte]  magic number
 // > [1 byte]  protocol version
@@ -184,6 +181,9 @@ func (l *limiterV1) Snapshot() (raftlib.FSMSnapshot, error) {
 	l.mutex.RLock()
 	defer l.mutex.RUnlock()
 
+	start := time.Now()
+	glog.V(1).Info("Create snapshot starting...")
+
 	// 编码元数据
 	b, err := l.meta.Encode()
 	if err != nil {
@@ -192,7 +192,7 @@ func (l *limiterV1) Snapshot() (raftlib.FSMSnapshot, error) {
 	}
 
 	// 编码时间戳
-	ts, err := encoding.NewInt64(time.Now().Unix()).Encode()
+	ts, err := encoding.NewInt64(start.Unix()).Encode()
 	if err != nil {
 		glog.Warning(err.Error())
 		return nil, err
@@ -200,72 +200,37 @@ func (l *limiterV1) Snapshot() (raftlib.FSMSnapshot, error) {
 
 	// 构造快照
 	buf := bytes.NewBuffer(make([]byte, 0, 10+len(b)))
-	buf.WriteByte(MagicNumber)
-	buf.WriteByte(ProtocolVersion)
-	buf.Write(ts)
+	//buf.WriteByte(MagicNumber)
+	//buf.WriteByte(ProtocolVersion)
+	//buf.Write(ts)
 	buf.Write(b)
 
+	_ = ts
+
+	f, err := os.OpenFile("./snapshot.limiter", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		panic(err.Error())
+	}
+	defer f.Close()
+
+	if _, err = f.Write(buf.Bytes()); err != nil {
+		panic(err.Error())
+	}
+
+	glog.V(2).Infof("%#v", buf.Bytes())
+
+	glog.V(1).Infof("Create snapshot finished, elapse:%v, totalSize:%d", time.Since(start), buf.Len())
+
 	return NewLimiterSnapshot(buf.Bytes()), nil
-
-	//buf := bytes.NewBuffer(nil)
-	//buf.Grow(10240)
-
-	//l.mutex.RLock()
-	//defer l.mutex.RUnlock()
-
-	//// 资源类型的总数
-	//rcTypeCount := make([]byte, 4)
-	//binary.BigEndian.PutUint32(rcTypeCount, uint32(len(l.meta)))
-
-	//// 构造快照内容
-	//buf.Write(MagicNumber[:])
-	//buf.Write(ProtocolVersion[:])
-	//buf.Write(rcTypeCount)
-	//for tIdHex, m := range l.meta {
-	//	// 资源类型转换为字节
-	//	rcTypeBytes, err := hex.DecodeString(tIdHex)
-	//	if err != nil {
-	//		err = fmt.Errorf("Decode tIdHex to []byte failed, %v", err)
-	//		glog.Warning(err.Error())
-	//		return nil, err
-	//	}
-	//	if len(rcTypeBytes) > math.MaxUint8 {
-	//		panic("resource type id overflow")
-	//	}
-
-	//	// 对meta进行序列化
-	//	b, err := m.Encode()
-	//	if err != nil {
-	//		err = fmt.Errorf("Encode resource meta failed, %v. rcType=%s", err, tIdHex)
-	//		glog.Warning(err.Error())
-	//		return nil, err
-	//	}
-	//	if len(b) > math.MaxUint32 {
-	//		panic("data overflow")
-	//	}
-
-	//	// 生成统计数据
-	//	rcTypeBytesCount := make([]byte, 1)
-	//	rcTypeBytesCount[0] = uint8(len(rcTypeBytes) << 0)
-
-	//	rcBytesTotal := make([]byte, 4)
-	//	binary.BigEndian.PutUint32(rcBytesTotal, uint32(1+len(rcTypeBytes)+len(b)))
-
-	//	// 写入buf
-	//	buf.Write(rcBytesTotal)
-	//	buf.Write(rcTypeBytesCount)
-	//	buf.Write(rcTypeBytes)
-	//	buf.Write(b[:len(b)])
-	//}
-
-	//glog.V(3).Infof("Snapshot Data: %v", buf.Bytes())
-	//return NewLimiterSnapshot(buf.Bytes()), nil
 }
 
 // Restore 从快照中恢复LimiterFSM
 func (l *limiterV1) Restore(rc io.ReadCloser) error {
 	defer rc.Close()
 
+	glog.V(1).Info("Restore snapshot starting...")
+
+	start := time.Now()
 	reader := bufio.NewReader(rc)
 
 	// 读取识别魔数
@@ -308,7 +273,7 @@ func (l *limiterV1) Restore(rc io.ReadCloser) error {
 
 	// 读取元数据并解析
 	buf := bytes.NewBuffer(make([]byte, 0, 10240))
-	_, err = buf.ReadFrom(reader)
+	bodyBytesCount, err := buf.ReadFrom(reader)
 	if err != nil && err != io.EOF {
 		glog.Warningf("Read meta data failed, %v", err)
 		return err
@@ -325,68 +290,7 @@ func (l *limiterV1) Restore(rc io.ReadCloser) error {
 	l.meta = meta
 	l.mutex.Unlock()
 
-	return nil
-
-	//// 从文件读取快照内容
-	//buf := bytes.NewBuffer(nil)
-	//buf.Grow(10240)
-	//n, err := buf.ReadFrom(rc)
-	//if err != nil {
-	//	return err
-	//}
-
-	//// 解析魔数和版本并核对
-	//if n < 10 {
-	//	return errors.New("Bad snapshot format, too short")
-	//}
-
-	//snapshot := buf.Bytes()
-	//magicNumer := snapshot[0:1]
-	//protocolVersion := snapshot[1:2]
-
-	//if bytes.Compare(magicNumer, MagicNumber[:]) != 0 {
-	//	return errors.New("Bad snapshot format, invalid magic number")
-	//}
-	//if bytes.Compare(protocolVersion, ProtocolVersion[:]) != 0 {
-	//	return errors.New("Bad snapshot format, unknown protocol version")
-	//}
-
-	//// 解析内容
-	//rcTypeCount := binary.BigEndian.Uint32(snapshot[2:7])
-	//snapshot = snapshot[7:]
-	//meta := make(map[string]LimiterMeta, 2*rcTypeCount)
-	//for i := uint32(1); i < rcTypeCount; i++ {
-	//	if len(snapshot) < 5 {
-	//		glog.Warning("Bad snapshot format")
-	//		break
-	//	}
-
-	//	// 获取该类型资源的元数据占用的总字节数
-	//	rcBytesTotal := binary.BigEndian.Uint32(snapshot[0:5])
-
-	//	// 分离属于该资源的数据和剩余数据
-	//	if uint32(len(snapshot)) < 5+rcBytesTotal {
-	//		glog.Warning("Bad snapshot formt")
-	//		break
-	//	}
-	//	rcBytes := snapshot[5 : 5+rcBytesTotal]
-	//	snapshot = snapshot[rcBytesTotal:]
-
-	//	// 解析本资源的数据
-	//	rcTypeBytesCount := int(rcBytes[0])
-	//	rcTypeId := ResourceTypeID(rcBytes[1 : 1+rcTypeBytesCount])
-	//	metaBytes := rcBytes[1+rcTypeBytesCount:]
-
-	//	m, err := NewLimiterMetaFromBytes(metaBytes)
-	//	if err != nil {
-	//		return fmt.Errorf("Load meta from bytes failed, %v. rcTypeId=%s", err, rcTypeId.String())
-	//	}
-	//	meta[rcTypeId.String()] = m
-	//}
-
-	//l.mutex.Lock()
-	//l.meta = meta
-	//l.mutex.Unlock()
+	glog.V(1).Infof("Restore snapshot finished, elapse:%v, totalBytes:%d", time.Since(start), 10+bodyBytesCount)
 
 	return nil
 }
