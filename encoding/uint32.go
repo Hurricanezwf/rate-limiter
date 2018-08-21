@@ -28,12 +28,12 @@ func (u *Uint32) Encode() ([]byte, error) {
 func (u *Uint32) Decode(b []byte) ([]byte, error) {
 	// 校验头部信息
 	if len(b) < 5 {
-		return nil, errors.New("Bad encoded format for uint32")
+		return nil, errors.New("Bad encoded format for uint32, too short")
 	}
 
 	// 校验数据类型
 	if vType := b[0]; vType != VTypeUint32 {
-		return nil, fmt.Errorf("Bad encoded format for uint32, VType(%x) don't match %x", vType, VTypeUint32)
+		return nil, fmt.Errorf("Bad encoded format for uint32, VType(%#x) don't match %#x", vType, VTypeUint32)
 	}
 
 	// 解析数据

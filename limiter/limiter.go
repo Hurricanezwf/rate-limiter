@@ -3,7 +3,6 @@ package limiter
 import (
 	"bufio"
 	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -175,7 +174,7 @@ func (l *limiterV1) Apply(log *raftlib.Log) interface{} {
 // Encode Format:
 // > [1 byte]  magic number
 // > [1 byte]  protocol version
-// > [8 bytes] timestamp
+// > [9 bytes] timestamp
 // > [N bytes] data encoded bytes
 func (l *limiterV1) Snapshot() (raftlib.FSMSnapshot, error) {
 	l.mutex.RLock()
@@ -200,12 +199,13 @@ func (l *limiterV1) Snapshot() (raftlib.FSMSnapshot, error) {
 
 	// 构造快照
 	buf := bytes.NewBuffer(make([]byte, 0, 10+len(b)))
-	//buf.WriteByte(MagicNumber)
-	//buf.WriteByte(ProtocolVersion)
-	//buf.Write(ts)
+	buf.WriteByte(MagicNumber)
+	buf.WriteByte(ProtocolVersion)
+	buf.Write(ts)
 	buf.Write(b)
 
 	_ = ts
+	_ = b
 
 	f, err := os.OpenFile("./snapshot.limiter", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
@@ -217,7 +217,7 @@ func (l *limiterV1) Snapshot() (raftlib.FSMSnapshot, error) {
 		panic(err.Error())
 	}
 
-	glog.V(2).Infof("%#v", buf.Bytes())
+	//glog.V(2).Infof("%#v", buf.Bytes())
 
 	glog.V(1).Infof("Create snapshot finished, elapse:%v, totalSize:%d", time.Since(start), buf.Len())
 
@@ -240,7 +240,7 @@ func (l *limiterV1) Restore(rc io.ReadCloser) error {
 		return err
 	}
 	if magicNumber != MagicNumber {
-		err = fmt.Errorf("Unknown magic number %x", magicNumber)
+		err = fmt.Errorf("Unknown magic number %#x", magicNumber)
 		glog.Warning(err.Error())
 		return err
 	}
@@ -252,13 +252,13 @@ func (l *limiterV1) Restore(rc io.ReadCloser) error {
 		return err
 	}
 	if protocolVersion != ProtocolVersion {
-		err = fmt.Errorf("ProtocolVersion(%x) is not match with %x", protocolVersion, ProtocolVersion)
+		err = fmt.Errorf("ProtocolVersion(%#x) is not match with %#x", protocolVersion, ProtocolVersion)
 		glog.Warning(err.Error())
 		return err
 	}
 
 	// 读取快照时间戳
-	ts := make([]byte, 8)
+	ts := make([]byte, 9)
 	n, err := reader.Read(ts)
 	if err != nil {
 		glog.Warningf("Read timestamp failed, %v", err)
@@ -269,7 +269,13 @@ func (l *limiterV1) Restore(rc io.ReadCloser) error {
 		glog.Warning(err.Error())
 		return err
 	}
-	glog.V(1).Infof("Restore from snapshot created at %d", binary.BigEndian.Uint64(ts))
+	tsInt64 := encoding.NewInt64(0)
+	if _, err = tsInt64.Decode(ts); err != nil {
+		err = fmt.Errorf("Decode timestamp failed, %v", err)
+		glog.Warning(err.Error())
+		return err
+	}
+	glog.V(1).Infof("Restore from snapshot created at %d", tsInt64.Value())
 
 	// 读取元数据并解析
 	buf := bytes.NewBuffer(make([]byte, 0, 10240))

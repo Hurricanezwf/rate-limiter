@@ -36,7 +36,7 @@ func (bt *Bytes) Decode(b []byte) ([]byte, error) {
 
 	// 校验数据类型
 	if vType := b[0]; vType != VTypeBytes {
-		return nil, fmt.Errorf("Bad encoded format for bytes, VType(%x) don't match %x", vType, VTypeBytes)
+		return nil, fmt.Errorf("Bad encoded format for bytes, VType(%#x) don't match %#x", vType, VTypeBytes)
 	}
 
 	// 校验数据长度

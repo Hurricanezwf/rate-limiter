@@ -46,6 +46,8 @@ type LimiterMeta interface {
 
 // limiterMetaV1 is an implement of LimiterMeta interface
 type limiterMetaV1 struct {
+	mutex sync.RWMutex
+
 	// 所属的资源类型
 	rcTypeId *encoding.Bytes
 
@@ -53,7 +55,6 @@ type limiterMetaV1 struct {
 	quota *encoding.Uint32
 
 	// 资源调度队列
-	mutex     sync.RWMutex
 	canBorrow *encoding.Queue  // 可借的资源队列
 	recycled  *encoding.Queue  // 已回收的资源队列
 	used      *encoding.Map    // 已借出资源的记录队列. clientIdHex ==> *BorrowRecord queue
@@ -226,13 +227,148 @@ func (m *limiterMetaV1) Recycle() {
 	}
 }
 
+// Encode encode limiterMetaV1 to format which used to binary persist
+// Encode Format:
+// > [1 byte]  data type
+// > [8 bytes] data len
+// > [N bytes] data content
 func (m *limiterMetaV1) Encode() ([]byte, error) {
-	// TODO:
-	return nil, nil
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	// encode rcTypeId
+	rcTypeIdBytes, err := m.rcTypeId.Encode()
+	if err != nil {
+		return nil, fmt.Errorf("Encode limiterMetaV1.rcTypeIdBytes failed, %v", err)
+	}
+
+	// encode quota
+	quotaBytes, err := m.quota.Encode()
+	if err != nil {
+		return nil, fmt.Errorf("Encode LimiterMeta.quota failed, %v", err)
+	}
+
+	// encode canBorrow
+	canBorrowBytes, err := m.canBorrow.Encode()
+	if err != nil {
+		return nil, fmt.Errorf("Encode LimiterMeta.canBorrow failed, %v", err)
+	}
+
+	// encode recycled
+	recycledBytes, err := m.recycled.Encode()
+	if err != nil {
+		return nil, fmt.Errorf("Encode LimiterMeta.recycled failed, %v", err)
+	}
+
+	// encode used
+	usedBytes, err := m.used.Encode()
+	if err != nil {
+		return nil, fmt.Errorf("Encode LimiterMeta.used failed, %v", err)
+	}
+
+	// encode usedCount
+	usedCountBytes, err := m.usedCount.Encode()
+	if err != nil {
+		return nil, fmt.Errorf("Encode LimiterMeta.usedCountBytes failed, %v", err)
+	}
+
+	// calc bytes count
+	var bytesCount uint64
+	bytesCount += uint64(len(rcTypeIdBytes))
+	bytesCount += uint64(len(quotaBytes))
+	bytesCount += uint64(len(canBorrowBytes))
+	bytesCount += uint64(len(recycledBytes))
+	bytesCount += uint64(len(usedBytes))
+	bytesCount += uint64(len(usedCountBytes))
+
+	vLen := make([]byte, 8)
+	binary.BigEndian.PutUint64(vLen[0:8], uint64(bytesCount))
+
+	// build
+	buf := bytes.NewBuffer(make([]byte, 0, 9+bytesCount))
+	buf.WriteByte(encoding.VTypeLimiterMeta)
+	buf.Write(vLen)
+	buf.Write(rcTypeIdBytes)
+	buf.Write(quotaBytes)
+	buf.Write(canBorrowBytes)
+	buf.Write(recycledBytes)
+	buf.Write(usedBytes)
+	buf.Write(usedCountBytes)
+
+	return buf.Bytes(), nil
 }
 
 func (m *limiterMetaV1) Decode(b []byte) ([]byte, error) {
-	// TODO:
+	// 校验头部
+	if len(b) < 9 {
+		return nil, errors.New("Bad encoded format for LimiterMeta, too short")
+	}
+
+	// 校验数据类型
+	if vType := b[0]; vType != encoding.VTypeLimiterMeta {
+		return nil, fmt.Errorf("Bad encoded format for LimiterMeta, VType(%#x) don't match %#x", vType, encoding.VTypeLimiterMeta)
+	}
+
+	// 校验数据长度
+	vLen := binary.BigEndian.Uint64(b[1:9])
+	if uint64(len(b)) < 9+vLen {
+		return nil, errors.New("Bad encoded format for LimiterMeta, too short")
+	}
+
+	var err error
+
+	// 解析rcTypeId
+	b = b[9:]
+	rcTypeId := encoding.NewBytes(nil)
+	b, err = rcTypeId.Decode(b)
+	if err != nil {
+		return nil, fmt.Errorf("Decode LimiterMeta.rcTypeId failed, %v", err)
+	}
+
+	// 解析quota
+	quota := encoding.NewUint32(0)
+	b, err = quota.Decode(b)
+	if err != nil {
+		return nil, fmt.Errorf("Decode LimiterMeta.quota failed, %v", err)
+	}
+
+	// 解析canBorrow
+	canBorrow := encoding.NewQueue()
+	b, err = canBorrow.Decode(b)
+	if err != nil {
+		return nil, fmt.Errorf("Decode LimiterMeta.canBorrow failed, %v", err)
+	}
+
+	// 解析recycled
+	recycled := encoding.NewQueue()
+	b, err = recycled.Decode(b)
+	if err != nil {
+		return nil, fmt.Errorf("Decode LimiterMeta.recycled failed, %v", err)
+	}
+
+	// 解析used
+	used := encoding.NewMap()
+	b, err = used.Decode(b)
+	if err != nil {
+		return nil, fmt.Errorf("Decode LimiterMeta.used failed, %v", err)
+	}
+
+	// 解析usedCount
+	usedCount := encoding.NewUint32(0)
+	b, err = usedCount.Decode(b)
+	if err != nil {
+		return nil, fmt.Errorf("Decode LimiterMeta.usedCount failed, %v", err)
+	}
+
+	m.mutex.Lock()
+	m.rcTypeId = rcTypeId
+	m.quota = quota
+	m.canBorrow = canBorrow
+	m.recycled = recycled
+	m.used = used
+	m.usedCount = usedCount
+	m.mutex.Unlock()
+
 	return b, nil
 }
 
@@ -254,7 +390,7 @@ type BorrowRecord struct {
 // Encode encode BorrowRecord object to format which used to binary persist
 // Encode Format:
 // > [1 byte]  data type
-// > [4 bytes] data len
+// > [8 bytes] data len
 // > [N bytes] data content
 func (rd *BorrowRecord) Encode() ([]byte, error) {
 	// encode ClientID
@@ -281,18 +417,18 @@ func (rd *BorrowRecord) Encode() ([]byte, error) {
 		return nil, fmt.Errorf("Encode BorrowRecord.ExpireAt failed, %v", err)
 	}
 
-	// calc bytes clount
-	var memberBytesCount int
-	memberBytesCount += len(clientIdBytes)
-	memberBytesCount += len(rcIdBytes)
-	memberBytesCount += len(borrowAtBytes)
-	memberBytesCount += len(expireAtBytes)
+	// calc bytes count
+	var memberBytesCount uint64
+	memberBytesCount += uint64(len(clientIdBytes))
+	memberBytesCount += uint64(len(rcIdBytes))
+	memberBytesCount += uint64(len(borrowAtBytes))
+	memberBytesCount += uint64(len(expireAtBytes))
 
-	vLen := make([]byte, 4)
-	binary.BigEndian.PutUint32(vLen[0:4], uint32(memberBytesCount))
+	vLen := make([]byte, 8)
+	binary.BigEndian.PutUint64(vLen[0:8], uint64(memberBytesCount))
 
 	// build
-	buf := bytes.NewBuffer(make([]byte, 0, 5+memberBytesCount))
+	buf := bytes.NewBuffer(make([]byte, 0, 9+memberBytesCount))
 	buf.WriteByte(encoding.VTypeBorrowRecord)
 	buf.Write(vLen)
 	buf.Write(clientIdBytes)
@@ -305,25 +441,25 @@ func (rd *BorrowRecord) Encode() ([]byte, error) {
 
 func (rd *BorrowRecord) Decode(b []byte) ([]byte, error) {
 	// 校验头部
-	if len(b) < 5 {
+	if len(b) < 9 {
 		return nil, errors.New("Bad encoded format for BorrowRecord, too short")
 	}
 
 	// 校验数据类型
 	if vType := b[0]; vType != encoding.VTypeBorrowRecord {
-		return nil, fmt.Errorf("Bad encoded format for BorrowRecord, VType(%x) don't match %x", vType, encoding.VTypeBorrowRecord)
+		return nil, fmt.Errorf("Bad encoded format for BorrowRecord, VType(%#x) don't match %#x", vType, encoding.VTypeBorrowRecord)
 	}
 
 	// 校验数据长度
-	vLen := binary.BigEndian.Uint32(b[1:5])
-	if uint32(len(b)) < 5+vLen {
+	vLen := binary.BigEndian.Uint64(b[1:9])
+	if uint64(len(b)) < 9+vLen {
 		return nil, errors.New("Bad encoded format for BorrowRecord, too short")
 	}
 
 	var err error
 
 	// 解析ClientID
-	b = b[5:]
+	b = b[9:]
 	rd.ClientID = encoding.NewBytes(nil)
 	b, err = rd.ClientID.Decode(b)
 	if err != nil {

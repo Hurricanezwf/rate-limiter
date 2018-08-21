@@ -33,7 +33,7 @@ func (i *Int64) Decode(b []byte) ([]byte, error) {
 
 	// 校验数据类型
 	if vType := b[0]; vType != VTypeInt64 {
-		return nil, fmt.Errorf("Bad encoded format for int64, VType(%x) don't match %x", vType, VTypeInt64)
+		return nil, fmt.Errorf("Bad encoded format for int64, VType(%#x) don't match %#x", vType, VTypeInt64)
 	}
 
 	// 解析数据

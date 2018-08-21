@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"testing"
+	"time"
 
 	. "github.com/Hurricanezwf/rate-limiter/proto"
 	"github.com/Hurricanezwf/toolbox/utils"
@@ -27,7 +28,7 @@ func TestRegist(t *testing.T) {
 	opt := utils.HttpOptions{
 		Body: APIRegistQuotaReq{
 			RCTypeID: tId,
-			Quota:    1000,
+			Quota:    10,
 		},
 	}
 
@@ -82,5 +83,17 @@ func TestSnapshot(t *testing.T) {
 
 	if err := utils.HttpGet(fmt.Sprintf("http://%s/v1/snapshot", hostAddr), nil, nil); err != nil {
 		t.Fatal(err.Error())
+	}
+}
+
+func TestRestore(t *testing.T) {
+	if err := utils.HttpGet(fmt.Sprintf("http://%s/v1/restore", hostAddr), nil, nil); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	//TestRegist(t)
+	for i := 0; i < 10; i++ {
+		TestBorrow(t)
+		time.Sleep(time.Second)
 	}
 }

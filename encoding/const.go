@@ -14,4 +14,5 @@ const (
 	VTypeMap          byte = 0x0b
 	VTypeQueue        byte = 0x0c
 	VTypeBorrowRecord byte = 0x30
+	VTypeLimiterMeta  byte = 0x31
 )

@@ -68,7 +68,7 @@ func (q *Queue) Decode(b []byte) ([]byte, error) {
 
 	// 数据类型
 	if vType := b[0]; vType != VTypeQueue {
-		return nil, fmt.Errorf("Bad encoded format for queue, VType(%x) don't match %x", vType, VTypeQueue)
+		return nil, fmt.Errorf("Bad encoded format for queue, VType(%#x) don't match %#x", vType, VTypeQueue)
 	}
 
 	// 队列长度

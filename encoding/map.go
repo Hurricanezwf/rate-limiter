@@ -71,7 +71,7 @@ func (m *Map) Decode(b []byte) ([]byte, error) {
 
 	// 数据类型
 	if vType := b[0]; vType != VTypeMap {
-		return nil, fmt.Errorf("Bad encoded format for map, VType(%x) don't match %x", vType, VTypeMap)
+		return nil, fmt.Errorf("Bad encoded format for map, VType(%#x) don't match %#x", vType, VTypeMap)
 	}
 
 	// map中元素个数
@@ -99,6 +99,7 @@ func (m *Map) Decode(b []byte) ([]byte, error) {
 		keyStr := key.(*String).Value()
 
 		// 解析Value
+		//fmt.Printf("(%d) Before: %#v\n", i, b)
 		vType := b[0]
 		v, err := SerializerFactory(vType)
 		if err != nil {
@@ -108,6 +109,7 @@ func (m *Map) Decode(b []byte) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("Decode map value failed, %v", err)
 		}
+		//fmt.Printf("(%d) After: %#v\n", i, b)
 
 		// 添加进map
 		m.Set(keyStr, v)

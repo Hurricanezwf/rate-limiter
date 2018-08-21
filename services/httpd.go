@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 
 	. "github.com/Hurricanezwf/rate-limiter/proto"
@@ -13,6 +14,7 @@ import (
 
 func init() {
 	http.HandleFunc("/v1/snapshot", snapshot) // for test only
+	http.HandleFunc("/v1/restore", restore)   // for test only
 	http.HandleFunc("/v1/registQuota", registQuota)
 	http.HandleFunc("/v1/borrow", borrow)
 	http.HandleFunc("/v1/return", return_)
@@ -169,6 +171,25 @@ func snapshot(w http.ResponseWriter, req *http.Request) {
 	} else {
 		w.WriteHeader(200)
 		w.Write([]byte("Snapshot OK"))
+	}
+	return
+}
+
+// restore 从元数据恢复数据
+func restore(w http.ResponseWriter, req *http.Request) {
+	f, err := os.Open("./snapshot.limiter")
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	if err = l.Restore(f); err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+	} else {
+		w.WriteHeader(200)
+		w.Write([]byte("Restore OK"))
 	}
 	return
 }
