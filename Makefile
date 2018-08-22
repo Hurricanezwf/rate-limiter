@@ -13,3 +13,8 @@ debug:
 
 release:
 	@export CGO_ENABLED=0 && go build -ldflags="-w -s -X main.GoVersion=$(version) -X main.Branch=$(branch) -X main.Commit=$(commit) -X main.CompileTime=$(compile_time)"
+
+
+
+clean:
+	@rm  -f ./rate-limiter
