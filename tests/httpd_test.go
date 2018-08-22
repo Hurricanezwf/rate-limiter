@@ -76,6 +76,22 @@ func TestReturn(t *testing.T) {
 	}
 }
 
+func TestReturnAll(t *testing.T) {
+	cIdMd5 := md5.Sum([]byte("zwf"))
+	cId = cIdMd5[:]
+
+	url := fmt.Sprintf("http://%s/v1/returnAll", hostAddr)
+	opt := utils.HttpOptions{
+		Body: APIReturnAllReq{
+			ClientID: cId,
+		},
+	}
+
+	if err := utils.HttpPost(url, &opt, nil); err != nil {
+		t.Fatal(err.Error())
+	}
+}
+
 func TestSnapshot(t *testing.T) {
 	TestRegist(t)
 	TestBorrow(t)

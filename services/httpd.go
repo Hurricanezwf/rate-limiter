@@ -180,7 +180,12 @@ func return_(w http.ResponseWriter, req *http.Request) {
 
 // returnAll 释放用户的所有占用的权限
 func returnAll(w http.ResponseWriter, req *http.Request) {
-	// TODO
+	if req.Method != http.MethodPost {
+		w.WriteHeader(405)
+		w.Write(ErrMsg("Method `POST` is needed"))
+		return
+	}
+
 	// check leader
 	if l.IsLeader() == false {
 		w.WriteHeader(403)
@@ -188,6 +193,35 @@ func returnAll(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// 读取body
+	b, err := ioutil.ReadAll(req.Body)
+	defer req.Body.Close()
+
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write(ErrMsg(err.Error()))
+		return
+	}
+
+	// 解析参数
+	var r = Request{
+		Action:    ActionReturnAll,
+		ReturnAll: &APIReturnAllReq{},
+	}
+	if err := json.Unmarshal(b, r.ReturnAll); err != nil {
+		w.WriteHeader(500)
+		w.Write(ErrMsg(err.Error()))
+		return
+	}
+
+	// 尝试获取资格
+	if rp := l.Do(&r); rp.Err != nil {
+		w.WriteHeader(403)
+		w.Write(ErrMsg(rp.Err.Error()))
+	} else {
+		w.WriteHeader(200)
+	}
+	return
 }
 
 // snapshot 对元数据做快照

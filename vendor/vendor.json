@@ -21,16 +21,16 @@
 			"revisionTime": "2018-08-12T09:01:24Z"
 		},
 		{
-			"checksumSHA1": "eiRzLoenl7oEVCuoT+Ju/zWBlKg=",
+			"checksumSHA1": "0et4hA6AYqZCgYiY+c6Z17t3k3k=",
 			"path": "github.com/armon/go-metrics",
-			"revision": "783273d703149aaeb9897cf58613d5af48861c25",
-			"revisionTime": "2018-02-21T18:27:44Z"
+			"revision": "0a12dc6f6b9da6da644031a1b9b5a85478c5ee27",
+			"revisionTime": "2017-09-13T18:48:37Z"
 		},
 		{
-			"checksumSHA1": "lNk83SMWEgFZmO/Xgrb/IVKUdlI=",
+			"checksumSHA1": "PrcomSB9KC0gpB8ftbOWq37+rZ0=",
 			"path": "github.com/astaxie/beego/httplib",
-			"revision": "cab8458c1c4a5a3b4bf5192922be620e6dede15b",
-			"revisionTime": "2017-05-19T13:19:18Z"
+			"revision": "323a1c4214101331a4b71922c23d19b7409ac71f",
+			"revisionTime": "2017-03-06T13:59:04Z"
 		},
 		{
 			"checksumSHA1": "lbE4q2dpUgue10EEx8eutP36vzo=",
@@ -39,10 +39,10 @@
 			"revisionTime": "2017-11-20T01:03:07Z"
 		},
 		{
-			"checksumSHA1": "y+AeKVZoX0gB+DZW4Arzkb3tTVc=",
+			"checksumSHA1": "Cas2nprG6pWzf05A2F/OlnjUu2Y=",
 			"path": "github.com/hashicorp/go-immutable-radix",
-			"revision": "7f3cd4390caab3250a57f30efdb2a65dd7649ecf",
-			"revisionTime": "2018-01-29T17:09:00Z"
+			"revision": "8aac2701530899b64bdea735a1de8da899815220",
+			"revisionTime": "2017-07-25T22:12:15Z"
 		},
 		{
 			"checksumSHA1": "TNlVzNR1OaajcNi3CbQ3bGbaLGU=",
@@ -51,16 +51,16 @@
 			"revisionTime": "2015-05-18T23:42:57Z"
 		},
 		{
-			"checksumSHA1": "8Z637dcPkbR5HdLQQBp/9jTbx9Y=",
+			"checksumSHA1": "9hffs0bAIU6CquiRhKQdzjHnKt0=",
 			"path": "github.com/hashicorp/golang-lru/simplelru",
-			"revision": "0fb14efe8c47ae851c0034ed7a448854d3d34cf3",
-			"revisionTime": "2018-02-01T23:52:37Z"
+			"revision": "0a025b7e63adc15a622f29b0b2c4c3848243bbf6",
+			"revisionTime": "2016-08-13T22:13:03Z"
 		},
 		{
-			"checksumSHA1": "JjJtGJi1ywWhVhs/PvTXxe4TeD8=",
+			"checksumSHA1": "3U9bQLEMikE47n4TZP6uOdgXIyQ=",
 			"path": "github.com/hashicorp/raft",
-			"revision": "6d14f0c70869faabd9e60ba7ed88a6cbbd6a661f",
-			"revisionTime": "2017-10-03T22:09:13Z"
+			"revision": "da92cfe76e0c1c9b94bbc9d884ec4b2b3b90b699",
+			"revisionTime": "2018-08-17T18:12:11Z"
 		},
 		{
 			"checksumSHA1": "Y2PM65le0fGtiD12RaKknBscFys=",
@@ -69,21 +69,27 @@
 			"revisionTime": "2017-10-10T15:18:10Z"
 		},
 		{
-			"checksumSHA1": "944UmmlVGbUMTJhBIKmnPxFKYLU=",
+			"checksumSHA1": "TAUvj09/lPHXKRl6NXnptwY+WJI=",
 			"path": "github.com/json-iterator/go",
-			"revision": "002b5ae34214fdc0bad508c2ed6f572fa96dfdda",
-			"revisionTime": "2018-02-05T15:45:42Z"
+			"revision": "e7c7f3b33712573affdcc7a107218e7926b9a05b",
+			"revisionTime": "2018-02-14T06:06:32Z"
 		},
 		{
-			"checksumSHA1": "9gwZHdu7sMojYYoGl5Ax6NSFaeU=",
+			"checksumSHA1": "eDQ6f1EsNf+frcRO/9XukSEchm8=",
+			"path": "github.com/satori/go.uuid",
+			"revision": "36e9d2ebbde5e3f13ab2e25625fd453271d6522e",
+			"revisionTime": "2018-01-03T17:44:51Z"
+		},
+		{
+			"checksumSHA1": "QF8rwiIXFjLAhew9YumEpMuLJ/c=",
 			"path": "golang.org/x/sys/unix",
 			"revision": ""
 		},
 		{
-			"checksumSHA1": "ZSWoOPUNRr5+3dhkLK3C4cZAQPk=",
+			"checksumSHA1": "fALlQNY1fM99NesfLJ50KguWsio=",
 			"path": "gopkg.in/yaml.v2",
-			"revision": "5420a8b6744d3b0345ab293f6fcba19c978f1183",
-			"revisionTime": "2018-03-28T19:50:20Z"
+			"revision": "cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b",
+			"revisionTime": "2017-04-07T17:21:22Z"
 		}
 	],
 	"rootPath": "github.com/Hurricanezwf/rate-limiter"

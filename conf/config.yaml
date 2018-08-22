@@ -9,7 +9,7 @@ Log:
   # 日志冗余度，取值[0,10]
   Verbose: 5
   # 日志记录方式，"console" | "file"
-  Way: file
+  Way: console
   # 日志记录到目标目录
   Dir: ./logs/
 

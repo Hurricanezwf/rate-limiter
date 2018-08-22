@@ -35,7 +35,8 @@ type LimiterMeta interface {
 	Return(clientId []byte, rcId string) error
 
 	// ReturnAll 归还某个用户所有的执行资格，通常在用户主动关闭的时候
-	ReturnAll(clientId []byte) error
+	// 返回回收的资源数量
+	ReturnAll(clientId []byte) (int, error)
 
 	// Recycle 清理到期未还的资源并且将recycled队列的资源投递到canBorrow队列
 	Recycle()
@@ -157,7 +158,7 @@ func (m *limiterMetaV1) Return(clientId []byte, rcId string) error {
 		// 移出used列表加入到recycled队列
 		find = true
 		queue.Remove(node)
-		m.recycled.PushBack(encoding.NewString(rcId))
+		m.recycled.PushBack(record.RCID)
 		m.usedCount.Decr(uint32(1))
 
 		glog.V(3).Infof("Client[%s] return %s to recycle.", clientIdHex, rcId)
@@ -177,9 +178,42 @@ func (m *limiterMetaV1) Return(clientId []byte, rcId string) error {
 	return nil
 }
 
-func (m *limiterMetaV1) ReturnAll(clientId []byte) error {
-	// TODO:
-	return nil
+func (m *limiterMetaV1) ReturnAll(clientId []byte) (int, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	// 安全性检测
+	if uint32(m.recycled.Len()) >= m.quota.Value() {
+		return 0, fmt.Errorf("There's something wrong, recycled queue len(%d) >= quota(%d)", m.recycled.Len(), m.quota.Value())
+	}
+
+	clientIdHex := encoding.BytesToStringHex(clientId)
+	q, exist := m.used.Get(clientIdHex)
+	if !exist || q == nil {
+		return 0, nil
+	}
+
+	// 实施归还
+	queue := q.(*encoding.Queue)
+	count := queue.Len()
+	for node := queue.Front(); node.IsNil() == false; {
+		next := node.Next()
+		record := node.Value().(*BorrowRecord)
+
+		// 移出used列表加入到recycled队列
+		queue.Remove(node)
+		m.recycled.PushBack(record.RCID)
+		m.usedCount.Decr(uint32(1))
+
+		// 如果该client没有借入记录，则从map中删除，防止map累积增长
+		if queue.Len() <= 0 {
+			m.used.Delete(clientIdHex)
+		}
+
+		node = next
+	}
+
+	return count, nil
 }
 
 // Recycle 检测used队列中的过期资源是否可重用

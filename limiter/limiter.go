@@ -486,43 +486,28 @@ func (l *limiterV1) doReturn(r *APIReturnReq) error {
 }
 
 func (l *limiterV1) doReturnAll(r *APIReturnAllReq) error {
-	//if len(r.CID) <= 0 {
-	//	return errors.New("Missing `cId` field value")
-	//}
+	// check required
+	if len(r.ClientID) <= 0 {
+		return errors.New("Missing `clientId` field value")
+	}
+	clientIdHex := encoding.BytesToStringHex(r.ClientID)
 
-	//// check leader
-	//if l.IsLeader() == false {
-	//	return ErrNotLeader
-	//}
+	// try return all
+	l.mutex.RLock()
+	defer l.mutex.RUnlock()
 
-	//// try borrow
-	//l.mutex.RLock()
-	//defer l.mutex.Unlock()
+	quitC := make(chan struct{})
+	defer close(quitC)
 
-	//tIdHex := r.TID.String()
-	//m, ok := l.meta[tIdHex]
-	//if !ok {
-	//	return fmt.Errorf("ResourceType(%s) is not registed", tIdHex)
-	//}
-	//if err := m.ReturnAll(r.CID); err != nil {
-	//	return err
-	//}
-
-	//// commit changes
-	//if g.EnableRaft && commit {
-	//	cmd, err := json.Marshal(r)
-	//	if err != nil {
-	//		return err
-	//	}
-
-	//	future := l.raft.Apply(cmd, g.RaftTimeout)
-	//	if err = future.Error(); err != nil {
-	//		return fmt.Errorf("Raft apply error, %v", err)
-	//	}
-	//	if rp := future.Response(); rp != nil {
-	//		return fmt.Errorf("Raft apply response error, %v", rp)
-	//	}
-	//}
+	for pair := range l.meta.Range(quitC) {
+		rcTypeId := pair.K
+		m := pair.V.(LimiterMeta)
+		n, err := m.ReturnAll(r.ClientID)
+		if err != nil {
+			return fmt.Errorf("Client[%s] return all resource of type '%s' failed, %v", clientIdHex, rcTypeId, err)
+		}
+		glog.V(3).Infof("Client[%s] return all of type '%s' success, count:%d", clientIdHex, rcTypeId, n)
+	}
 
 	return nil
 }
