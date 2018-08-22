@@ -17,10 +17,23 @@ Log:
 
 # 【Raft配置】
 Raft:
+  # Raft开关
   Enable: false
+
+  # Raft结点ID
   ID: NODE-0
-  Bind: 0.0.0.0:17250
+
+  # Bind地址，该地址不能为0.0.0.0
+  Bind: 127.0.0.1:17250
+
+  # 集群成员配置json路径
   ClusterConfJson: /home/zwf/zhouwenfeng/GoProj/src/github.com/Hurricanezwf/rate-limiter/conf/raft-cluster.json
+
+  # Raft元数据存储的根目录
   RootDir: ./raft-meta
+
+  # 连接池最大连接数
   TCPMaxPool: 3
+
+  # Raft提交超时时间,单位毫秒
   Timeout: 10000

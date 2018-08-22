@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -18,4 +19,11 @@ func ResolveResourceID(rcId string) (rcTypeId []byte, err error) {
 	}
 
 	return hex.DecodeString(arr[0])
+}
+
+func PathExists(p string) bool {
+	if _, err := os.Lstat(p); err != nil && os.IsNotExist(err) {
+		return false
+	}
+	return true
 }

@@ -60,91 +60,139 @@ type limiterV1 struct {
 }
 
 func (l *limiterV1) Open() error {
-	// ---------------- Raft集群初始化 ----------------- //
-	if g.Config.Raft.Enable {
-		var (
-			bind            = g.Config.Raft.Bind
-			localID         = g.Config.Raft.LocalID
-			clusterConfJson = g.Config.Raft.ClusterConfJson
-			rootDir         = g.Config.Raft.RootDir
-			tcpMaxPool      = g.Config.Raft.TCPMaxPool
-			timeout         = time.Duration(g.Config.Raft.Timeout) * time.Millisecond
-		)
+	const (
+		STMOpenRaft = iota
+		STMStartCleaner
+		STMStartReporter
+		STMExit
+	)
 
-		// 加载集群配置
-		clusterConf, err := raftlib.ReadConfigJSON(clusterConfJson)
-		if err != nil {
-			return fmt.Errorf("Load raft servers' config failed, %v", err)
+	for st := STMOpenRaft; st != STMExit; {
+		switch st {
+		case STMOpenRaft:
+			// Raft集群初始化
+			if err := l.initRaftCluster(); err != nil {
+				return err
+			}
+			st = STMStartReporter
+
+		case STMStartReporter:
+			// 定时输出谁是Leader
+			if g.Config.Raft.Enable {
+				go func() {
+					ticker := time.NewTicker(time.Minute)
+					for {
+						select {
+						case <-l.stopC:
+							return
+						case <-ticker.C:
+							glog.V(2).Infof("Report: %s is Leader", l.raft.Leader())
+						case <-l.raft.LeaderCh():
+							glog.V(2).Infof("Leader changed, %s is Leader", l.raft.Leader())
+						}
+					}
+				}()
+			}
+			st = STMStartCleaner
+
+		case STMStartCleaner:
+			// 定时回收&重用资源
+			go func() {
+				ticker := time.NewTicker(time.Second)
+				for {
+					select {
+					case <-l.stopC:
+						return
+					case <-ticker.C:
+						l.recycle()
+					}
+				}
+			}()
+			st = STMExit
 		}
+	}
 
-		raftConf := raftlib.DefaultConfig()
-		raftConf.LocalID = raftlib.ServerID(localID)
+	return nil
+}
 
-		// 创建Raft网络传输
-		addr, err := net.ResolveTCPAddr("tcp", bind)
-		if err != nil {
-			return err
-		}
-		transport, err := raftlib.NewTCPTransport(
-			bind,       // bindAddr
-			addr,       // advertise
-			tcpMaxPool, // maxPool
-			timeout,    // timeout
-			os.Stderr,  // logOutput
-		)
-		if err != nil {
-			return fmt.Errorf("Create tcp transport failed, %v", err)
-		}
+func (l *limiterV1) initRaftCluster() error {
+	if g.Config.Raft.Enable == false {
+		glog.Info("Raft is disabled")
+		return nil
+	}
 
-		// 创建持久化Log Entry存储引擎
-		boltDB, err := raftboltdb.NewBoltStore(filepath.Join(rootDir, "raft.db"))
-		if err != nil {
-			return fmt.Errorf("Create log store failed, %v", err)
-		}
+	var (
+		bind            = g.Config.Raft.Bind
+		localID         = g.Config.Raft.LocalID
+		clusterConfJson = g.Config.Raft.ClusterConfJson
+		rootDir         = g.Config.Raft.RootDir
+		tcpMaxPool      = g.Config.Raft.TCPMaxPool
+		timeout         = time.Duration(g.Config.Raft.Timeout) * time.Millisecond
+	)
 
-		// 创建持久化快照存储引擎
-		snapshotStore, err := raftlib.NewFileSnapshotStore(rootDir, 3, os.Stderr)
-		if err != nil {
-			return fmt.Errorf("Create file snapshot store failed, %v", err)
-		}
+	// 加载集群配置
+	clusterConf, err := raftlib.ReadConfigJSON(clusterConfJson)
+	if err != nil {
+		return fmt.Errorf("Load raft servers' config failed, %v", err)
+	}
 
-		// 创建Raft实例
-		raft, err := raftlib.NewRaft(
-			raftConf,
-			l,
-			boltDB,
-			boltDB,
-			snapshotStore,
-			transport,
-		)
-		if err != nil {
-			return fmt.Errorf("Create raft instance failed, %v", err)
-		}
+	raftConf := raftlib.DefaultConfig()
+	raftConf.LocalID = raftlib.ServerID(localID)
 
-		// 启动集群
+	// 创建Raft网络传输
+	addr, err := net.ResolveTCPAddr("tcp", bind)
+	if err != nil {
+		return err
+	}
+	transport, err := raftlib.NewTCPTransport(
+		bind,       // bindAddr
+		addr,       // advertise
+		tcpMaxPool, // maxPool
+		timeout,    // timeout
+		os.Stderr,  // logOutput
+	)
+	if err != nil {
+		return fmt.Errorf("Create tcp transport failed, %v", err)
+	}
+
+	// 创建持久化Log Entry存储引擎
+	dbPath := filepath.Join(rootDir, "raft.db")
+	boltDB, err := raftboltdb.NewBoltStore(dbPath)
+	if err != nil {
+		return fmt.Errorf("Create log store failed, %v", err)
+	}
+
+	// 创建持久化快照存储引擎
+	snapshotStore, err := raftlib.NewFileSnapshotStore(rootDir, 3, os.Stderr)
+	if err != nil {
+		return fmt.Errorf("Create file snapshot store failed, %v", err)
+	}
+
+	// 创建Raft实例
+	raft, err := raftlib.NewRaft(
+		raftConf,
+		l,
+		boltDB,
+		boltDB,
+		snapshotStore,
+		transport,
+	)
+	if err != nil {
+		return fmt.Errorf("Create raft instance failed, %v", err)
+	}
+
+	// 启动集群
+	if PathExists(dbPath) == false {
 		future := raft.BootstrapCluster(clusterConf)
 		if err = future.Error(); err != nil {
 			return fmt.Errorf("Bootstrap raft cluster failed, %v", err)
 		}
-
-		// 变量初始化
-		l.raft = raft
 	} else {
-		glog.Info("Raft is disabled")
+		// no need to bootstrap
 	}
 
-	// ---------------------- 定时回收&重用资源 ---------------------- //
-	go func() {
-		ticker := time.NewTicker(time.Second)
-		for {
-			select {
-			case <-l.stopC:
-				return
-			case <-ticker.C:
-				l.recycle()
-			}
-		}
-	}()
+	// 变量初始化
+	l.raft = raft
 
 	return nil
 }
@@ -319,10 +367,10 @@ func (l *limiterV1) Do(r *Request, commit bool) (rp *Response) {
 		rp.Borrow, rp.Err = l.doBorrow(r.Borrow, commit)
 	case ActionReturn:
 		rp.Err = l.doReturn(r.Return, commit)
-	case ActionDead:
-		rp.Err = l.doReturnAll(r.Disconnect, commit)
+	case ActionReturnAll:
+		rp.Err = l.doReturnAll(r.ReturnAll, commit)
 	default:
-		rp.Err = errors.New("Action handler not found")
+		rp.Err = fmt.Errorf("Action handler not found for %#v", r.Action)
 	}
 
 	if rp.Err != nil {
@@ -361,7 +409,10 @@ func (l *limiterV1) doRegistQuota(r *APIRegistQuotaReq, commit bool) error {
 
 	// commit changes
 	if g.Config.Raft.Enable && commit {
-		cmd, err := json.Marshal(r)
+		cmd, err := json.Marshal(&Request{
+			Action:      ActionRegistQuota,
+			RegistQuota: r,
+		})
 		if err != nil {
 			return err
 		}
@@ -414,7 +465,10 @@ func (l *limiterV1) doBorrow(r *APIBorrowReq, commit bool) (*APIBorrowResp, erro
 
 	// commit changes
 	if g.Config.Raft.Enable && commit {
-		cmd, err := json.Marshal(r)
+		cmd, err := json.Marshal(&Request{
+			Action: ActionBorrow,
+			Borrow: r,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -467,7 +521,10 @@ func (l *limiterV1) doReturn(r *APIReturnReq, commit bool) error {
 
 	// commit changes
 	if g.Config.Raft.Enable && commit {
-		cmd, err := json.Marshal(r)
+		cmd, err := json.Marshal(&Request{
+			Action: ActionReturn,
+			Return: r,
+		})
 		if err != nil {
 			return err
 		}
@@ -486,7 +543,7 @@ func (l *limiterV1) doReturn(r *APIReturnReq, commit bool) error {
 	return nil
 }
 
-func (l *limiterV1) doReturnAll(r *APIDisconnectReq, commit bool) error {
+func (l *limiterV1) doReturnAll(r *APIReturnAllReq, commit bool) error {
 	//if len(r.CID) <= 0 {
 	//	return errors.New("Missing `cId` field value")
 	//}

@@ -1,4 +1,4 @@
-package services
+package tests
 
 import (
 	"crypto/md5"
@@ -11,11 +11,11 @@ import (
 )
 
 var (
-	hostAddr = "127.0.0.1:17250"
+	hostAddr = "127.0.0.1:20000"
 
-	tId   ResourceTypeID
-	cId   ClientID
-	quota = 4
+	tId   []byte
+	cId   []byte
+	quota = uint32(4)
 )
 
 func TestRegist(t *testing.T) {

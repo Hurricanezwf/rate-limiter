@@ -18,7 +18,7 @@ func init() {
 	http.HandleFunc("/v1/registQuota", registQuota)
 	http.HandleFunc("/v1/borrow", borrow)
 	http.HandleFunc("/v1/return", return_)
-	http.HandleFunc("/v1/disconnect", disconnect)
+	http.HandleFunc("/v1/returnAll", returnAll)
 }
 
 // runHttpd 启动HTTP服务
@@ -157,8 +157,8 @@ func return_(w http.ResponseWriter, req *http.Request) {
 	return
 }
 
-// disconnect 释放用户的所有占用的权限
-func disconnect(w http.ResponseWriter, req *http.Request) {
+// returnAll 释放用户的所有占用的权限
+func returnAll(w http.ResponseWriter, req *http.Request) {
 	// TODO
 }
 

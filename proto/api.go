@@ -6,7 +6,7 @@ type Request struct {
 	RegistQuota *APIRegistQuotaReq `json:"registQuota,omitempty"`
 	Borrow      *APIBorrowReq      `json:"borrow,omitempty"`
 	Return      *APIReturnReq      `json:"return,omitempty"`
-	Disconnect  *APIDisconnectReq  `json:"disconnect,omitempty"`
+	ReturnAll   *APIReturnAllReq   `json:"returnAll,omitempty"`
 }
 
 type Response struct {
@@ -47,7 +47,7 @@ type APIReturnReq struct {
 //	Err string `json:"error,omitempty"`
 //}
 
-type APIDisconnectReq struct {
+type APIReturnAllReq struct {
 	ClientID []byte `json:"clientId,omitempty"`
 }
 
