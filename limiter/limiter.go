@@ -83,7 +83,7 @@ func (l *limiterV1) Open() error {
 			// 定时输出谁是Leader
 			if g.Config.Raft.Enable {
 				go func() {
-					ticker := time.NewTicker(time.Minute)
+					ticker := time.NewTicker(time.Duration(g.Config.Raft.ReportInterval) * time.Second)
 					for {
 						select {
 						case <-l.stopC:

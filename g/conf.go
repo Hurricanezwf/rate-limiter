@@ -24,9 +24,10 @@ func DefaultConf() *Conf {
 
 		//
 		Raft: &RaftConf{
-			Enable:     true,
-			TCPMaxPool: 3,
-			Timeout:    10000,
+			Enable:         true,
+			TCPMaxPool:     3,
+			Timeout:        10000,
+			ReportInterval: 60,
 		},
 	}
 }
@@ -51,7 +52,8 @@ type RaftConf struct {
 	ClusterConfJson string `yaml:"ClusterConfJson"`
 	RootDir         string `yaml:"RootDir"`
 	TCPMaxPool      int    `yaml:"TCPMaxPool"`
-	Timeout         int64  `yaml:"Timeout"` // Raft算法commit超时时间，单位毫秒
+	Timeout         int64  `yaml:"Timeout"`        // Raft算法commit超时时间，单位毫秒
+	ReportInterval  int64  `yaml:"ReportInterval"` // 定时报告谁是Leader, 单位秒
 }
 
 // 日志配置

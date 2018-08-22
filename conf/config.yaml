@@ -37,3 +37,6 @@ Raft:
 
   # Raft提交超时时间,单位毫秒
   Timeout: 10000
+
+  # 定时报告谁是Leader的定时器, 单位秒
+  ReportInterval: 60
