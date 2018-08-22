@@ -1,0 +1,90 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "nHpSVEZzlkmfeh3+4uJLf9Fi2no=",
+			"path": "github.com/Hurricanezwf/toolbox/logging",
+			"revision": "6964ea6145b51f869a956f525dfc10121b8f1ec5",
+			"revisionTime": "2018-08-12T09:01:24Z"
+		},
+		{
+			"checksumSHA1": "NVLZtNGs7efhAkz6XEAvzYMXEN4=",
+			"path": "github.com/Hurricanezwf/toolbox/logging/glog",
+			"revision": "6964ea6145b51f869a956f525dfc10121b8f1ec5",
+			"revisionTime": "2018-08-12T09:01:24Z"
+		},
+		{
+			"checksumSHA1": "OnhVaTS1gD9ueswOMd2G7rHt54w=",
+			"path": "github.com/Hurricanezwf/toolbox/utils",
+			"revision": "6964ea6145b51f869a956f525dfc10121b8f1ec5",
+			"revisionTime": "2018-08-12T09:01:24Z"
+		},
+		{
+			"checksumSHA1": "eiRzLoenl7oEVCuoT+Ju/zWBlKg=",
+			"path": "github.com/armon/go-metrics",
+			"revision": "783273d703149aaeb9897cf58613d5af48861c25",
+			"revisionTime": "2018-02-21T18:27:44Z"
+		},
+		{
+			"checksumSHA1": "lNk83SMWEgFZmO/Xgrb/IVKUdlI=",
+			"path": "github.com/astaxie/beego/httplib",
+			"revision": "cab8458c1c4a5a3b4bf5192922be620e6dede15b",
+			"revisionTime": "2017-05-19T13:19:18Z"
+		},
+		{
+			"checksumSHA1": "lbE4q2dpUgue10EEx8eutP36vzo=",
+			"path": "github.com/boltdb/bolt",
+			"revision": "9da31745363232bc1e27dbab3569e77383a51585",
+			"revisionTime": "2017-11-20T01:03:07Z"
+		},
+		{
+			"checksumSHA1": "y+AeKVZoX0gB+DZW4Arzkb3tTVc=",
+			"path": "github.com/hashicorp/go-immutable-radix",
+			"revision": "7f3cd4390caab3250a57f30efdb2a65dd7649ecf",
+			"revisionTime": "2018-01-29T17:09:00Z"
+		},
+		{
+			"checksumSHA1": "TNlVzNR1OaajcNi3CbQ3bGbaLGU=",
+			"path": "github.com/hashicorp/go-msgpack/codec",
+			"revision": "fa3f63826f7c23912c15263591e65d54d080b458",
+			"revisionTime": "2015-05-18T23:42:57Z"
+		},
+		{
+			"checksumSHA1": "8Z637dcPkbR5HdLQQBp/9jTbx9Y=",
+			"path": "github.com/hashicorp/golang-lru/simplelru",
+			"revision": "0fb14efe8c47ae851c0034ed7a448854d3d34cf3",
+			"revisionTime": "2018-02-01T23:52:37Z"
+		},
+		{
+			"checksumSHA1": "JjJtGJi1ywWhVhs/PvTXxe4TeD8=",
+			"path": "github.com/hashicorp/raft",
+			"revision": "6d14f0c70869faabd9e60ba7ed88a6cbbd6a661f",
+			"revisionTime": "2017-10-03T22:09:13Z"
+		},
+		{
+			"checksumSHA1": "Y2PM65le0fGtiD12RaKknBscFys=",
+			"path": "github.com/hashicorp/raft-boltdb",
+			"revision": "6e5ba93211eaf8d9a2ad7e41ffad8c6f160f9fe3",
+			"revisionTime": "2017-10-10T15:18:10Z"
+		},
+		{
+			"checksumSHA1": "944UmmlVGbUMTJhBIKmnPxFKYLU=",
+			"path": "github.com/json-iterator/go",
+			"revision": "002b5ae34214fdc0bad508c2ed6f572fa96dfdda",
+			"revisionTime": "2018-02-05T15:45:42Z"
+		},
+		{
+			"checksumSHA1": "9gwZHdu7sMojYYoGl5Ax6NSFaeU=",
+			"path": "golang.org/x/sys/unix",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "ZSWoOPUNRr5+3dhkLK3C4cZAQPk=",
+			"path": "gopkg.in/yaml.v2",
+			"revision": "5420a8b6744d3b0345ab293f6fcba19c978f1183",
+			"revisionTime": "2018-03-28T19:50:20Z"
+		}
+	],
+	"rootPath": "github.com/Hurricanezwf/rate-limiter"
+}
