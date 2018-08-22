@@ -1,26 +1,41 @@
 package g
 
-import "time"
+import (
+	"os"
+
+	"github.com/Hurricanezwf/toolbox/logging"
+	"github.com/Hurricanezwf/toolbox/logging/glog"
+)
 
 var (
-	// 配置目录
-	ConfDir = "./conf"
+	// 配置路径
+	ConfPath = "./conf/config.yaml"
 
-	// Httpd监听地址
-	HttpdListen = "127.0.0.1:17250"
-
-	// EnableRaft 是否开启Raft
-	EnableRaft = false
-	// RaftServer配置文件
-	RaftClusterConfFile = "raft-cluster.json"
-	// Raft监听地址
-	RaftBind string
-	// LocalID 本地ID
-	LocalID = "NODE-0"
-	// 存放Raft文件的目录，默认"./raft-root"
-	RaftDir = "./raft-root"
-	// Raft的TCP连接池最大数
-	RaftTCPMaxPool = 3
-	// Raft的超时时间
-	RaftTimeout = 10 * time.Second
+	Config *Conf
 )
+
+func init() {
+	var err error
+
+	if Config, err = LoadConfig(ConfPath); err != nil {
+		glog.Fatalf("Load config failed, %v", err)
+	}
+
+	if err := initialize(); err != nil {
+		glog.Fatalf("Initialize failed, %v", err)
+	}
+}
+
+func initialize() error {
+	// 初始化日志
+	if err := logging.Reset(Config.Log.Way, Config.Log.Dir, Config.Log.Verbose); err != nil {
+		return err
+	}
+
+	// 准备必要目录
+	if err := os.MkdirAll(Config.Raft.RootDir, 755); err != nil {
+		return err
+	}
+
+	return nil
+}

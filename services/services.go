@@ -21,10 +21,10 @@ func Run() (err error) {
 	glog.Info("Open limiter OK.")
 
 	//
-	if err := runHttpd(g.HttpdListen); err != nil {
-		return fmt.Errorf("Run HTTP Server on %s failed, %v", g.HttpdListen, err)
+	if err := runHttpd(g.Config.Httpd.Listen); err != nil {
+		return fmt.Errorf("Run HTTP Server on %s failed, %v", g.Config.Httpd.Listen, err)
 	}
-	glog.Infof("Run HTTP Service OK, listen at %s.", g.HttpdListen)
+	glog.Infof("Run HTTP Service OK, listen at %s.", g.Config.Httpd.Listen)
 
 	return nil
 }

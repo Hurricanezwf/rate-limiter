@@ -61,41 +61,49 @@ type limiterV1 struct {
 
 func (l *limiterV1) Open() error {
 	// ---------------- Raft集群初始化 ----------------- //
-	if g.EnableRaft {
+	if g.Config.Raft.Enable {
+		var (
+			bind            = g.Config.Raft.Bind
+			localID         = g.Config.Raft.LocalID
+			clusterConfJson = g.Config.Raft.ClusterConfJson
+			rootDir         = g.Config.Raft.RootDir
+			tcpMaxPool      = g.Config.Raft.TCPMaxPool
+			timeout         = time.Duration(g.Config.Raft.Timeout) * time.Millisecond
+		)
+
 		// 加载集群配置
-		confJson := filepath.Join(g.ConfDir, g.RaftClusterConfFile)
-		clusterConf, err := raftlib.ReadConfigJSON(confJson)
+		clusterConf, err := raftlib.ReadConfigJSON(clusterConfJson)
 		if err != nil {
 			return fmt.Errorf("Load raft servers' config failed, %v", err)
 		}
 
 		raftConf := raftlib.DefaultConfig()
-		raftConf.LocalID = raftlib.ServerID(g.LocalID)
+		raftConf.LocalID = raftlib.ServerID(localID)
 
 		// 创建Raft网络传输
-		addr, err := net.ResolveTCPAddr("tcp", g.RaftBind)
+		addr, err := net.ResolveTCPAddr("tcp", bind)
 		if err != nil {
 			return err
 		}
 		transport, err := raftlib.NewTCPTransport(
-			g.RaftBind,       // bindAddr
-			addr,             // advertise
-			g.RaftTCPMaxPool, // maxPool
-			g.RaftTimeout,    // timeout
-			os.Stderr,        // logOutput
+			bind,       // bindAddr
+			addr,       // advertise
+			tcpMaxPool, // maxPool
+			timeout,    // timeout
+			os.Stderr,  // logOutput
 		)
 		if err != nil {
 			return fmt.Errorf("Create tcp transport failed, %v", err)
 		}
 
 		// 创建持久化Log Entry存储引擎
-		boltDB, err := raftboltdb.NewBoltStore(filepath.Join(g.RaftDir, "raft.db"))
+		boltDB, err := raftboltdb.NewBoltStore(filepath.Join(rootDir, "raft.db"))
 		if err != nil {
 			return fmt.Errorf("Create log store failed, %v", err)
 		}
 
 		// 创建持久化快照存储引擎
-		snapshotStore, err := raftlib.NewFileSnapshotStore(g.RaftDir, 3, os.Stderr)
+		snapshotStore, err := raftlib.NewFileSnapshotStore(rootDir, 3, os.Stderr)
 		if err != nil {
 			return fmt.Errorf("Create file snapshot store failed, %v", err)
 		}
@@ -142,7 +150,7 @@ func (l *limiterV1) Open() error {
 }
 
 func (l *limiterV1) IsLeader() bool {
-	if g.EnableRaft == false {
+	if g.Config.Raft.Enable == false {
 		return true
 	}
 	return l.raft.State() == raftlib.Leader
@@ -204,18 +212,18 @@ func (l *limiterV1) Snapshot() (raftlib.FSMSnapshot, error) {
 	buf.Write(ts)
 	buf.Write(b)
 
-	_ = ts
-	_ = b
+	//_ = ts
+	//_ = b
 
-	f, err := os.OpenFile("./snapshot.limiter", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		panic(err.Error())
-	}
-	defer f.Close()
+	//f, err := os.OpenFile("./snapshot.limiter", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	//if err != nil {
+	//	panic(err.Error())
+	//}
+	//defer f.Close()
 
-	if _, err = f.Write(buf.Bytes()); err != nil {
-		panic(err.Error())
-	}
+	//if _, err = f.Write(buf.Bytes()); err != nil {
+	//	panic(err.Error())
+	//}
 
 	//glog.V(2).Infof("%#v", buf.Bytes())
 
@@ -352,13 +360,13 @@ func (l *limiterV1) doRegistQuota(r *APIRegistQuotaReq, commit bool) error {
 	}
 
 	// commit changes
-	if g.EnableRaft && commit {
+	if g.Config.Raft.Enable && commit {
 		cmd, err := json.Marshal(r)
 		if err != nil {
 			return err
 		}
 
-		future := l.raft.Apply(cmd, g.RaftTimeout)
+		future := l.raft.Apply(cmd, time.Duration(g.Config.Raft.Timeout)*time.Millisecond)
 		if err = future.Error(); err != nil {
 			return fmt.Errorf("Raft apply error, %v", err)
 		}
@@ -405,13 +413,13 @@ func (l *limiterV1) doBorrow(r *APIBorrowReq, commit bool) (*APIBorrowResp, erro
 	}
 
 	// commit changes
-	if g.EnableRaft && commit {
+	if g.Config.Raft.Enable && commit {
 		cmd, err := json.Marshal(r)
 		if err != nil {
 			return nil, err
 		}
 
-		future := l.raft.Apply(cmd, g.RaftTimeout)
+		future := l.raft.Apply(cmd, time.Duration(g.Config.Raft.Timeout)*time.Millisecond)
 		if err = future.Error(); err != nil {
 			return nil, fmt.Errorf("Raft apply error, %v", err)
 		}
@@ -458,13 +466,13 @@ func (l *limiterV1) doReturn(r *APIReturnReq, commit bool) error {
 	}
 
 	// commit changes
-	if g.EnableRaft && commit {
+	if g.Config.Raft.Enable && commit {
 		cmd, err := json.Marshal(r)
 		if err != nil {
 			return err
 		}
 
-		future := l.raft.Apply(cmd, g.RaftTimeout)
+		future := l.raft.Apply(cmd, time.Duration(g.Config.Raft.Timeout)*time.Millisecond)
 		if err = future.Error(); err != nil {
 			return fmt.Errorf("Raft apply error, %v", err)
 		}

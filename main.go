@@ -19,6 +19,8 @@ func main() {
 		glog.Fatalf(err.Error())
 	}
 
+	ShowVersion()
+
 	if err := services.Run(); err != nil {
 		glog.Fatalf(err.Error())
 	}
@@ -28,4 +30,20 @@ func main() {
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	s := <-sig
 	glog.Warningf("Receive %s, so exit", s)
+}
+
+// 编译信息
+var (
+	CompileTime string
+	GoVersion   string
+	Branch      string
+	Commit      string
+)
+
+func ShowVersion() {
+	glog.Infof("CompileTime : %s", CompileTime)
+	glog.Infof("GoVersion   : %s", GoVersion)
+	glog.Infof("Branch      : %s", Branch)
+	glog.Infof("Commit      : %s", Commit)
+	glog.Info()
 }
