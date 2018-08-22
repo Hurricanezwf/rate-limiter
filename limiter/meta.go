@@ -188,6 +188,7 @@ func (m *limiterMetaV1) Recycle() {
 	defer m.mutex.Unlock()
 
 	// 回收过期资源
+	clientToDel := []string{}
 	nowTs := time.Now().Unix()
 
 	quitC := make(chan struct{})
@@ -215,8 +216,13 @@ func (m *limiterMetaV1) Recycle() {
 
 		// 删除冗余，防止map无限扩张
 		if queue.Len() <= 0 {
-			m.used.Delete(client)
+			clientToDel = append(clientToDel, client)
 		}
+	}
+
+	// 在这里删除是为了避免并发读写map
+	for _, client := range clientToDel {
+		m.used.Delete(client)
 	}
 
 	// 资源重用

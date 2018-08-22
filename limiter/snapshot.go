@@ -1,22 +1,31 @@
 package limiter
 
-import raftlib "github.com/hashicorp/raft"
+import (
+	"io"
+
+	raftlib "github.com/hashicorp/raft"
+)
 
 type LimiterSnapshot struct {
-	data []byte
+	dataToPersist io.Reader
 }
 
-func NewLimiterSnapshot(data []byte) *LimiterSnapshot {
+func NewLimiterSnapshot(dataToPersist io.Reader) *LimiterSnapshot {
 	return &LimiterSnapshot{
-		data: data,
+		dataToPersist: dataToPersist,
 	}
 }
 
 func (s *LimiterSnapshot) Persist(sink raftlib.SnapshotSink) error {
-	// TODO:
-	return nil
+	_, err := io.Copy(sink, s.dataToPersist)
+	if err != nil {
+		sink.Cancel()
+	} else {
+		sink.Close()
+	}
+	return err
 }
 
 func (s *LimiterSnapshot) Release() {
-	// TODO
+	// do nothing
 }

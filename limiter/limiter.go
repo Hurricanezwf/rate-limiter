@@ -278,7 +278,7 @@ func (l *limiterV1) Snapshot() (raftlib.FSMSnapshot, error) {
 
 	glog.V(1).Infof("Create snapshot finished, elapse:%v, totalSize:%d", time.Since(start), buf.Len())
 
-	return NewLimiterSnapshot(buf.Bytes()), nil
+	return NewLimiterSnapshot(buf), nil
 }
 
 // Restore 从快照中恢复LimiterFSM
