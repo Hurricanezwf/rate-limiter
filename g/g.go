@@ -1,6 +1,7 @@
 package g
 
 import (
+	"flag"
 	"os"
 
 	"github.com/Hurricanezwf/toolbox/logging"
@@ -15,6 +16,8 @@ var (
 )
 
 func init() {
+	flag.StringVar(&ConfPath, "c", "./conf/config.yaml", "path of the config")
+
 	var err error
 
 	if Config, err = LoadConfig(ConfPath); err != nil {
@@ -33,8 +36,10 @@ func initialize() error {
 	}
 
 	// 准备必要目录
-	if err := os.MkdirAll(Config.Raft.RootDir, 755); err != nil {
-		return err
+	if Config.Raft.Enable {
+		if err := os.MkdirAll(Config.Raft.RootDir, os.ModePerm); err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -7,7 +7,7 @@ import (
 	"syscall"
 
 	"github.com/Hurricanezwf/rate-limiter/services"
-	"github.com/Hurricanezwf/toolbox/logging"
+	_ "github.com/Hurricanezwf/toolbox/logging"
 	"github.com/Hurricanezwf/toolbox/logging/glog"
 )
 
@@ -15,9 +15,9 @@ func main() {
 	flag.Parse()
 	defer glog.Flush()
 
-	if err := logging.Reset(logging.LogWayConsole, "", 5); err != nil {
-		glog.Fatalf(err.Error())
-	}
+	//if err := logging.Reset(logging.LogWayConsole, "", 5); err != nil {
+	//	glog.Fatalf(err.Error())
+	//}
 
 	ShowVersion()
 

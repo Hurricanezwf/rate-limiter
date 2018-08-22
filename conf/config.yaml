@@ -1,0 +1,26 @@
+# 【Httpd配置】
+Httpd:
+  Listen: 0.0.0.0:20000
+
+
+
+# 【日志配置】
+Log:
+  # 日志冗余度，取值[0,10]
+  Verbose: 5
+  # 日志记录方式，"console" | "file"
+  Way: file
+  # 日志记录到目标目录
+  Dir: ./logs/
+
+
+
+# 【Raft配置】
+Raft:
+  Enable: false
+  ID: NODE-0
+  Bind: 0.0.0.0:17250
+  ClusterConfJson: /home/zwf/zhouwenfeng/GoProj/src/github.com/Hurricanezwf/rate-limiter/conf/raft-cluster.json
+  RootDir: ./raft-meta
+  TCPMaxPool: 3
+  Timeout: 10000
