@@ -12,20 +12,19 @@ import (
 )
 
 func main() {
+	// 解析命令行参数
 	flag.Parse()
 	defer glog.Flush()
 
-	//if err := logging.Reset(logging.LogWayConsole, "", 5); err != nil {
-	//	glog.Fatalf(err.Error())
-	//}
-
+	// 显示版本信息
 	ShowVersion()
 
+	// 启动所有服务
 	if err := services.Run(); err != nil {
 		glog.Fatalf(err.Error())
 	}
 
-	// wait exit
+	// 捕获信号等待终止
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	s := <-sig
