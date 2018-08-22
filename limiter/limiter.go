@@ -36,10 +36,13 @@ type Limiter interface {
 	Open() error
 
 	//
-	Do(r *Request, commit bool) *Response
+	Do(r *Request) *Response
 
 	//
 	raftlib.FSM
+
+	//
+	IsLeader() bool
 }
 
 // limiterV1 is an implement of Limiter interface
@@ -216,9 +219,7 @@ func (l *limiterV1) Apply(log *raftlib.Log) interface{} {
 			}
 
 			// 尝试执行命令
-			if rp := l.Do(&r, false); rp.Err != nil {
-				return fmt.Errorf("Try apply command failed, %v", rp.Err)
-			}
+			return l.switchDo(&r)
 		}
 	default:
 		return fmt.Errorf("Unknown LogType(%v)", log.Type)
@@ -358,17 +359,35 @@ func (l *limiterV1) Restore(rc io.ReadCloser) error {
 }
 
 // Do 执行请求
-func (l *limiterV1) Do(r *Request, commit bool) (rp *Response) {
-	rp = &Response{}
+func (l *limiterV1) Do(r *Request) (rp *Response) {
+	if g.Config.Raft.Enable == false {
+		return l.switchDo(r)
+	}
+
+	cmd, err := json.Marshal(r)
+	if err != nil {
+		return &Response{Err: err}
+	}
+
+	future := l.raft.Apply(cmd, time.Duration(g.Config.Raft.Timeout)*time.Millisecond)
+	if err = future.Error(); err != nil {
+		return &Response{Err: fmt.Errorf("Raft apply error, %v", err)}
+	}
+
+	return future.Response().(*Response)
+}
+
+func (l *limiterV1) switchDo(r *Request) (rp *Response) {
+	rp = &Response{Action: r.Action}
 	switch r.Action {
 	case ActionRegistQuota:
-		rp.Err = l.doRegistQuota(r.RegistQuota, commit)
+		rp.Err = l.doRegistQuota(r.RegistQuota)
 	case ActionBorrow:
-		rp.Borrow, rp.Err = l.doBorrow(r.Borrow, commit)
+		rp.Borrow, rp.Err = l.doBorrow(r.Borrow)
 	case ActionReturn:
-		rp.Err = l.doReturn(r.Return, commit)
+		rp.Err = l.doReturn(r.Return)
 	case ActionReturnAll:
-		rp.Err = l.doReturnAll(r.ReturnAll, commit)
+		rp.Err = l.doReturnAll(r.ReturnAll)
 	default:
 		rp.Err = fmt.Errorf("Action handler not found for %#v", r.Action)
 	}
@@ -377,23 +396,17 @@ func (l *limiterV1) Do(r *Request, commit bool) (rp *Response) {
 		glog.Warningf("Limiter: %v", rp.Err)
 	}
 
-	rp.Action = r.Action
 	return rp
 }
 
 // doRegistQuota 注册资源配额
-func (l *limiterV1) doRegistQuota(r *APIRegistQuotaReq, commit bool) error {
+func (l *limiterV1) doRegistQuota(r *APIRegistQuotaReq) error {
 	// check required
 	if len(r.RCTypeID) <= 0 {
 		return errors.New("Missing `rcTypeId` field value")
 	}
 	if r.Quota <= 0 {
 		return errors.New("Invalid `quota` value")
-	}
-
-	// check leader
-	if l.IsLeader() == false {
-		return ErrNotLeader
 	}
 
 	// try regist
@@ -407,32 +420,13 @@ func (l *limiterV1) doRegistQuota(r *APIRegistQuotaReq, commit bool) error {
 		l.meta.Set(rcTypeIdHex, NewLimiterMeta(r.RCTypeID, r.Quota))
 	}
 
-	// commit changes
-	if g.Config.Raft.Enable && commit {
-		cmd, err := json.Marshal(&Request{
-			Action:      ActionRegistQuota,
-			RegistQuota: r,
-		})
-		if err != nil {
-			return err
-		}
-
-		future := l.raft.Apply(cmd, time.Duration(g.Config.Raft.Timeout)*time.Millisecond)
-		if err = future.Error(); err != nil {
-			return fmt.Errorf("Raft apply error, %v", err)
-		}
-		if rp := future.Response(); rp != nil {
-			return fmt.Errorf("Raft apply response error, %v", rp)
-		}
-	}
-
 	glog.V(1).Infof("Regist quota for rcType '%s' OK, total:%d", rcTypeIdHex, r.Quota)
 
 	return nil
 }
 
 // doBorrow 借一个资源返回
-func (l *limiterV1) doBorrow(r *APIBorrowReq, commit bool) (*APIBorrowResp, error) {
+func (l *limiterV1) doBorrow(r *APIBorrowReq) (*APIBorrowResp, error) {
 	// check required
 	if len(r.RCTypeID) <= 0 {
 		return nil, errors.New("Missing `rcTypeId` field value")
@@ -442,11 +436,6 @@ func (l *limiterV1) doBorrow(r *APIBorrowReq, commit bool) (*APIBorrowResp, erro
 	}
 	if r.Expire <= 0 {
 		return nil, errors.New("Missing `expire` field value")
-	}
-
-	// check leader
-	if l.IsLeader() == false {
-		return nil, ErrNotLeader
 	}
 
 	// try borrow
@@ -463,42 +452,16 @@ func (l *limiterV1) doBorrow(r *APIBorrowReq, commit bool) (*APIBorrowResp, erro
 		return nil, err
 	}
 
-	// commit changes
-	if g.Config.Raft.Enable && commit {
-		cmd, err := json.Marshal(&Request{
-			Action: ActionBorrow,
-			Borrow: r,
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		future := l.raft.Apply(cmd, time.Duration(g.Config.Raft.Timeout)*time.Millisecond)
-		if err = future.Error(); err != nil {
-			return nil, fmt.Errorf("Raft apply error, %v", err)
-		}
-		if frp := future.Response(); frp != nil {
-			return nil, fmt.Errorf("Raft apply response error, %v", frp)
-		}
-	}
-
-	//glog.V(1).Infof("Client[%s] borrow '%s' for %d seconds OK", r.CID.String(), rcId, r.Expire)
-
 	return &APIBorrowResp{RCID: rcId}, nil
 }
 
-func (l *limiterV1) doReturn(r *APIReturnReq, commit bool) error {
+func (l *limiterV1) doReturn(r *APIReturnReq) error {
 	// check required
 	if len(r.RCID) <= 0 {
 		return errors.New("Missing `rcId` field value")
 	}
 	if len(r.ClientID) <= 0 {
 		return errors.New("Missing `clientId` field value")
-	}
-
-	// check leader
-	if l.IsLeader() == false {
-		return ErrNotLeader
 	}
 
 	// try return
@@ -519,31 +482,10 @@ func (l *limiterV1) doReturn(r *APIReturnReq, commit bool) error {
 		return err
 	}
 
-	// commit changes
-	if g.Config.Raft.Enable && commit {
-		cmd, err := json.Marshal(&Request{
-			Action: ActionReturn,
-			Return: r,
-		})
-		if err != nil {
-			return err
-		}
-
-		future := l.raft.Apply(cmd, time.Duration(g.Config.Raft.Timeout)*time.Millisecond)
-		if err = future.Error(); err != nil {
-			return fmt.Errorf("Raft apply error, %v", err)
-		}
-		if frp := future.Response(); frp != nil {
-			return fmt.Errorf("Raft apply response error, %v", frp)
-		}
-	}
-
-	//glog.V(1).Infof("Client[%s] return '%s' OK", r.CID.String(), r.RCID)
-
 	return nil
 }
 
-func (l *limiterV1) doReturnAll(r *APIReturnAllReq, commit bool) error {
+func (l *limiterV1) doReturnAll(r *APIReturnAllReq) error {
 	//if len(r.CID) <= 0 {
 	//	return errors.New("Missing `cId` field value")
 	//}

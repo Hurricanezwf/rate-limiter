@@ -46,6 +46,13 @@ func registQuota(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// check leader
+	if l.IsLeader() == false {
+		w.WriteHeader(403)
+		w.Write(ErrMsg(ErrNotLeader.Error()))
+		return
+	}
+
 	// 读取body
 	b, err := ioutil.ReadAll(req.Body)
 	defer req.Body.Close()
@@ -68,7 +75,7 @@ func registQuota(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// 尝试获取资格
-	if rp := l.Do(&r, true); rp.Err != nil {
+	if rp := l.Do(&r); rp.Err != nil {
 		w.WriteHeader(403)
 		w.Write(ErrMsg(rp.Err.Error()))
 	} else {
@@ -82,6 +89,13 @@ func borrow(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		w.WriteHeader(405)
 		w.Write(ErrMsg("Method `POST` is needed"))
+		return
+	}
+
+	// check leader
+	if l.IsLeader() == false {
+		w.WriteHeader(403)
+		w.Write(ErrMsg(ErrNotLeader.Error()))
 		return
 	}
 
@@ -107,7 +121,7 @@ func borrow(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// 尝试获取资格
-	if rp := l.Do(&r, true); rp.Err != nil {
+	if rp := l.Do(&r); rp.Err != nil {
 		w.WriteHeader(403)
 		w.Write(ErrMsg(rp.Err.Error()))
 	} else {
@@ -123,6 +137,13 @@ func return_(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		w.WriteHeader(405)
 		w.Write(ErrMsg("Method `POST` is needed"))
+		return
+	}
+
+	// check leader
+	if l.IsLeader() == false {
+		w.WriteHeader(403)
+		w.Write(ErrMsg(ErrNotLeader.Error()))
 		return
 	}
 
@@ -148,7 +169,7 @@ func return_(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// 尝试获取资格
-	if rp := l.Do(&r, true); rp.Err != nil {
+	if rp := l.Do(&r); rp.Err != nil {
 		w.WriteHeader(403)
 		w.Write(ErrMsg(rp.Err.Error()))
 	} else {
@@ -160,10 +181,24 @@ func return_(w http.ResponseWriter, req *http.Request) {
 // returnAll 释放用户的所有占用的权限
 func returnAll(w http.ResponseWriter, req *http.Request) {
 	// TODO
+	// check leader
+	if l.IsLeader() == false {
+		w.WriteHeader(403)
+		w.Write(ErrMsg(ErrNotLeader.Error()))
+		return
+	}
+
 }
 
 // snapshot 对元数据做快照
 func snapshot(w http.ResponseWriter, req *http.Request) {
+	// check leader
+	if l.IsLeader() == false {
+		w.WriteHeader(403)
+		w.Write(ErrMsg(ErrNotLeader.Error()))
+		return
+	}
+
 	_, err := l.Snapshot()
 	if err != nil {
 		w.WriteHeader(500)
@@ -177,6 +212,13 @@ func snapshot(w http.ResponseWriter, req *http.Request) {
 
 // restore 从元数据恢复数据
 func restore(w http.ResponseWriter, req *http.Request) {
+	// check leader
+	if l.IsLeader() == false {
+		w.WriteHeader(403)
+		w.Write(ErrMsg(ErrNotLeader.Error()))
+		return
+	}
+
 	f, err := os.Open("./snapshot.limiter")
 	if err != nil {
 		w.WriteHeader(500)
