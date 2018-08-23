@@ -10,6 +10,7 @@ import (
 	"time"
 
 	. "github.com/Hurricanezwf/rate-limiter/proto"
+	"github.com/Hurricanezwf/toolbox/logging/glog"
 )
 
 func init() {
@@ -19,7 +20,6 @@ func init() {
 	http.HandleFunc("/v1/borrow", borrow)
 	http.HandleFunc("/v1/return", return_)
 	http.HandleFunc("/v1/returnAll", returnAll)
-	http.HandleFunc("/v1/service/regist", registService)
 }
 
 // runHttpd 启动HTTP服务
@@ -41,6 +41,9 @@ func runHttpd(addr string) error {
 
 // registQuota 注册资源配额
 func registQuota(w http.ResponseWriter, req *http.Request) {
+	start := time.Now()
+	defer glog.Infof("%s [/v1/registQuota] -- %v", req.Method, time.Since(start))
+
 	if req.Method != http.MethodPost {
 		w.WriteHeader(405)
 		w.Write(ErrMsg("Method `POST` is needed"))
@@ -49,8 +52,15 @@ func registQuota(w http.ResponseWriter, req *http.Request) {
 
 	// check leader
 	if l.IsLeader() == false {
-		w.WriteHeader(403)
-		w.Write(ErrMsg(ErrNotLeader.Error()))
+		addr := l.LeaderHTTPAddr()
+		if len(addr) <= 0 {
+			w.WriteHeader(503)
+			w.Write(ErrMsg(ErrLeaderNotFound.Error()))
+			return
+		}
+		req.URL.Host = addr
+		w.Header().Set("Location", req.URL.String())
+		w.WriteHeader(307)
 		return
 	}
 
@@ -87,6 +97,9 @@ func registQuota(w http.ResponseWriter, req *http.Request) {
 
 // borrow 获取一次执行权限
 func borrow(w http.ResponseWriter, req *http.Request) {
+	start := time.Now()
+	defer glog.Infof("%s [/v1/borrow] -- %v", req.Method, time.Since(start))
+
 	if req.Method != http.MethodPost {
 		w.WriteHeader(405)
 		w.Write(ErrMsg("Method `POST` is needed"))
@@ -95,8 +108,15 @@ func borrow(w http.ResponseWriter, req *http.Request) {
 
 	// check leader
 	if l.IsLeader() == false {
-		w.WriteHeader(403)
-		w.Write(ErrMsg(ErrNotLeader.Error()))
+		addr := l.LeaderHTTPAddr()
+		if len(addr) <= 0 {
+			w.WriteHeader(503)
+			w.Write(ErrMsg(ErrLeaderNotFound.Error()))
+			return
+		}
+		req.URL.Host = addr
+		w.Header().Set("Location", req.URL.String())
+		w.WriteHeader(307)
 		return
 	}
 
@@ -135,6 +155,9 @@ func borrow(w http.ResponseWriter, req *http.Request) {
 
 // return_ 释放一次执行权限
 func return_(w http.ResponseWriter, req *http.Request) {
+	start := time.Now()
+	defer glog.Infof("%s [/v1/return] -- %v", req.Method, time.Since(start))
+
 	if req.Method != http.MethodPost {
 		w.WriteHeader(405)
 		w.Write(ErrMsg("Method `POST` is needed"))
@@ -143,8 +166,15 @@ func return_(w http.ResponseWriter, req *http.Request) {
 
 	// check leader
 	if l.IsLeader() == false {
-		w.WriteHeader(403)
-		w.Write(ErrMsg(ErrNotLeader.Error()))
+		addr := l.LeaderHTTPAddr()
+		if len(addr) <= 0 {
+			w.WriteHeader(503)
+			w.Write(ErrMsg(ErrLeaderNotFound.Error()))
+			return
+		}
+		req.URL.Host = addr
+		w.Header().Set("Location", req.URL.String())
+		w.WriteHeader(307)
 		return
 	}
 
@@ -181,6 +211,9 @@ func return_(w http.ResponseWriter, req *http.Request) {
 
 // returnAll 释放用户的所有占用的权限
 func returnAll(w http.ResponseWriter, req *http.Request) {
+	start := time.Now()
+	defer glog.Infof("%s [/v1/returnAll] -- %v", req.Method, time.Since(start))
+
 	if req.Method != http.MethodPost {
 		w.WriteHeader(405)
 		w.Write(ErrMsg("Method `POST` is needed"))
@@ -189,8 +222,15 @@ func returnAll(w http.ResponseWriter, req *http.Request) {
 
 	// check leader
 	if l.IsLeader() == false {
-		w.WriteHeader(403)
-		w.Write(ErrMsg(ErrNotLeader.Error()))
+		addr := l.LeaderHTTPAddr()
+		if len(addr) <= 0 {
+			w.WriteHeader(503)
+			w.Write(ErrMsg(ErrLeaderNotFound.Error()))
+			return
+		}
+		req.URL.Host = addr
+		w.Header().Set("Location", req.URL.String())
+		w.WriteHeader(307)
 		return
 	}
 
@@ -227,10 +267,20 @@ func returnAll(w http.ResponseWriter, req *http.Request) {
 
 // snapshot 对元数据做快照
 func snapshot(w http.ResponseWriter, req *http.Request) {
+	start := time.Now()
+	defer glog.Infof("%s [/v1/snapshot] -- %v", req.Method, time.Since(start))
+
 	// check leader
 	if l.IsLeader() == false {
-		w.WriteHeader(403)
-		w.Write(ErrMsg(ErrNotLeader.Error()))
+		addr := l.LeaderHTTPAddr()
+		if len(addr) <= 0 {
+			w.WriteHeader(503)
+			w.Write(ErrMsg(ErrLeaderNotFound.Error()))
+			return
+		}
+		req.URL.Host = addr
+		w.Header().Set("Location", req.URL.String())
+		w.WriteHeader(307)
 		return
 	}
 
@@ -247,10 +297,20 @@ func snapshot(w http.ResponseWriter, req *http.Request) {
 
 // restore 从元数据恢复数据
 func restore(w http.ResponseWriter, req *http.Request) {
+	start := time.Now()
+	defer glog.Infof("%s [/v1/restore] -- %v", req.Method, time.Since(start))
+
 	// check leader
 	if l.IsLeader() == false {
-		w.WriteHeader(403)
-		w.Write(ErrMsg(ErrNotLeader.Error()))
+		addr := l.LeaderHTTPAddr()
+		if len(addr) <= 0 {
+			w.WriteHeader(503)
+			w.Write(ErrMsg(ErrLeaderNotFound.Error()))
+			return
+		}
+		req.URL.Host = addr
+		w.Header().Set("Location", req.URL.String())
+		w.WriteHeader(307)
 		return
 	}
 
@@ -268,47 +328,6 @@ func restore(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(200)
 		w.Write([]byte("Restore OK"))
 	}
-	return
-}
-
-// registService 注册服务(internal use only)
-func registService(w http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodPost {
-		w.WriteHeader(405)
-		w.Write(ErrMsg("Method `POST` is needed"))
-		return
-	}
-
-	// check leader
-	if l.IsLeader() == false {
-		w.WriteHeader(403)
-		w.Write(ErrMsg(ErrNotLeader.Error()))
-		return
-	}
-
-	// 读取body
-	b, err := ioutil.ReadAll(req.Body)
-	defer req.Body.Close()
-
-	if err != nil {
-		w.WriteHeader(500)
-		w.Write(ErrMsg(err.Error()))
-		return
-	}
-
-	// 解析参数
-	var r Request
-	if err := json.Unmarshal(b, &r); err != nil {
-		w.WriteHeader(500)
-		w.Write(ErrMsg(err.Error()))
-		return
-	}
-
-	// 这里需要异步注册, 因为不能嵌套提交
-	go l.Do(&r)
-
-	w.WriteHeader(200)
-
 	return
 }
 

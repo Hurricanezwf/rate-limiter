@@ -9,7 +9,7 @@ import (
 )
 
 // Rate limiter实例
-var l limiter.Limiter = limiter.New()
+var l = limiter.New()
 
 func Run() (err error) {
 	glog.Infof("Be starting, wait a while...")

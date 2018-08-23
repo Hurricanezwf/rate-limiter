@@ -43,6 +43,9 @@ type Limiter interface {
 
 	//
 	IsLeader() bool
+
+	//
+	LeaderHTTPAddr() string
 }
 
 // limiterV1 is an implement of Limiter interface
