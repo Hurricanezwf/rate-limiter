@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	hostAddr = "127.0.0.1:20001"
+	hostAddr = "127.0.0.1:20000"
 
 	tId   []byte
 	cId   []byte
@@ -26,18 +26,15 @@ func TestRegist(t *testing.T) {
 	tId = tIdMd5[:]
 	cId = cIdMd5[:]
 
+	url := fmt.Sprintf("http://%s/v1/registQuota", hostAddr)
+	buf := bytes.NewBuffer(nil)
+
+	json.NewEncoder(buf).Encode(APIRegistQuotaReq{
+		RCTypeID: tId,
+		Quota:    10,
+	})
+
 	for {
-		url := fmt.Sprintf("http://%s/v1/registQuota", hostAddr)
-
-		b, err := json.Marshal(APIRegistQuotaReq{
-			RCTypeID: tId,
-			Quota:    10,
-		})
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-
-		buf := bytes.NewBuffer(b)
 		rp, err := http.Post(url, "application/json", buf)
 		if err != nil {
 			t.Fatal(err.Error())
@@ -63,19 +60,16 @@ func TestBorrow(t *testing.T) {
 	tId = tIdMd5[:]
 	cId = cIdMd5[:]
 
+	url := fmt.Sprintf("http://%s/v1/borrow", hostAddr)
+	buf := bytes.NewBuffer(nil)
+
+	json.NewEncoder(buf).Encode(APIBorrowReq{
+		RCTypeID: tId,
+		ClientID: cId,
+		Expire:   1000,
+	})
+
 	for {
-		url := fmt.Sprintf("http://%s/v1/borrow", hostAddr)
-
-		b, err := json.Marshal(APIBorrowReq{
-			RCTypeID: tId,
-			ClientID: cId,
-			Expire:   1000,
-		})
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-
-		buf := bytes.NewBuffer(b)
 		rp, err := http.Post(url, "application/json", buf)
 		if err != nil {
 			t.Fatal(err.Error())
@@ -101,18 +95,15 @@ func TestReturnOne(t *testing.T) {
 	tId = tIdMd5[:]
 	cId = cIdMd5[:]
 
+	url := fmt.Sprintf("http://%s/v1/return", hostAddr)
+	buf := bytes.NewBuffer(nil)
+
+	json.NewEncoder(buf).Encode(APIReturnReq{
+		RCID:     "462ec3705249fd4358a1bcd02ce5e43f_rc#0",
+		ClientID: cId,
+	})
+
 	for {
-		url := fmt.Sprintf("http://%s/v1/return", hostAddr)
-
-		b, err := json.Marshal(APIReturnReq{
-			RCID:     "462ec3705249fd4358a1bcd02ce5e43f_rc#0",
-			ClientID: cId,
-		})
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-
-		buf := bytes.NewBuffer(b)
 		rp, err := http.Post(url, "application/json", buf)
 		if err != nil {
 			t.Fatal(err.Error())
@@ -136,17 +127,14 @@ func TestReturnAll(t *testing.T) {
 	cIdMd5 := md5.Sum([]byte("zwf"))
 	cId = cIdMd5[:]
 
+	url := fmt.Sprintf("http://%s/v1/returnAll", hostAddr)
+	buf := bytes.NewBuffer(nil)
+
+	json.NewEncoder(buf).Encode(APIReturnAllReq{
+		ClientID: cId,
+	})
+
 	for {
-		url := fmt.Sprintf("http://%s/v1/returnAll", hostAddr)
-
-		b, err := json.Marshal(APIReturnAllReq{
-			ClientID: cId,
-		})
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-
-		buf := bytes.NewBuffer(b)
 		rp, err := http.Post(url, "application/json", buf)
 		if err != nil {
 			t.Fatal(err.Error())
@@ -171,14 +159,15 @@ func TestSnapshot(t *testing.T) {
 	TestBorrow(t)
 	TestBorrow(t)
 
-	for {
-		url := fmt.Sprintf("http://%s/v1/snapshot", hostAddr)
+	url := fmt.Sprintf("http://%s/v1/snapshot", hostAddr)
+	buf := bytes.NewBuffer(nil)
 
+	for {
 		rp, err := http.Get(url)
 		if err != nil {
 			t.Fatal(err.Error())
 		}
-		buf := bytes.NewBuffer(nil)
+		buf.Reset()
 		buf.ReadFrom(rp.Body)
 		rp.Body.Close()
 
@@ -194,14 +183,15 @@ func TestSnapshot(t *testing.T) {
 }
 
 func TestRestore(t *testing.T) {
-	for {
-		url := fmt.Sprintf("http://%s/v1/restore", hostAddr)
+	url := fmt.Sprintf("http://%s/v1/restore", hostAddr)
+	buf := bytes.NewBuffer(nil)
 
+	for {
 		rp, err := http.Get(url)
 		if err != nil {
 			t.Fatal(err.Error())
 		}
-		buf := bytes.NewBuffer(nil)
+		buf.Reset()
 		buf.ReadFrom(rp.Body)
 		rp.Body.Close()
 

@@ -32,19 +32,19 @@ func New() Limiter {
 
 // Limiter is an abstract of rate limiter
 type Limiter interface {
-	//
+	// Open initialize limiter with raft
 	Open() error
 
-	//
+	// Do handle request
 	Do(r *Request) *Response
 
-	//
+	// Raft's FSM
 	raftlib.FSM
 
-	//
+	// IsLeader check if current node is raft leader
 	IsLeader() bool
 
-	//
+	// LeaderHTTPAddr return current leader's http listen
 	LeaderHTTPAddr() string
 }
 
@@ -148,8 +148,7 @@ func (l *limiterV1) initRaftCluster() error {
 		addr,       // advertise
 		tcpMaxPool, // maxPool
 		timeout,    // timeout
-		nil,
-		//os.Stderr,  // logOutput
+		os.Stderr,  // logOutput
 	)
 	if err != nil {
 		return fmt.Errorf("Create tcp transport failed, %v", err)
@@ -162,8 +161,7 @@ func (l *limiterV1) initRaftCluster() error {
 	}
 
 	// 创建持久化快照存储引擎
-	//snapshotStore, err := raftlib.NewFileSnapshotStore(rootDir, 3, os.Stderr)
-	snapshotStore, err := raftlib.NewFileSnapshotStore(rootDir, 3, nil)
+	snapshotStore, err := raftlib.NewFileSnapshotStore(rootDir, 3, os.Stderr)
 	if err != nil {
 		return fmt.Errorf("Create file snapshot store failed, %v", err)
 	}
@@ -313,21 +311,6 @@ func (l *limiterV1) Snapshot() (raftlib.FSMSnapshot, error) {
 	buf.WriteByte(ProtocolVersion)
 	buf.Write(ts)
 	buf.Write(b)
-
-	//_ = ts
-	//_ = b
-
-	//f, err := os.OpenFile("./snapshot.limiter", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
-	//if err != nil {
-	//	panic(err.Error())
-	//}
-	//defer f.Close()
-
-	//if _, err = f.Write(buf.Bytes()); err != nil {
-	//	panic(err.Error())
-	//}
-
-	//glog.V(2).Infof("%#v", buf.Bytes())
 
 	glog.V(1).Infof("Create snapshot finished, elapse:%v, totalSize:%d", time.Since(start), buf.Len())
 
@@ -588,7 +571,6 @@ func (l *limiterV1) doLeaderNotify(r *CMDLeaderNotify) error {
 }
 
 func (l *limiterV1) recycle() {
-	// map内容没有被修改，所以这里是读锁
 	l.mutex.RLock()
 	defer l.mutex.RUnlock()
 
