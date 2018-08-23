@@ -1,12 +1,14 @@
 package proto
 
 type Request struct {
-	Action byte `json:"action,omitempty"`
+	Action byte `json:"action"`
 
-	RegistQuota *APIRegistQuotaReq `json:"registQuota,omitempty"`
-	Borrow      *APIBorrowReq      `json:"borrow,omitempty"`
-	Return      *APIReturnReq      `json:"return,omitempty"`
-	ReturnAll   *APIReturnAllReq   `json:"returnAll,omitempty"`
+	RegistServiceBroadcast *CMDRegistServiceBroadcast `json:"registServiceBroadcast,omitempty"`
+	RegistService          *APIRegistServiceReq       `json:"registService,omitempty"`
+	RegistQuota            *APIRegistQuotaReq         `json:"registQuota,omitempty"`
+	Borrow                 *APIBorrowReq              `json:"borrow,omitempty"`
+	Return                 *APIReturnReq              `json:"return,omitempty"`
+	ReturnAll              *APIReturnAllReq           `json:"returnAll,omitempty"`
 }
 
 type Response struct {
@@ -17,6 +19,19 @@ type Response struct {
 	//RegistQuota *APIRegistQuotaResp `json:"registQuota,omitempty"`
 	//Return      *APIReturnResp      `json:"return,omitempty"`
 	//Disconnect *APIDisconnectResp `json:"disconnect,omitempty"`
+}
+
+// 广播所有结点去注册服务
+type CMDRegistServiceBroadcast struct {
+	Timestamp int64  `json:"timestamp,omitempty"`
+	LeaderUrl string `json:"leaderUrl,omitempty"`
+}
+
+// 服务注册请求格式
+type APIRegistServiceReq struct {
+	Timestamp int64  `json:"timestamp,omitempty"`
+	RaftAddr  string `json:"raftAddr,omitempty"`
+	HttpdAddr string `json:"httpdAddr,omitempty"`
 }
 
 type APIRegistQuotaReq struct {

@@ -27,6 +27,8 @@ func init() {
 	if err := initialize(); err != nil {
 		glog.Fatalf("Initialize failed, %v", err)
 	}
+
+	Config.Debug()
 }
 
 func initialize() error {

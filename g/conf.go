@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/Hurricanezwf/toolbox/logging"
+	"github.com/Hurricanezwf/toolbox/logging/glog"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -24,10 +25,10 @@ func DefaultConf() *Conf {
 
 		//
 		Raft: &RaftConf{
-			Enable:         true,
-			TCPMaxPool:     3,
-			Timeout:        10000,
-			ReportInterval: 60,
+			Enable:              true,
+			TCPMaxPool:          3,
+			Timeout:             10000,
+			LeaderWatchInterval: 60,
 		},
 	}
 }
@@ -39,6 +40,23 @@ type Conf struct {
 	Raft  *RaftConf  `yaml:"Raft"`
 }
 
+func (c *Conf) Debug() {
+	glog.V(1).Infof("-------------------- RATE LIMITER CONFIG ---------------------")
+	glog.V(1).Infof("%-32s : %d", "Log.Verbose", c.Log.Verbose)
+	glog.V(1).Infof("%-32s : %s", "Log.Way", c.Log.Way)
+	glog.V(1).Infof("%-32s : %s", "Log.Dir", c.Log.Dir)
+	glog.V(1).Infof("%-32s : %s", "Httpd.Listen", c.Httpd.Listen)
+	glog.V(1).Infof("%-32s : %t", "Raft.Enable", c.Raft.Enable)
+	glog.V(1).Infof("%-32s : %s", "Raft.LocalID", c.Raft.LocalID)
+	glog.V(1).Infof("%-32s : %s", "Raft.Bind", c.Raft.Bind)
+	glog.V(1).Infof("%-32s : %s", "Raft.ClusterConfJson", c.Raft.ClusterConfJson)
+	glog.V(1).Infof("%-32s : %s", "Raft.RootDir", c.Raft.RootDir)
+	glog.V(1).Infof("%-32s : %d", "Raft.TCP", c.Raft.TCPMaxPool)
+	glog.V(1).Infof("%-32s : %d", "Raft.Timeout", c.Raft.Timeout)
+	glog.V(1).Infof("%-32s : %d", "Raft.LeaderWatchInterval", c.Raft.LeaderWatchInterval)
+	glog.V(1).Infof("--------------------------------------------------------------")
+}
+
 // Httpd配置
 type HttpdConf struct {
 	Listen string `yaml:"Listen"`
@@ -46,14 +64,14 @@ type HttpdConf struct {
 
 // Raft算法配置
 type RaftConf struct {
-	Enable          bool   `yaml:"Enable"`
-	LocalID         string `yaml:"ID"`
-	Bind            string `yaml:"Bind"`
-	ClusterConfJson string `yaml:"ClusterConfJson"`
-	RootDir         string `yaml:"RootDir"`
-	TCPMaxPool      int    `yaml:"TCPMaxPool"`
-	Timeout         int64  `yaml:"Timeout"`        // Raft算法commit超时时间，单位毫秒
-	ReportInterval  int64  `yaml:"ReportInterval"` // 定时报告谁是Leader, 单位秒
+	Enable              bool   `yaml:"Enable"`
+	LocalID             string `yaml:"ID"`
+	Bind                string `yaml:"Bind"`
+	ClusterConfJson     string `yaml:"ClusterConfJson"`
+	RootDir             string `yaml:"RootDir"`
+	TCPMaxPool          int    `yaml:"TCPMaxPool"`
+	Timeout             int64  `yaml:"Timeout"`             // Raft算法commit超时时间，单位毫秒
+	LeaderWatchInterval int64  `yaml:"LeaderWatchInterval"` // 定时报告谁是Leader, 单位秒
 }
 
 // 日志配置
@@ -91,8 +109,12 @@ func LoadConfig(path string) (*Conf, error) {
 	}
 
 	// Httpd参数校验
-	if _, err = net.ResolveTCPAddr("tcp", c.Httpd.Listen); err != nil {
+	addr, err := net.ResolveTCPAddr("tcp", c.Httpd.Listen)
+	if err != nil {
 		return nil, errors.New("Invalid `Httpd.Listen` field value")
+	}
+	if addr.IP.IsUnspecified() {
+		return nil, errors.New("Invalid `Httpd.Listen` field value, it is not advertisable")
 	}
 
 	// Raft参数校验

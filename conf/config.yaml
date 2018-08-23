@@ -1,6 +1,7 @@
 # 【Httpd配置】
 Httpd:
-  Listen: 0.0.0.0:20000
+  # Http监听地址，不能为0.0.0.0
+  Listen: 127.0.0.1:20000
 
 
 
@@ -39,4 +40,4 @@ Raft:
   Timeout: 10000
 
   # 定时报告谁是Leader的定时器, 单位秒
-  ReportInterval: 60
+  LeaderWatchInterval: 60

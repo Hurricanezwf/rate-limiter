@@ -19,6 +19,7 @@ func init() {
 	http.HandleFunc("/v1/borrow", borrow)
 	http.HandleFunc("/v1/return", return_)
 	http.HandleFunc("/v1/returnAll", returnAll)
+	http.HandleFunc("/v1/service/regist", registService)
 }
 
 // runHttpd 启动HTTP服务
@@ -266,6 +267,49 @@ func restore(w http.ResponseWriter, req *http.Request) {
 	} else {
 		w.WriteHeader(200)
 		w.Write([]byte("Restore OK"))
+	}
+	return
+}
+
+// registService 注册服务(internal use only)
+func registService(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		w.WriteHeader(405)
+		w.Write(ErrMsg("Method `POST` is needed"))
+		return
+	}
+
+	// check leader
+	if l.IsLeader() == false {
+		w.WriteHeader(403)
+		w.Write(ErrMsg(ErrNotLeader.Error()))
+		return
+	}
+
+	// 读取body
+	b, err := ioutil.ReadAll(req.Body)
+	defer req.Body.Close()
+
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write(ErrMsg(err.Error()))
+		return
+	}
+
+	// 解析参数
+	var r Request
+	if err := json.Unmarshal(b, &r); err != nil {
+		w.WriteHeader(500)
+		w.Write(ErrMsg(err.Error()))
+		return
+	}
+
+	// 尝试获取资格
+	if rp := l.Do(&r); rp.Err != nil {
+		w.WriteHeader(403)
+		w.Write(ErrMsg(rp.Err.Error()))
+	} else {
+		w.WriteHeader(200)
 	}
 	return
 }

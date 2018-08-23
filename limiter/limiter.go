@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -24,9 +26,11 @@ import (
 // New new one default limiter
 func New() Limiter {
 	return &limiterV1{
-		mutex: &sync.RWMutex{},
-		meta:  encoding.NewMap(),
-		stopC: make(chan struct{}),
+		mutex:        &sync.RWMutex{},
+		meta:         encoding.NewMap(),
+		serviceMutex: &sync.RWMutex{},
+		services:     make(map[string]*APIRegistServiceReq),
+		stopC:        make(chan struct{}),
 	}
 }
 
@@ -55,10 +59,15 @@ type limiterV1 struct {
 	// ResourceTypeHex ==> LimiterMeta
 	meta *encoding.Map
 
-	//
+	// Raft实例
 	raft *raftlib.Raft
 
-	//
+	// Raft地址到Httpd服务地址的映射关系
+	// raftBind ==> *APIRegistServiceReq
+	serviceMutex *sync.RWMutex
+	services     map[string]*APIRegistServiceReq
+
+	// 控制退出
 	stopC chan struct{}
 }
 
@@ -66,7 +75,7 @@ func (l *limiterV1) Open() error {
 	const (
 		STMOpenRaft = iota
 		STMStartCleaner
-		STMStartReporter
+		STMStartLeaderWatcher
 		STMExit
 	)
 
@@ -77,40 +86,18 @@ func (l *limiterV1) Open() error {
 			if err := l.initRaftCluster(); err != nil {
 				return err
 			}
-			st = STMStartReporter
+			st = STMStartLeaderWatcher
 
-		case STMStartReporter:
-			// 定时输出谁是Leader
+		case STMStartLeaderWatcher:
+			// 定时输出谁是Leader & 服务注册
 			if g.Config.Raft.Enable {
-				go func() {
-					ticker := time.NewTicker(time.Duration(g.Config.Raft.ReportInterval) * time.Second)
-					for {
-						select {
-						case <-l.stopC:
-							return
-						case <-ticker.C:
-							glog.V(2).Infof("Report: %s is Leader", l.raft.Leader())
-						case <-l.raft.LeaderCh():
-							glog.V(2).Infof("Leader changed, %s is Leader", l.raft.Leader())
-						}
-					}
-				}()
+				go l.initRaftLeaderWatcher()
 			}
 			st = STMStartCleaner
 
 		case STMStartCleaner:
 			// 定时回收&重用资源
-			go func() {
-				ticker := time.NewTicker(time.Second)
-				for {
-					select {
-					case <-l.stopC:
-						return
-					case <-ticker.C:
-						l.recycle()
-					}
-				}
-			}()
+			go l.initMetaCleaner()
 			st = STMExit
 		}
 	}
@@ -118,6 +105,7 @@ func (l *limiterV1) Open() error {
 	return nil
 }
 
+// initRaftCluster 初始化启动raft集群
 func (l *limiterV1) initRaftCluster() error {
 	if g.Config.Raft.Enable == false {
 		glog.Info("Raft is disabled")
@@ -200,6 +188,70 @@ func (l *limiterV1) initRaftCluster() error {
 	return nil
 }
 
+// initRaftWatcher 初始化启动Raft Leader监听器
+func (l *limiterV1) initRaftLeaderWatcher() {
+	ticker := time.NewTicker(time.Duration(g.Config.Raft.LeaderWatchInterval) * time.Second)
+
+	for {
+		select {
+		case <-l.stopC:
+			return
+		case <-ticker.C:
+			glog.V(2).Info("Registed Service List:")
+			for raftAddr, httpdAddr := range l.Services() {
+				if l.raft.Leader() == raftlib.ServerAddress(raftAddr) {
+					glog.V(2).Infof("(L) %s  ==>  %s", raftAddr, httpdAddr)
+				} else {
+					glog.V(2).Infof("(F) %s  ==>  %s", raftAddr, httpdAddr)
+				}
+			}
+		case <-l.raft.LeaderCh():
+			{
+				glog.V(2).Infof("Leader changed, %s is Leader", l.raft.Leader())
+
+				if l.IsLeader() == false {
+					continue
+				}
+
+				// 通知所有结点到Leader上去服务注册
+				cmd := &Request{
+					Action: ActionRegistServiceBroadcast,
+					RegistServiceBroadcast: &CMDRegistServiceBroadcast{
+						Timestamp: time.Now().UnixNano(),
+						LeaderUrl: fmt.Sprintf("http://%s/v1/service/regist", g.Config.Httpd.Listen),
+					},
+				}
+
+				b, err := json.Marshal(cmd)
+				if err != nil {
+					glog.Warningf("Marshal ActionRegistServiceBroadcast failed, %v", err)
+					continue
+				}
+				glog.Info(string(b))
+
+				future := l.raft.Apply(b, time.Duration(g.Config.Raft.Timeout)*time.Millisecond)
+				if err := future.Error(); err != nil {
+					glog.Warningf("Raft apply ActionRegistServiceBroadcast failed, %v", err)
+					continue
+				}
+			}
+		}
+	}
+
+}
+
+func (l *limiterV1) initMetaCleaner() {
+	ticker := time.NewTicker(time.Second)
+	for {
+		select {
+		case <-l.stopC:
+			return
+		case <-ticker.C:
+			l.recycle()
+		}
+	}
+}
+
 func (l *limiterV1) IsLeader() bool {
 	if g.Config.Raft.Enable == false {
 		return true
@@ -213,6 +265,7 @@ func (l *limiterV1) Apply(log *raftlib.Log) interface{} {
 	case raftlib.LogCommand:
 		{
 			// 解析远端传过来的命令日志
+			glog.Info(string(log.Data))
 			var r Request
 			if err := json.Unmarshal(log.Data, &r); err != nil {
 				return fmt.Errorf("Bad request format for raft command, %v", err)
@@ -380,14 +433,18 @@ func (l *limiterV1) Do(r *Request) (rp *Response) {
 func (l *limiterV1) switchDo(r *Request) (rp *Response) {
 	rp = &Response{Action: r.Action}
 	switch r.Action {
-	case ActionRegistQuota:
-		rp.Err = l.doRegistQuota(r.RegistQuota)
 	case ActionBorrow:
 		rp.Borrow, rp.Err = l.doBorrow(r.Borrow)
 	case ActionReturn:
 		rp.Err = l.doReturn(r.Return)
 	case ActionReturnAll:
 		rp.Err = l.doReturnAll(r.ReturnAll)
+	case ActionRegistQuota:
+		rp.Err = l.doRegistQuota(r.RegistQuota)
+	case ActionRegistServiceBroadcast:
+		rp.Err = l.doRegistServiceBroadcast(r.RegistServiceBroadcast)
+	case ActionRegistService:
+		rp.Err = l.doRegistService(r.RegistService)
 	default:
 		rp.Err = fmt.Errorf("Action handler not found for %#v", r.Action)
 	}
@@ -512,6 +569,83 @@ func (l *limiterV1) doReturnAll(r *APIReturnAllReq) error {
 	return nil
 }
 
+// 请求Leader地址注册服务
+func (l *limiterV1) doRegistServiceBroadcast(r *CMDRegistServiceBroadcast) error {
+	// check required
+	if r.Timestamp <= 0 {
+		return errors.New("Missing `timestamp` field value")
+	}
+	if len(r.LeaderUrl) <= 0 {
+		return errors.New("Missing `leaderUrl` field value")
+	}
+
+	// 向Leader发起服务注册请求
+	req := &Request{
+		Action: ActionRegistService,
+		RegistService: &APIRegistServiceReq{
+			Timestamp: r.Timestamp,
+			RaftAddr:  g.Config.Raft.Bind,
+			HttpdAddr: g.Config.Httpd.Listen,
+		},
+	}
+
+	b, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	rp, err := http.Post(r.LeaderUrl, "application/json", bytes.NewBuffer(b))
+	if err != nil {
+		glog.Warning(err.Error())
+		return err
+	}
+	defer rp.Body.Close()
+
+	if rp.StatusCode != http.StatusOK {
+		msg, _ := ioutil.ReadAll(rp.Body)
+		err := fmt.Errorf("Status(%d) != 200, %s", rp.StatusCode, string(msg))
+		glog.Warning(err.Error())
+		return err
+	}
+
+	return nil
+}
+
+// 注册服务
+func (l *limiterV1) doRegistService(r *APIRegistServiceReq) error {
+	// check required
+	if r.Timestamp <= 0 {
+		return errors.New("Missing `timestamp` field value")
+	}
+	if len(r.RaftAddr) <= 0 {
+		return errors.New("Missing `raftAddr` field value")
+	}
+	if len(r.HttpdAddr) <= 0 {
+		return errors.New("Missing `httpdAddr` field value")
+	}
+
+	l.serviceMutex.Lock()
+	defer l.serviceMutex.Unlock()
+
+	for _, d := range l.services {
+		if d.Timestamp > r.Timestamp {
+			// 滞后请求直接拒绝
+			return errors.New("RegistServiceReq is old")
+		} else if d.Timestamp < r.Timestamp {
+			// 发现了之前注册的服务则全部丢弃
+			l.services = make(map[string]*APIRegistServiceReq)
+		} else {
+			// 所有已注册的服务时间一致，按兵不动
+			continue
+		}
+	}
+
+	l.services[r.RaftAddr] = r
+	glog.Info("[%d] Regist Service  %s  ==>  %s   OK", r.Timestamp, r.RaftAddr, r.HttpdAddr)
+
+	return nil
+}
+
 func (l *limiterV1) recycle() {
 	// map内容没有被修改，所以这里是读锁
 	l.mutex.RLock()
@@ -524,4 +658,16 @@ func (l *limiterV1) recycle() {
 		limiterMeta := pair.V.(LimiterMeta)
 		limiterMeta.Recycle()
 	}
+}
+
+// Services 列出当前注册的所有服务
+func (l *limiterV1) Services() map[string]string {
+	l.serviceMutex.RLock()
+	defer l.serviceMutex.RUnlock()
+
+	ret := make(map[string]string)
+	for _, d := range l.services {
+		ret[d.RaftAddr] = d.HttpdAddr
+	}
+	return ret
 }
