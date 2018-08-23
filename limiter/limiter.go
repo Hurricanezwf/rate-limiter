@@ -7,9 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -26,11 +24,9 @@ import (
 // New new one default limiter
 func New() Limiter {
 	return &limiterV1{
-		mutex:        &sync.RWMutex{},
-		meta:         encoding.NewMap(),
-		serviceMutex: &sync.RWMutex{},
-		services:     make(map[string]*APIRegistServiceReq),
-		stopC:        make(chan struct{}),
+		mutex: &sync.RWMutex{},
+		meta:  encoding.NewMap(),
+		stopC: make(chan struct{}),
 	}
 }
 
@@ -62,10 +58,8 @@ type limiterV1 struct {
 	// Raft实例
 	raft *raftlib.Raft
 
-	// Raft地址到Httpd服务地址的映射关系
-	// raftBind ==> *APIRegistServiceReq
-	serviceMutex *sync.RWMutex
-	services     map[string]*APIRegistServiceReq
+	// Leader结点的HTTP服务地址
+	leaderHTTPAddr string
 
 	// 控制退出
 	stopC chan struct{}
@@ -207,14 +201,7 @@ func (l *limiterV1) initRaftLeaderWatcher() {
 		case <-l.stopC:
 			return
 		case <-ticker.C:
-			glog.V(2).Info("Registed Service List:")
-			for raftAddr, httpdAddr := range l.Services() {
-				if l.raft.Leader() == raftlib.ServerAddress(raftAddr) {
-					glog.V(2).Infof("(L) %s  ==>  %s", raftAddr, httpdAddr)
-				} else {
-					glog.V(2).Infof("(F) %s  ==>  %s", raftAddr, httpdAddr)
-				}
-			}
+			glog.V(2).Infof("(L) %s  ==>  %s", l.raft.Leader(), l.LeaderHTTPAddr())
 		case <-l.raft.LeaderCh():
 			{
 				glog.V(2).Infof("Leader changed, %s is Leader", l.raft.Leader())
@@ -225,22 +212,22 @@ func (l *limiterV1) initRaftLeaderWatcher() {
 
 				// 通知所有结点到Leader上去服务注册
 				cmd := &Request{
-					Action: ActionRegistServiceBroadcast,
-					RegistServiceBroadcast: &CMDRegistServiceBroadcast{
-						Timestamp: time.Now().UnixNano(),
-						LeaderUrl: fmt.Sprintf("http://%s/v1/service/regist", g.Config.Httpd.Listen),
+					Action: ActionLeaderNotify,
+					LeaderNotify: &CMDLeaderNotify{
+						RaftAddr:  g.Config.Raft.Bind,
+						HttpdAddr: g.Config.Httpd.Listen,
 					},
 				}
 
 				b, err := json.Marshal(cmd)
 				if err != nil {
-					glog.Warningf("Marshal ActionRegistServiceBroadcast failed, %v", err)
+					glog.Warningf("Marshal ActionLeaderNotify failed, %v", err)
 					continue
 				}
 
 				future := l.raft.Apply(b, time.Duration(g.Config.Raft.Timeout)*time.Millisecond)
 				if err := future.Error(); err != nil {
-					glog.Warningf("Raft apply ActionRegistServiceBroadcast failed, %v", err)
+					glog.Warningf("Raft apply CMDLeaderNotify failed, %v", err)
 					continue
 				}
 			}
@@ -451,10 +438,8 @@ func (l *limiterV1) switchDo(r *Request) (rp *Response) {
 		rp.Err = l.doReturnAll(r.ReturnAll)
 	case ActionRegistQuota:
 		rp.Err = l.doRegistQuota(r.RegistQuota)
-	case ActionRegistServiceBroadcast:
-		rp.Err = l.doRegistServiceBroadcast(r.RegistServiceBroadcast)
-	case ActionRegistService:
-		rp.Err = l.doRegistService(r.RegistService)
+	case ActionLeaderNotify:
+		rp.Err = l.doLeaderNotify(r.LeaderNotify)
 	default:
 		rp.Err = fmt.Errorf("Action handler not found for %#v", r.Action)
 	}
@@ -579,80 +564,22 @@ func (l *limiterV1) doReturnAll(r *APIReturnAllReq) error {
 	return nil
 }
 
-// 请求Leader地址注册服务
-func (l *limiterV1) doRegistServiceBroadcast(r *CMDRegistServiceBroadcast) error {
+// doLeaderNotify save leader service info
+func (l *limiterV1) doLeaderNotify(r *CMDLeaderNotify) error {
 	// check required
-	if r.Timestamp <= 0 {
-		return errors.New("Missing `timestamp` field value")
-	}
-	if len(r.LeaderUrl) <= 0 {
-		return errors.New("Missing `leaderUrl` field value")
-	}
-
-	// 向Leader发起服务注册请求
-	req := &Request{
-		Action: ActionRegistService,
-		RegistService: &APIRegistServiceReq{
-			Timestamp: r.Timestamp,
-			RaftAddr:  g.Config.Raft.Bind,
-			HttpdAddr: g.Config.Httpd.Listen,
-		},
-	}
-
-	b, err := json.Marshal(req)
-	if err != nil {
-		return err
-	}
-
-	// TODO: 保证正确请求到
-	rp, err := http.Post(r.LeaderUrl, "application/json", bytes.NewBuffer(b))
-	if err != nil {
-		glog.Warning(err.Error())
-		return err
-	}
-	defer rp.Body.Close()
-
-	if rp.StatusCode != http.StatusOK {
-		msg, _ := ioutil.ReadAll(rp.Body)
-		err := fmt.Errorf("Status(%d) != 200, %s", rp.StatusCode, string(msg))
-		glog.Warning(err.Error())
-		return err
-	}
-
-	return nil
-}
-
-// 注册服务
-func (l *limiterV1) doRegistService(r *APIRegistServiceReq) error {
-	// check required
-	if r.Timestamp <= 0 {
-		return errors.New("Missing `timestamp` field value")
-	}
 	if len(r.RaftAddr) <= 0 {
 		return errors.New("Missing `raftAddr` field value")
 	}
 	if len(r.HttpdAddr) <= 0 {
 		return errors.New("Missing `httpdAddr` field value")
 	}
-
-	l.serviceMutex.Lock()
-	defer l.serviceMutex.Unlock()
-
-	for _, d := range l.services {
-		if d.Timestamp > r.Timestamp {
-			// 滞后请求直接拒绝
-			return errors.New("RegistServiceReq is old")
-		} else if d.Timestamp < r.Timestamp {
-			// 发现了之前注册的服务则全部丢弃
-			l.services = make(map[string]*APIRegistServiceReq)
-		} else {
-			// 所有已注册的服务时间一致，按兵不动
-			continue
-		}
+	if raftlib.ServerAddress(r.RaftAddr) != l.raft.Leader() {
+		return errors.New("Leader not consistent")
 	}
 
-	l.services[r.RaftAddr] = r
-	glog.V(3).Infof("[%d] Regist Service  %s  ==>  %s ............... [OK]", r.Timestamp, r.RaftAddr, r.HttpdAddr)
+	l.mutex.Lock()
+	l.leaderHTTPAddr = r.HttpdAddr
+	l.mutex.Unlock()
 
 	return nil
 }
@@ -671,14 +598,8 @@ func (l *limiterV1) recycle() {
 	}
 }
 
-// Services 列出当前注册的所有服务
-func (l *limiterV1) Services() map[string]string {
-	l.serviceMutex.RLock()
-	defer l.serviceMutex.RUnlock()
-
-	ret := make(map[string]string)
-	for _, d := range l.services {
-		ret[d.RaftAddr] = d.HttpdAddr
-	}
-	return ret
+func (l *limiterV1) LeaderHTTPAddr() string {
+	l.mutex.RLock()
+	defer l.mutex.RUnlock()
+	return l.leaderHTTPAddr
 }
