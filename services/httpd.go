@@ -304,13 +304,11 @@ func registService(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// 尝试获取资格
-	if rp := l.Do(&r); rp.Err != nil {
-		w.WriteHeader(403)
-		w.Write(ErrMsg(rp.Err.Error()))
-	} else {
-		w.WriteHeader(200)
-	}
+	// 这里需要异步注册, 因为不能嵌套提交
+	go l.Do(&r)
+
+	w.WriteHeader(200)
+
 	return
 }
 

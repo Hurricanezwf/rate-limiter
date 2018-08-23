@@ -119,7 +119,18 @@ func (l *limiterV1) initRaftCluster() error {
 		rootDir         = g.Config.Raft.RootDir
 		tcpMaxPool      = g.Config.Raft.TCPMaxPool
 		timeout         = time.Duration(g.Config.Raft.Timeout) * time.Millisecond
+		bootstrap       = false
 	)
+
+	// 检测集群是否需要bootstrap
+	dbPath := filepath.Join(rootDir, "raft.db")
+	if _, err := os.Lstat(dbPath); err == nil {
+		bootstrap = false
+	} else if os.IsNotExist(err) {
+		bootstrap = true
+	} else {
+		return fmt.Errorf("Lstat failed, %v", err)
+	}
 
 	// 加载集群配置
 	clusterConf, err := raftlib.ReadConfigJSON(clusterConfJson)
@@ -140,21 +151,22 @@ func (l *limiterV1) initRaftCluster() error {
 		addr,       // advertise
 		tcpMaxPool, // maxPool
 		timeout,    // timeout
-		os.Stderr,  // logOutput
+		nil,
+		//os.Stderr,  // logOutput
 	)
 	if err != nil {
 		return fmt.Errorf("Create tcp transport failed, %v", err)
 	}
 
 	// 创建持久化Log Entry存储引擎
-	dbPath := filepath.Join(rootDir, "raft.db")
 	boltDB, err := raftboltdb.NewBoltStore(dbPath)
 	if err != nil {
 		return fmt.Errorf("Create log store failed, %v", err)
 	}
 
 	// 创建持久化快照存储引擎
-	snapshotStore, err := raftlib.NewFileSnapshotStore(rootDir, 3, os.Stderr)
+	//snapshotStore, err := raftlib.NewFileSnapshotStore(rootDir, 3, os.Stderr)
+	snapshotStore, err := raftlib.NewFileSnapshotStore(rootDir, 3, nil)
 	if err != nil {
 		return fmt.Errorf("Create file snapshot store failed, %v", err)
 	}
@@ -173,13 +185,11 @@ func (l *limiterV1) initRaftCluster() error {
 	}
 
 	// 启动集群
-	if PathExists(dbPath) == false {
+	if bootstrap {
 		future := raft.BootstrapCluster(clusterConf)
 		if err = future.Error(); err != nil {
 			return fmt.Errorf("Bootstrap raft cluster failed, %v", err)
 		}
-	} else {
-		// no need to bootstrap
 	}
 
 	// 变量初始化
@@ -227,7 +237,6 @@ func (l *limiterV1) initRaftLeaderWatcher() {
 					glog.Warningf("Marshal ActionRegistServiceBroadcast failed, %v", err)
 					continue
 				}
-				glog.Info(string(b))
 
 				future := l.raft.Apply(b, time.Duration(g.Config.Raft.Timeout)*time.Millisecond)
 				if err := future.Error(); err != nil {
@@ -261,11 +270,12 @@ func (l *limiterV1) IsLeader() bool {
 
 // Apply 主要接收从其他结点过来的已提交的操作日志，然后应用到本结点
 func (l *limiterV1) Apply(log *raftlib.Log) interface{} {
+	glog.V(4).Info(string(log.Data))
+
 	switch log.Type {
 	case raftlib.LogCommand:
 		{
 			// 解析远端传过来的命令日志
-			glog.Info(string(log.Data))
 			var r Request
 			if err := json.Unmarshal(log.Data, &r); err != nil {
 				return fmt.Errorf("Bad request format for raft command, %v", err)
@@ -594,6 +604,7 @@ func (l *limiterV1) doRegistServiceBroadcast(r *CMDRegistServiceBroadcast) error
 		return err
 	}
 
+	// TODO: 保证正确请求到
 	rp, err := http.Post(r.LeaderUrl, "application/json", bytes.NewBuffer(b))
 	if err != nil {
 		glog.Warning(err.Error())
@@ -641,7 +652,7 @@ func (l *limiterV1) doRegistService(r *APIRegistServiceReq) error {
 	}
 
 	l.services[r.RaftAddr] = r
-	glog.Info("[%d] Regist Service  %s  ==>  %s   OK", r.Timestamp, r.RaftAddr, r.HttpdAddr)
+	glog.V(3).Infof("[%d] Regist Service  %s  ==>  %s ............... [OK]", r.Timestamp, r.RaftAddr, r.HttpdAddr)
 
 	return nil
 }
