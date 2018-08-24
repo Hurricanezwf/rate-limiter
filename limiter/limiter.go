@@ -155,6 +155,8 @@ func (l *limiterV1) initRaftCluster() error {
 	}
 
 	// 创建持久化Log Entry存储引擎
+	// 此处的存储引擎的选择基本决定了接口的延迟。
+	// 本地落地存储效率比较低，单个请求响应时间在50ms以上；如果换成内存存储的话，单个请求响应时间在2ms左右。
 	boltDB, err := raftboltdb.NewBoltStore(dbPath)
 	if err != nil {
 		return fmt.Errorf("Create log store failed, %v", err)
