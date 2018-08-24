@@ -13,7 +13,7 @@ import (
 	"github.com/Hurricanezwf/toolbox/logging/glog"
 )
 
-var ctrl = newController(1)
+var ctrl = newController(10000)
 
 func init() {
 	//http.HandleFunc("/v1/snapshot", snapshot) // for test only
