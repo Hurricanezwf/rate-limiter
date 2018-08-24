@@ -105,7 +105,7 @@ func (l *limiterV1) Open() error {
 // initRaftCluster 初始化启动raft集群
 func (l *limiterV1) initRaftCluster() error {
 	if g.Config.Raft.Enable == false {
-		glog.Info("Raft is disabled")
+		glog.V(1).Info("Raft is disabled")
 		return nil
 	}
 
@@ -137,6 +137,12 @@ func (l *limiterV1) initRaftCluster() error {
 
 	raftConf := raftlib.DefaultConfig()
 	raftConf.LocalID = raftlib.ServerID(localID)
+	if g.Config.Log.Verbose < 5 {
+		raftConf.LogOutput = nil
+		raftConf.Logger = nil
+	} else {
+		raftConf.LogOutput = os.Stderr
+	}
 
 	// 创建Raft网络传输
 	addr, err := net.ResolveTCPAddr("tcp", bind)
@@ -144,11 +150,11 @@ func (l *limiterV1) initRaftCluster() error {
 		return err
 	}
 	transport, err := raftlib.NewTCPTransport(
-		bind,       // bindAddr
-		addr,       // advertise
-		tcpMaxPool, // maxPool
-		timeout,    // timeout
-		os.Stderr,  // logOutput
+		bind,               // bindAddr
+		addr,               // advertise
+		tcpMaxPool,         // maxPool
+		timeout,            // timeout
+		raftConf.LogOutput, // logOutput
 	)
 	if err != nil {
 		return fmt.Errorf("Create tcp transport failed, %v", err)
@@ -163,7 +169,7 @@ func (l *limiterV1) initRaftCluster() error {
 	}
 
 	// 创建持久化快照存储引擎
-	snapshotStore, err := raftlib.NewFileSnapshotStore(rootDir, 3, os.Stderr)
+	snapshotStore, err := raftlib.NewFileSnapshotStore(rootDir, 3, raftConf.LogOutput)
 	if err != nil {
 		return fmt.Errorf("Create file snapshot store failed, %v", err)
 	}
@@ -260,7 +266,7 @@ func (l *limiterV1) IsLeader() bool {
 
 // Apply 主要接收从其他结点过来的已提交的操作日志，然后应用到本结点
 func (l *limiterV1) Apply(log *raftlib.Log) interface{} {
-	glog.V(4).Info(string(log.Data))
+	glog.V(4).Infof("Apply Log: %s", string(log.Data))
 
 	switch log.Type {
 	case raftlib.LogCommand:
@@ -485,7 +491,7 @@ func (l *limiterV1) doBorrow(r *APIBorrowReq) (*APIBorrowResp, error) {
 	rcTypeIdHex := encoding.BytesToStringHex(r.RCTypeID)
 	m, ok := l.meta.Get(rcTypeIdHex)
 	if !ok {
-		return nil, fmt.Errorf("ResourceType(%s) is not registed", rcTypeIdHex)
+		return nil, fmt.Errorf("ResourceType[%s] is not registed", rcTypeIdHex)
 	}
 	rcId, err := m.(LimiterMeta).Borrow(r.ClientID, r.Expire)
 	if err != nil {

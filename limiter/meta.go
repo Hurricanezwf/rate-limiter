@@ -243,7 +243,7 @@ func (m *limiterMetaV1) Recycle() {
 				queue.Remove(record)
 				m.usedCount.Decr(uint32(1))
 				m.canBorrow.PushBack(v.RCID)
-				glog.V(1).Infof("'%s' borrowed by client['%s'] is expired, force to recycle", v.RCID.Value(), client)
+				glog.V(2).Infof("'%s' borrowed by client['%s'] is expired, force to recycle", v.RCID.Value(), client)
 			}
 			record = next
 		}
@@ -263,7 +263,7 @@ func (m *limiterMetaV1) Recycle() {
 	if count := m.recycled.Len(); count > 0 {
 		m.canBorrow.PushBackQueue(m.recycled)
 		m.recycled.Init()
-		glog.V(1).Infof("Refresh %d resources to canBorrow queue because of client's return", count)
+		glog.V(2).Infof("Refresh %d resources to canBorrow queue because of client's return", count)
 	}
 }
 

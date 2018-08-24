@@ -2,6 +2,8 @@ package services
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -10,6 +12,8 @@ import (
 	. "github.com/Hurricanezwf/rate-limiter/proto"
 	"github.com/Hurricanezwf/toolbox/logging/glog"
 )
+
+var ctrl = newController(1)
 
 func init() {
 	//http.HandleFunc("/v1/snapshot", snapshot) // for test only
@@ -39,6 +43,13 @@ func runHttpd(addr string) error {
 
 // registQuota 注册资源配额
 func registQuota(w http.ResponseWriter, req *http.Request) {
+	if err := ctrl.in(); err != nil {
+		w.WriteHeader(403)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	defer ctrl.out()
+
 	var start = time.Now()
 	var r = &Request{
 		Action:      ActionRegistQuota,
@@ -56,61 +67,18 @@ func registQuota(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(statusCode)
 	w.Write([]byte(msg))
 
-	glog.V(1).Infof("%s [/v1/registQuota]  statusCode:%d, msg:%s", req.Method, statusCode, msg, time.Since(start))
-
-	//if req.Method != http.MethodPost {
-	//	w.WriteHeader(405)
-	//	w.Write(ErrMsg("Method `POST` is needed"))
-	//	return
-	//}
-
-	//// check leader
-	//if l.IsLeader() == false {
-	//	addr := l.LeaderHTTPAddr()
-	//	if len(addr) <= 0 {
-	//		w.WriteHeader(503)
-	//		w.Write(ErrMsg(ErrLeaderNotFound.Error()))
-	//		return
-	//	}
-	//	req.URL.Host = addr
-	//	w.Header().Set("Location", req.URL.String())
-	//	w.WriteHeader(307)
-	//	return
-	//}
-
-	//// 读取body
-	//b, err := ioutil.ReadAll(req.Body)
-	//defer req.Body.Close()
-
-	//if err != nil {
-	//	w.WriteHeader(500)
-	//	w.Write(ErrMsg(err.Error()))
-	//	return
-	//}
-
-	//// 解析参数
-	//var r = Request{
-	//	Action:      ActionRegistQuota,
-	//	RegistQuota: &APIRegistQuotaReq{},
-	//}
-	//if err := json.Unmarshal(b, r.RegistQuota); err != nil {
-	//	w.WriteHeader(500)
-	//	w.Write(ErrMsg(err.Error()))
-	//	return
-	//}
-
-	//// 尝试获取资格
-	//if rp := l.Do(&r); rp.Err != nil {
-	//	w.WriteHeader(403)
-	//	w.Write(ErrMsg(rp.Err.Error()))
-	//} else {
-	//	w.WriteHeader(200)
-	//}
-	//return
+	glog.V(1).Infof("%s [/v1/registQuota]  statusCode:%d, msg:%s, elapse:%v", req.Method, statusCode, msg, time.Since(start))
 }
 
 // borrow 获取一次执行权限
 func borrow(w http.ResponseWriter, req *http.Request) {
+	if err := ctrl.in(); err != nil {
+		w.WriteHeader(403)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	defer ctrl.out()
+
 	var start = time.Now()
 	var r = &Request{
 		Action: ActionBorrow,
@@ -132,65 +100,17 @@ func borrow(w http.ResponseWriter, req *http.Request) {
 	w.Write([]byte(msg))
 
 	glog.V(1).Infof("%s [/v1/borrow]  statusCode:%d, msg:%s, elapse:%v", req.Method, statusCode, msg, time.Since(start))
-
-	//start := time.Now()
-	//defer glog.Infof("%s [/v1/borrow] -- %v", req.Method, time.Since(start))
-
-	//if req.Method != http.MethodPost {
-	//	w.WriteHeader(405)
-	//	w.Write(ErrMsg("Method `POST` is needed"))
-	//	return
-	//}
-
-	//// check leader
-	//if l.IsLeader() == false {
-	//	addr := l.LeaderHTTPAddr()
-	//	if len(addr) <= 0 {
-	//		w.WriteHeader(503)
-	//		w.Write(ErrMsg(ErrLeaderNotFound.Error()))
-	//		return
-	//	}
-	//	req.URL.Host = addr
-	//	w.Header().Set("Location", req.URL.String())
-	//	w.WriteHeader(307)
-	//	return
-	//}
-
-	//// 读取body
-	//b, err := ioutil.ReadAll(req.Body)
-	//defer req.Body.Close()
-
-	//if err != nil {
-	//	w.WriteHeader(500)
-	//	w.Write(ErrMsg(err.Error()))
-	//	return
-	//}
-
-	//// 解析参数
-	//var r = Request{
-	//	Action: ActionBorrow,
-	//	Borrow: &APIBorrowReq{},
-	//}
-	//if err := json.Unmarshal(b, r.Borrow); err != nil {
-	//	w.WriteHeader(500)
-	//	w.Write(ErrMsg(err.Error()))
-	//	return
-	//}
-
-	//// 尝试获取资格
-	//if rp := l.Do(&r); rp.Err != nil {
-	//	w.WriteHeader(403)
-	//	w.Write(ErrMsg(rp.Err.Error()))
-	//} else {
-	//	rcId := rp.Borrow.RCID
-	//	w.WriteHeader(200)
-	//	w.Write([]byte(rcId))
-	//}
-	//return
 }
 
 // return_ 释放一次执行权限
 func return_(w http.ResponseWriter, req *http.Request) {
+	if err := ctrl.in(); err != nil {
+		w.WriteHeader(403)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	defer ctrl.out()
+
 	var start = time.Now()
 	var r = &Request{
 		Action: ActionReturn,
@@ -209,63 +129,17 @@ func return_(w http.ResponseWriter, req *http.Request) {
 	w.Write([]byte(msg))
 
 	glog.V(1).Infof("%s [/v1/return]  statusCode:%d, msg:%s, elapse:%v", req.Method, statusCode, msg, time.Since(start))
-
-	//start := time.Now()
-	//defer glog.Infof("%s [/v1/return] -- %v", req.Method, time.Since(start))
-
-	//if req.Method != http.MethodPost {
-	//	w.WriteHeader(405)
-	//	w.Write(ErrMsg("Method `POST` is needed"))
-	//	return
-	//}
-
-	//// check leader
-	//if l.IsLeader() == false {
-	//	addr := l.LeaderHTTPAddr()
-	//	if len(addr) <= 0 {
-	//		w.WriteHeader(503)
-	//		w.Write(ErrMsg(ErrLeaderNotFound.Error()))
-	//		return
-	//	}
-	//	req.URL.Host = addr
-	//	w.Header().Set("Location", req.URL.String())
-	//	w.WriteHeader(307)
-	//	return
-	//}
-
-	//// 读取body
-	//b, err := ioutil.ReadAll(req.Body)
-	//defer req.Body.Close()
-
-	//if err != nil {
-	//	w.WriteHeader(500)
-	//	w.Write(ErrMsg(err.Error()))
-	//	return
-	//}
-
-	//// 解析参数
-	//var r = Request{
-	//	Action: ActionReturn,
-	//	Return: &APIReturnReq{},
-	//}
-	//if err := json.Unmarshal(b, r.Return); err != nil {
-	//	w.WriteHeader(500)
-	//	w.Write(ErrMsg(err.Error()))
-	//	return
-	//}
-
-	//// 尝试获取资格
-	//if rp := l.Do(&r); rp.Err != nil {
-	//	w.WriteHeader(403)
-	//	w.Write(ErrMsg(rp.Err.Error()))
-	//} else {
-	//	w.WriteHeader(200)
-	//}
-	//return
 }
 
 // returnAll 释放用户的所有占用的权限
 func returnAll(w http.ResponseWriter, req *http.Request) {
+	if err := ctrl.in(); err != nil {
+		w.WriteHeader(403)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	defer ctrl.out()
+
 	var start = time.Now()
 	var r = &Request{
 		Action:    ActionReturnAll,
@@ -284,63 +158,17 @@ func returnAll(w http.ResponseWriter, req *http.Request) {
 	w.Write([]byte(msg))
 
 	glog.V(1).Infof("%s [/v1/returnAll]  statusCode:%d, msg:%s, elapse:%v", req.Method, statusCode, msg, time.Since(start))
-
-	//start := time.Now()
-	//defer glog.Infof("%s [/v1/returnAll] -- %v", req.Method, time.Since(start))
-
-	//if req.Method != http.MethodPost {
-	//	w.WriteHeader(405)
-	//	w.Write(ErrMsg("Method `POST` is needed"))
-	//	return
-	//}
-
-	//// check leader
-	//if l.IsLeader() == false {
-	//	addr := l.LeaderHTTPAddr()
-	//	if len(addr) <= 0 {
-	//		w.WriteHeader(503)
-	//		w.Write(ErrMsg(ErrLeaderNotFound.Error()))
-	//		return
-	//	}
-	//	req.URL.Host = addr
-	//	w.Header().Set("Location", req.URL.String())
-	//	w.WriteHeader(307)
-	//	return
-	//}
-
-	//// 读取body
-	//b, err := ioutil.ReadAll(req.Body)
-	//defer req.Body.Close()
-
-	//if err != nil {
-	//	w.WriteHeader(500)
-	//	w.Write(ErrMsg(err.Error()))
-	//	return
-	//}
-
-	//// 解析参数
-	//var r = Request{
-	//	Action:    ActionReturnAll,
-	//	ReturnAll: &APIReturnAllReq{},
-	//}
-	//if err := json.Unmarshal(b, r.ReturnAll); err != nil {
-	//	w.WriteHeader(500)
-	//	w.Write(ErrMsg(err.Error()))
-	//	return
-	//}
-
-	//// 尝试获取资格
-	//if rp := l.Do(&r); rp.Err != nil {
-	//	w.WriteHeader(403)
-	//	w.Write(ErrMsg(rp.Err.Error()))
-	//} else {
-	//	w.WriteHeader(200)
-	//}
-	//return
 }
 
 // snapshot 对元数据做快照
 func snapshot(w http.ResponseWriter, req *http.Request) {
+	if err := ctrl.in(); err != nil {
+		w.WriteHeader(403)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	defer ctrl.out()
+
 	start := time.Now()
 	defer glog.Infof("%s [/v1/snapshot] -- %v", req.Method, time.Since(start))
 
@@ -371,6 +199,13 @@ func snapshot(w http.ResponseWriter, req *http.Request) {
 
 // restore 从元数据恢复数据
 func restore(w http.ResponseWriter, req *http.Request) {
+	if err := ctrl.in(); err != nil {
+		w.WriteHeader(403)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	defer ctrl.out()
+
 	start := time.Now()
 	defer glog.Infof("%s [/v1/restore] -- %v", req.Method, time.Since(start))
 
@@ -434,15 +269,34 @@ func resolveRequest(w http.ResponseWriter, req *http.Request, argToResolve inter
 		return 500, err.Error()
 	}
 
-	// 尝试获取资格
-	//if rp = l.Do(r); rp.Err != nil {
-	//	return 403, rp.Err.Error(), nil
-	//}
 	return 200, ""
 }
 
-//func ErrMsg(format string, v ...interface{}) []byte {
-//	buf := bytes.NewBuffer(nil)
-//	buf.WriteString(fmt.Sprintf(format, v...))
-//	return buf.Bytes()
-//}
+// controller 访问控制器
+type controller struct {
+	limit int
+
+	ch chan struct{}
+}
+
+func newController(n int) *controller {
+	return &controller{
+		limit: n,
+		ch:    make(chan struct{}, n),
+	}
+}
+
+func (c *controller) in() error {
+	select {
+	case c.ch <- struct{}{}:
+		fmt.Printf("Enter\n")
+		return nil
+	default:
+		return ErrTooBusy
+	}
+	return errors.New("Unknown error")
+}
+
+func (c *controller) out() {
+	<-c.ch
+}
