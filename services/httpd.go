@@ -3,7 +3,6 @@ package services
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -289,7 +288,6 @@ func newController(n int) *controller {
 func (c *controller) in() error {
 	select {
 	case c.ch <- struct{}{}:
-		fmt.Printf("Enter\n")
 		return nil
 	default:
 		return ErrTooBusy
