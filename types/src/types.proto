@@ -1,0 +1,67 @@
+syntax = "proto3";
+package pbwrappers;
+
+import "google/protobuf/any.proto";
+
+// String结构
+message PB_String {
+    string v                            = 1;    
+}
+
+// Bytes结构
+message PB_Bytes {
+    bytes v                             = 1;    
+}
+
+// Uint32结构
+message PB_Uint32 {
+    uint32 v                            = 1;
+}
+
+// Uint64结构
+message PB_Uint64 {
+    uint64 v                            = 1;    
+}
+
+// Int32结构
+message PB_Int32 {
+    int32 v                             = 1;    
+}
+
+// Int64结构
+message PB_Int64 {
+    int64 v                             = 1;    
+}
+
+// Float32结构
+message PB_Float32 {
+    float v                             = 1;    
+}
+
+// Float64结构
+message PB_Float64 {
+    double v                            = 1;    
+}
+
+// Bool结构
+message PB_Bool {
+    bool v                              = 1;    
+}
+
+// Map结构
+message PB_Map {
+    map<string, google.protobuf.Any> m  = 1;
+}
+
+// 队列元素
+message PB_Element {
+    PB_Element next                     = 1;
+    PB_Element prev                     = 2;
+    google.protobuf.Any Value           = 3;
+}
+
+// 队列结构
+message PB_Queue {
+    uint32  size                        = 1;
+    PB_Element head                     = 2;
+}
