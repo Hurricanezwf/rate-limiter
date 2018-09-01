@@ -10,6 +10,11 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+const (
+	RaftStorageMemory = "memory"
+	RaftStorageBoltDB = "boltdb"
+)
+
 func DefaultConf() *Conf {
 	return &Conf{
 		//
@@ -26,6 +31,7 @@ func DefaultConf() *Conf {
 		//
 		Raft: &RaftConf{
 			Enable:              true,
+			Storage:             RaftStorageBoltDB,
 			TCPMaxPool:          3,
 			Timeout:             10000,
 			LeaderWatchInterval: 60,
@@ -50,6 +56,7 @@ func (c *Conf) Debug() {
 	glog.V(1).Infof("%-32s : %s", "Raft.LocalID", c.Raft.LocalID)
 	glog.V(1).Infof("%-32s : %s", "Raft.Bind", c.Raft.Bind)
 	glog.V(1).Infof("%-32s : %s", "Raft.ClusterConfJson", c.Raft.ClusterConfJson)
+	glog.V(1).Infof("%-32s : %s", "Raft.Storage", c.Raft.Storage)
 	glog.V(1).Infof("%-32s : %s", "Raft.RootDir", c.Raft.RootDir)
 	glog.V(1).Infof("%-32s : %d", "Raft.TCP", c.Raft.TCPMaxPool)
 	glog.V(1).Infof("%-32s : %d", "Raft.Timeout", c.Raft.Timeout)
@@ -68,6 +75,7 @@ type RaftConf struct {
 	LocalID             string `yaml:"ID"`
 	Bind                string `yaml:"Bind"`
 	ClusterConfJson     string `yaml:"ClusterConfJson"`
+	Storage             string `yaml:"Storage"`
 	RootDir             string `yaml:"RootDir"`
 	TCPMaxPool          int    `yaml:"TCPMaxPool"`
 	Timeout             int64  `yaml:"Timeout"`             // Raft算法commit超时时间，单位毫秒
@@ -131,6 +139,10 @@ func LoadConfig(path string) (*Conf, error) {
 			return nil, errors.New("Missing `Raft.LocalID` field")
 		}
 
+		if raftStorageOK(c.Raft.Storage) == false {
+			return nil, errors.New("Invalid `Raft.Storage` field value")
+		}
+
 		if len(c.Raft.RootDir) <= 0 {
 			return nil, errors.New("Missing `Raft.RootDir` field")
 		}
@@ -145,4 +157,12 @@ func LoadConfig(path string) (*Conf, error) {
 	}
 
 	return c, nil
+}
+
+func raftStorageOK(s string) bool {
+	switch s {
+	case RaftStorageBoltDB, RaftStorageMemory:
+		return true
+	}
+	return false
 }

@@ -113,6 +113,7 @@ func (l *limiterV1) initRaftCluster() error {
 		bind            = g.Config.Raft.Bind
 		localID         = g.Config.Raft.LocalID
 		clusterConfJson = g.Config.Raft.ClusterConfJson
+		storage         = g.Config.Raft.Storage
 		rootDir         = g.Config.Raft.RootDir
 		tcpMaxPool      = g.Config.Raft.TCPMaxPool
 		timeout         = time.Duration(g.Config.Raft.Timeout) * time.Millisecond
@@ -160,12 +161,12 @@ func (l *limiterV1) initRaftCluster() error {
 		return fmt.Errorf("Create tcp transport failed, %v", err)
 	}
 
-	// 创建持久化Log Entry存储引擎
+	// 创建Log Entry存储引擎
 	// 此处的存储引擎的选择基本决定了接口的延迟。
 	// 本地落地存储效率比较低，单个请求响应时间在50ms以上；如果换成内存存储的话，单个请求响应时间在2ms左右。
-	boltDB, err := raftboltdb.NewBoltStore(dbPath)
+	logStore, stableStore, err := l.storageEngineFactory(storage)
 	if err != nil {
-		return fmt.Errorf("Create log store failed, %v", err)
+		return fmt.Errorf("Create storage instance failed, %v", err)
 	}
 
 	// 创建持久化快照存储引擎
@@ -178,8 +179,8 @@ func (l *limiterV1) initRaftCluster() error {
 	raft, err := raftlib.NewRaft(
 		raftConf,
 		l,
-		boltDB,
-		boltDB,
+		logStore,
+		stableStore,
 		snapshotStore,
 		transport,
 	)
@@ -595,4 +596,39 @@ func (l *limiterV1) LeaderHTTPAddr() string {
 	l.mutex.RLock()
 	defer l.mutex.RUnlock()
 	return l.leaderHTTPAddr
+}
+
+// storageEngineFactory 根据存储引擎名字构造存储实例
+func (l *limiterV1) storageEngineFactory(name string, dbPath ...string) (raftlib.LogStore, raftlib.StableStore, error) {
+	var (
+		err         error
+		logStore    raftlib.LogStore
+		stableStore raftlib.StableStore
+	)
+
+	switch name {
+	case g.RaftStorageBoltDB:
+		{
+			if len(dbPath) < 1 {
+				err = fmt.Errorf("Missing dbPath for storage '%s'", name)
+				break
+			}
+			if storage, e := raftboltdb.NewBoltStore(dbPath[0]); e != nil {
+				err = e
+			} else {
+				logStore = storage
+				stableStore = storage
+			}
+		}
+	case g.RaftStorageMemory:
+		{
+			storage := raftlib.NewInmemStore()
+			logStore = storage
+			stableStore = storage
+		}
+	default:
+		err = fmt.Errorf("No storage engine found for %s", name)
+	}
+
+	return logStore, stableStore, err
 }

@@ -30,6 +30,9 @@ Raft:
   # 集群成员配置json路径
   ClusterConfJson: /home/zwf/zhouwenfeng/GoProj/src/github.com/Hurricanezwf/rate-limiter/conf/raft-cluster.json
 
+  # 存储介质类型, 可取值"memory", "boltdb"(默认)
+  Storage: boltdb
+
   # Raft元数据存储的根目录
   RootDir: ./raft-meta
 
