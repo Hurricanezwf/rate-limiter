@@ -2,7 +2,7 @@
 
 __src_dir__=./src
 
-__dst_dir__=./pbwrappers
+__dst_dir__=./
 
 
 mkdir -p ${__dst_dir__}
