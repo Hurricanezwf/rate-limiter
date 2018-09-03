@@ -1,10 +1,13 @@
 package meta
 
 import (
-	"fmt"
-
+	"github.com/Hurricanezwf/rate-limiter/types"
 	"github.com/golang/protobuf/proto"
 )
+
+func init() {
+	RegistBuilder("v2", newMetaV2)
+}
 
 // 需要支持并发安全
 type Interface interface {
@@ -28,26 +31,38 @@ type Interface interface {
 	proto.Message
 }
 
-func New(name string, rcTypeId []byte, quota uint32) LimiterMeta {
+func New(name string, rcTypeId []byte, quota uint32) Interface {
 	if metaBuilders == nil {
 		return nil
 	}
-	if f := metaBuilders[name]; f != nil {
+	if f := builders[name]; f != nil {
 		return f(rcTypeId, quota)
 	}
 	return nil
 }
 
-var metaBuilders = make(map[string]metaBuilder)
-
-type metaBuilder func(rcTypeId []byte, quota uint32) LimiterMeta
-
-func ResgistMetaBuilder(name string, f metaBuilder) {
-	if f == nil {
-		panic(fmt.Sprintf("MetaBuilder for '%s' is nil", name))
+func newMetaV2(rcTypeId []byte, quota uint32) Meta {
+	return &MetaV2{
+		RcTypeId:  types.NewBytes(rcTypeId),
+		Quota:     types.NewUint32(quota),
+		CanBorrow: types.NewQueue(),
+		Recycled:  types.NewQueue(),
+		Used:      types.NewMap(),
 	}
-	if _, exist := metaBuilders[name]; exist {
-		panic(fmt.Sprintf("MetaBuilder for '%s' had been existed", name))
-	}
-	metaBuilders[name] = f
+}
+
+func (m *MetaV2) Borrow(clientId []byte, expire int64) (string, error) {
+
+}
+
+func (m *MetaV2) Return(clientId []byte, rcId string) error {
+
+}
+
+func (m *MetaV2) ReturnAll(clientId []byte) (int, error) {
+
+}
+
+func (m *MetaV2) Recycle() {
+
 }

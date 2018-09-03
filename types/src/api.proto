@@ -1,0 +1,43 @@
+syntax = "proto3";
+package proto;
+
+message APIRegistQuotaReq {
+    bytes   RCTypeID                        = 1;
+    uint32  Quota                           = 2;
+}
+
+message APIRegistQuotaResp {
+    uint32  Code                            = 1;
+    string  Msg                             = 2;
+}
+
+message APIBorrowReq {
+    bytes   RCTypeID                        = 1;
+    bytes   ClientID                        = 2;
+    int64   Expire                          = 3;
+}
+
+message APIBorrowResp {
+    uint32  Code                            = 1;
+    string  Msg                             = 2;
+    string  RCID                            = 3;
+}
+
+message APIReturnReq {
+    bytes   ClientID                        = 1;
+    string  RCID                            = 2;
+}
+
+message APIReturnResp {
+    uint32  Code                            = 1;
+    string  Msg                             = 2;
+}
+
+message APIReturnAllReq {
+    bytes   ClientID                        = 1;
+}
+
+message APIReturnAllResp {
+    uint32  Code                            = 1;
+    string  Msg                             = 2;
+}
