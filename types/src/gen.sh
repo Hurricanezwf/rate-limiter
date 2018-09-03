@@ -1,8 +1,8 @@
 #!/bin/bash
 
-__src_dir__=./src
+__src_dir__=./
 
-__dst_dir__=./
+__dst_dir__=../
 
 
 mkdir -p ${__dst_dir__}

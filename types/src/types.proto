@@ -4,9 +4,9 @@ package types;
 import "google/protobuf/any.proto";
 
 // Interface结构
-message PB_Interface {
-    google.protobuf.Any value            = 1;
-}
+//message PB_Interface {
+//    google.protobuf.Any value            = 1;
+//}
 
 // String结构
 message PB_String {
@@ -55,19 +55,19 @@ message PB_Bool {
 
 // Map结构
 message PB_Map {
-    map<string, google.protobuf.Any> value  = 1;
+    map<string, google.protobuf.Any> value = 1;
 }
 
 // 队列元素
 message PB_Element {
-    PB_Element next                     = 1;
-    PB_Element prev                     = 2;
-    google.protobuf.Any value           = 3;
+    PB_Element   next                    = 1;
+    PB_Element   prev                    = 2;
+    google.protobuf.Any value            = 3;
 }
 
 // 队列结构
 message PB_Queue {
-    uint32      size                    = 1;
-    PB_Element  head                    = 2;
-    PB_Element  tail                    = 3;
+    uint32      size                     = 1;
+    PB_Element  head                     = 2;
+    PB_Element  tail                     = 3;
 }

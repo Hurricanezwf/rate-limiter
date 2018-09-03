@@ -1,0 +1,46 @@
+package types
+
+import (
+	"fmt"
+
+	proto "github.com/golang/protobuf/proto"
+)
+
+// Interface 是一个所有自定义类型的抽象
+type Interface interface {
+	proto.Message
+
+	// SetValue设置保存的值, 类型必须匹配
+	SetValue(v interface{}) Interface
+}
+
+// TypeName 类型名，上层根据次字段进行类型创建
+type TypeName byte
+
+// 类型枚举
+const (
+	String  = TypeName(0x02)
+	Bytes   = TypeName(0x03)
+	Uint32  = TypeName(0x04)
+	Uint64  = TypeName(0x05)
+	Int32   = TypeName(0x06)
+	Int64   = TypeName(0x07)
+	Float32 = TypeName(0x08)
+	Float64 = TypeName(0x09)
+	Bool    = TypeName(0x0a)
+	Map     = TypeName(0x0b)
+	Queue   = TypeName(0x0c)
+)
+
+func init() {
+	registBuilder(String, NewString)
+}
+
+// New 根据类型名创建一个类型实例
+func New(name TypeName) (Interface, error) {
+	f := findBuilder(name)
+	if f == nil {
+		return nil, fmt.Errorf("Builder for '%#v' is nil", name)
+	}
+	return f()
+}

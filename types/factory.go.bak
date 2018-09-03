@@ -1,0 +1,27 @@
+package types
+
+import "fmt"
+
+// typeFactory 所有类型构造器集合
+var typeFactory = make(map[TypeName]builder)
+
+// builder 是所有类型构造方法的抽象
+type builder func() Interface
+
+// registBuilder 注册各个类型的构造器
+func registBuilder(name TypeName, f builder) {
+	if _, exist := typeFactory[name]; exist {
+		panic(fmt.Sprintf("Type builder for '%#v' had been existed", name))
+	}
+	typeFactory[name] = f
+}
+
+// findBuilder 查找注册的构造器
+// 如果找到将返回非空, 否则返回空
+func findBuilder(name TypeName) builder {
+	f, exist := typeFactory[name]
+	if !exist {
+		return nil
+	}
+	return f
+}

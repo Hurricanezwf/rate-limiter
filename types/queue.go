@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 )
@@ -56,8 +56,8 @@ func (q *PB_Queue) PushBackList(other *PB_Queue) {
 	}
 }
 
-// Pop 弹出队首元素，如果队列为空，则返回nil
-func (q *PB_Queue) Pop() *PB_Element {
+// PopFront 弹出队首元素，如果队列为空，则返回nil
+func (q *PB_Queue) PopFront() *PB_Element {
 	e := q.Front()
 	if e != nil {
 		q.Remove(e)
