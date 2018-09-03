@@ -2,7 +2,6 @@ package types
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 )
 
@@ -20,7 +19,7 @@ func (q *PB_Queue) Init() *PB_Queue {
 
 // PushBack 向队列中添加一个值
 func (q *PB_Queue) PushBack(value proto.Message) (*PB_Element, error) {
-	v, err := ptypes.MarshalAny(value)
+	v, err := NewAny(value)
 	if err != nil {
 		return nil, err
 	}
@@ -80,35 +79,14 @@ func (q *PB_Queue) Remove(e *PB_Element) {
 	if e == nil {
 		panic("Element to remove is nil")
 	}
-
-	for itr := q.Front(); itr != nil; itr = itr.Next {
-		if itr != e {
-			continue
-		}
-
-		q.Size--
-
-		// 删除了唯一的结点
-		if q.Head == q.Tail {
-			q.Head, q.Tail = nil, nil
-			return
-		}
-
-		// 删除了back结点
-		if itr.Next == nil {
-			itr.Prev.Next = nil
-			q.Tail = itr.Prev
-			itr.Prev = nil
-			return
-		}
-
-		// 删除front结点
-		if itr.Prev == nil {
-			q.Head = itr.Next
-			itr.Next = nil
-			return
-		}
+	if e.Prev != nil {
+		e.Prev.Next = e.Next
 	}
+	if e.Next != nil {
+		e.Next.Prev = e.Prev
+	}
+	q.Size--
+	e.Prev, e.Next = nil, nil
 }
 
 // Len 获取链表长度
