@@ -55,7 +55,8 @@ message PB_Bool {
 
 // Map结构
 message PB_Map {
-    map<string, google.protobuf.Any> value = 1;
+    map<string, google.protobuf.Any> value  = 1;
+    uint32 length                           = 2;
 }
 
 // 队列元素

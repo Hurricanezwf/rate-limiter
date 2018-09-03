@@ -1,10 +1,5 @@
 #!/bin/bash
 
-__src_dir__=./
+protoc -I=./ --go_out=../  ./types.proto
 
-__dst_dir__=../
-
-
-mkdir -p ${__dst_dir__}
-
-protoc -I=${__src_dir__} --go_out=${__dst_dir__} ${__src_dir__}/*.proto
+protoc -I=./ --go_out=../../meta/v2/ ./meta.proto

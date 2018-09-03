@@ -19,7 +19,7 @@ func (q *PB_Queue) Init() *PB_Queue {
 
 // PushBack 向队列中添加一个值
 func (q *PB_Queue) PushBack(value proto.Message) (*PB_Element, error) {
-	v, err := NewAny(value)
+	v, err := MarshalAny(value)
 	if err != nil {
 		return nil, err
 	}

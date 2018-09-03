@@ -6,7 +6,7 @@ import (
 	any "github.com/golang/protobuf/ptypes/any"
 )
 
-func NewAny(v proto.Message) (*any.Any, error) {
+func MarshalAny(v proto.Message) (*any.Any, error) {
 	any, err := ptypes.MarshalAny(v)
 	if err != nil {
 		return nil, err
@@ -100,4 +100,11 @@ func AnyToQueue(a *any.Any) (*PB_Queue, error) {
 		return nil, err
 	}
 	return &v, nil
+}
+
+func UnmarshalAny(a *any.Any, v proto.Message) error {
+	if err := ptypes.UnmarshalAny(a, v); err != nil {
+		return err
+	}
+	return nil
 }

@@ -1,0 +1,26 @@
+syntax = "proto3";
+package v2;
+
+import "types.proto";
+
+
+message LimiterMetaV2 {
+    map<string, M> Value                          = 1;
+}
+
+
+message M {
+    types.PB_Bytes    rcTypeId                    = 1;
+    types.PB_Uint32   quota                       = 2;
+    types.PB_Queue    canBorrow                   = 3;
+    types.PB_Queue    recycled                    = 4;
+    types.PB_Map      used                        = 5;
+}
+
+
+message BorrowRecord {
+    types.PB_Bytes  clientID                      = 1;
+    types.PB_String rcID                          = 2;
+    types.PB_Int64  borrowAt                      = 3;
+    types.PB_Int64  expireAt                      = 4;
+}

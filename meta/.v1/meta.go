@@ -1,4 +1,4 @@
-package limiter
+package metav1
 
 import (
 	"bytes"
@@ -9,43 +9,16 @@ import (
 	"time"
 
 	"github.com/Hurricanezwf/rate-limiter/encoding"
+	"github.com/Hurricanezwf/rate-limiter/limiter"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
 	"github.com/Hurricanezwf/toolbox/logging/glog"
 )
 
-func NewLimiterMeta(rcTypeId []byte, quota uint32) LimiterMeta {
-	return newLimiterMetaV1(rcTypeId, quota)
+func init() {
+	limiter.RegistMetaBuilder("v1", newLimiterMetaV1)
 }
 
-func NewLimiterMetaFromBytes(b []byte) (LimiterMeta, error) {
-	var m limiterMetaV1
-	if _, err := m.Decode(b); err != nil {
-		return nil, err
-	}
-	return &m, nil
-}
-
-// 需要支持并发安全
-type LimiterMeta interface {
-	// Borrow 申请一次执行资格，如果成功返回nil
-	// expire 表示申请的资源的自动回收时间
-	Borrow(clientId []byte, expire int64) (string, error)
-
-	// Return 归还执行资格，如果成功返回nil
-	Return(clientId []byte, rcId string) error
-
-	// ReturnAll 归还某个用户所有的执行资格，通常在用户主动关闭的时候
-	// 返回回收的资源数量
-	ReturnAll(clientId []byte) (int, error)
-
-	// Recycle 清理到期未还的资源并且将recycled队列的资源投递到canBorrow队列
-	Recycle()
-
-	// 组合Serializer接口
-	encoding.Serializer
-}
-
-// limiterMetaV1 is an implement of LimiterMeta interface
+// limiterMetaV1 是LimiterMeta的V1版实现
 type limiterMetaV1 struct {
 	mutex sync.RWMutex
 
@@ -62,7 +35,7 @@ type limiterMetaV1 struct {
 	usedCount *encoding.Uint32 // 正被使用的资源数量统计
 }
 
-func newLimiterMetaV1(rcTypeId []byte, quota uint32) *limiterMetaV1 {
+func newLimiterMetaV1(rcTypeId []byte, quota uint32) limiter.LimiterMeta {
 	m := &limiterMetaV1{
 		rcTypeId:  encoding.NewBytes(rcTypeId),
 		quota:     encoding.NewUint32(quota),

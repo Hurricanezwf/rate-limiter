@@ -18,5 +18,8 @@ func TestMap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	t.Logf("%s=%s\n", k, str.Value)
+	t.Logf("%s=%s, len:%d\n", k, str.Value, m.Len())
+
+	m.Remove(k)
+	t.Logf("len=%d\n", m.Len())
 }
