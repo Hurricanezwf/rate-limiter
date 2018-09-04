@@ -1,4 +1,4 @@
-package tools
+package meta
 
 import (
 	"encoding/hex"

@@ -1,7 +1,11 @@
 package meta
 
 import (
+	fmt "fmt"
 	"sync"
+
+	"github.com/Hurricanezwf/rate-limiter/encoding"
+	"github.com/Hurricanezwf/rate-limiter/types"
 )
 
 func init() {
@@ -60,7 +64,27 @@ func newMetaV2() Interface {
 }
 
 func (m *metaV2) RegistQuota(rcType []byte, quota uint32) error {
-	// TODO:
+	m.gLock.Lock()
+	defer m.gLock.Unlock()
+
+	rcTypeHex := encoding.BytesToStringHex(rcType)
+	if _, exist := m.m.Value[rcTypeHex]; exist {
+		return fmt.Errorf("Resource '%s' had been existed", rcTypeHex)
+	}
+
+	rcMgr := &PB_M{
+		RcTypeId:  types.NewBytes(rcType),
+		Quota:     types.NewUint32(quota),
+		CanBorrow: types.NewQueue(),
+	}
+	for i := uint32(0); i < quota; i++ {
+		rcId := types.NewString(MakeResourceID(rcType, i))
+		if _, err := rcMgr.CanBorrow.PushBack(rcId); err != nil {
+			return fmt.Errorf("Generate canBorrow resource failed, %v", err)
+		}
+	}
+
+	m.m.Value[rcTypeHex] = rcMgr
 	return nil
 }
 
