@@ -1,6 +1,7 @@
 package meta
 
 import (
+	"errors"
 	fmt "fmt"
 	"sync"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/Hurricanezwf/rate-limiter/encoding"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
 	"github.com/Hurricanezwf/rate-limiter/types"
+	"github.com/Hurricanezwf/toolbox/logging/glog"
 )
 
 func init() {
@@ -28,7 +30,7 @@ type Interface interface {
 
 	// ReturnAll 归还某个用户所有的执行资格，通常在用户主动关闭的时候
 	// 返回回收的资源数量
-	ReturnAll(rcType, clientId []byte) (int, error)
+	ReturnAll(rcType, clientId []byte) (uint32, error)
 
 	// Recycle 清理到期未还的资源并且将recycled队列的资源投递到canBorrow队列
 	Recycle()
@@ -124,7 +126,7 @@ func (m *metaV2) Borrow(rcType, clientId []byte, expire int64) (string, error) {
 	}
 	m.gLock.Unlock()
 
-	// 验证资源是否注册
+	// 获取资源管理器
 	mLock.Lock()
 	defer mLock.Unlock()
 
@@ -166,13 +168,122 @@ func (m *metaV2) Borrow(rcType, clientId []byte, expire int64) (string, error) {
 }
 
 func (m *metaV2) Return(clientId []byte, rcId string) error {
-	// TODO:
+	rcType, err := ResolveResourceID(rcId)
+	if err != nil {
+		return fmt.Errorf("Resolve resource id failed, %v", err)
+	}
+
+	var mLock *sync.RWMutex
+	var rcTypeHex = encoding.BytesToStringHex(rcType)
+
+	// 获取资源锁
+	m.gLock.Lock()
+	mLock = m.mLock[rcTypeHex]
+	if mLock == nil {
+		mLock = &sync.RWMutex{}
+		m.mLock[rcTypeHex] = mLock
+	}
+	m.gLock.Unlock()
+
+	// 获取资源管理器
+	mLock.Lock()
+	defer mLock.Unlock()
+
+	rcMgr, exist := m.m.Value[rcTypeHex]
+	if !exist {
+		return ErrResourceNotRegisted
+	}
+
+	// 安全性检测
+	if rcMgr.Recycled.Len() >= rcMgr.Quota {
+		return fmt.Errorf("There's something wrong, recycled queue len(%d) >= quota(%d)", rcMgr.Recycled.Len(), rcMgr.Quota)
+	}
+
+	// 归还资源
+	// 从出借记录中删除并加入recycle队列
+	var find = false
+	var clientIdHex = encoding.BytesToStringHex(clientId)
+
+	rdList, exist := rcMgr.Used[clientIdHex]
+	if !exist || rdList == nil {
+		return fmt.Errorf("There's something wrong, no client['%s'] found in used queue", clientIdHex)
+	}
+
+	for itr := rdList.Head; itr != nil; itr = itr.Next {
+		var record PB_BorrowRecord
+		if err := types.UnmarshalAny(itr.Value, &record); err != nil {
+			return fmt.Errorf("Unmarshal BorrowRecord failed, %v", err)
+		}
+		if record.RcID != rcId {
+			continue
+		}
+
+		glog.V(3).Infof("Client[%s] return %s to recycle.", clientIdHex, rcId)
+
+		find = true
+		rdList.Remove(itr)
+		rcMgr.UsedCount--
+		rcMgr.Recycled.PushBack(types.NewString(rcId))
+
+		// 如果该client没有借入记录，则从map中删除，防止map累积增长
+		if rdList.Len() <= 0 {
+			delete(rcMgr.Used, clientIdHex)
+		}
+		break
+	}
+
+	if !find {
+		glog.Warningf("No resource[%s] found at used queue. client=%s", rcId, clientIdHex)
+		return ErrNotFound
+	}
+
 	return nil
 }
 
-func (m *metaV2) ReturnAll(rcType, clientId []byte) (int, error) {
-	// TODO:
-	return 0, nil
+func (m *metaV2) ReturnAll(rcType, clientId []byte) (uint32, error) {
+	var mLock *sync.RWMutex
+	var rcTypeHex = encoding.BytesToStringHex(rcType)
+
+	// 获取资源锁
+	m.gLock.Lock()
+	mLock = m.mLock[rcTypeHex]
+	if mLock == nil {
+		mLock = &sync.RWMutex{}
+		m.mLock[rcTypeHex] = mLock
+	}
+	m.gLock.Unlock()
+
+	// 获取资源管理器
+	mLock.Lock()
+	defer mLock.Unlock()
+
+	rcMgr, exist := m.m.Value[rcTypeHex]
+	if !exist {
+		return 0, ErrResourceNotRegisted
+	}
+
+	// 归还指定用户所有指定类型的资源
+	clientIdHex := encoding.BytesToStringHex(clientId)
+	rdList, exist := rcMgr.Used[clientIdHex]
+	if !exist || rdList == nil {
+		return 0, nil
+	}
+
+	count := rdList.Len()
+	for itr := rdList.Head; itr != nil; itr = itr.Next {
+		var record PB_BorrowRecord
+		if err := types.UnmarshalAny(itr.Value, &record); err != nil {
+			return 0, fmt.Errorf("Unmarshal BorrowRecord failed, %v", err)
+		}
+		if rcMgr.Recycled.Len() >= rcMgr.Quota {
+			return 0, errors.New("There's something wrong, recycled queue overflow")
+		}
+		rcMgr.Recycled.PushBack(types.NewString(record.RcID))
+	}
+	delete(rcMgr.Used, clientIdHex)
+	rcMgr.UsedCount -= count
+
+	return count, nil
 }
 
 func (m *metaV2) Recycle() {
