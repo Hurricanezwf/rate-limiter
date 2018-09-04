@@ -1,13 +1,17 @@
 package cluster
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/Hurricanezwf/rate-limiter/g"
 	"github.com/Hurricanezwf/rate-limiter/meta"
+	. "github.com/Hurricanezwf/rate-limiter/proto"
 	"github.com/Hurricanezwf/toolbox/logging/glog"
+	"github.com/gogo/protobuf/proto"
 	raftlib "github.com/hashicorp/raft"
 )
 
@@ -29,18 +33,18 @@ type Interface interface {
 	LeaderHTTPAddr() string
 
 	// RegistQuota 注册资源配额
-	RegistQuota(rcType []byte, quota uint32) error
+	RegistQuota(r *APIRegistQuotaReq) *APIRegistQuotaResp
 
 	// Borrow 申请一次执行资格，如果成功返回nil
 	// expire 表示申请的资源的自动回收时间
-	Borrow(rcType, clientId []byte, expire int64) (string, error)
+	Borrow(r *APIBorrowReq) *APIBorrowResp
 
 	// Return 归还执行资格，如果成功返回nil
-	Return(clientId []byte, rcId string) error
+	Return(r *APIReturnReq) *APIReturnResp
 
 	// ReturnAll 归还某个用户所有的执行资格，通常在用户主动关闭的时候
 	// 返回回收的资源数量
-	ReturnAll(rcType, clientId []byte) (int, error)
+	ReturnAll(r *APIReturnAllReq) *APIReturnAllResp
 }
 
 // New 新建一个cluster接口实例
@@ -68,15 +72,19 @@ type clusterV2 struct {
 	// Leader结点HTTP服务地址
 	leaderHTTPAddr string
 
+	// Raft超时时间
+	raftTimeout time.Duration
+
 	// 控制退出
 	stopC chan struct{}
 }
 
 func newClusterV2() Interface {
 	return &clusterV2{
-		gLock: &sync.RWMutex{},
-		m:     meta.New("v2"),
-		stopC: make(chan struct{}),
+		gLock:       &sync.RWMutex{},
+		m:           meta.New("v2"),
+		raftTimeout: time.Duration(g.Config.Raft.Timeout) * time.Millisecond,
+		stopC:       make(chan struct{}),
 	}
 }
 
@@ -237,27 +245,91 @@ func (c *clusterV2) Restore(rc io.ReadCloser) error {
 }
 
 // RegistQuota 注册资源配额
-func (c *clusterV2) RegistQuota(rcType []byte, quota uint32) error {
-	// TODO:
-	return nil
+func (c *clusterV2) RegistQuota(r *APIRegistQuotaReq) *APIRegistQuotaResp {
+	rp := &APIRegistQuotaResp{Code: 500}
+	cmd, err := encodeCMD(ActionRegistQuota, r)
+	if err != nil {
+		rp.Msg = fmt.Sprintf("Encode cmd failed, %v", err)
+		return rp
+	}
+
+	future := c.raft.Apply(cmd, c.raftTimeout)
+	if err = future.Error(); err != nil {
+		rp.Msg = err.Error()
+		return rp
+	}
+	return future.Response().(*APIRegistQuotaResp)
 }
 
 // Borrow 申请一次执行资格，如果成功返回nil
-// expire 表示申请的资源的自动回收时间
-func (c *clusterV2) Borrow(rcType, clientId []byte, expire int64) (string, error) {
-	// TODO:
-	return "", nil
+func (c *clusterV2) Borrow(r *APIBorrowReq) *APIBorrowResp {
+	rp := &APIBorrowResp{Code: 500}
+	cmd, err := encodeCMD(ActionBorrow, r)
+	if err != nil {
+		rp.Msg = fmt.Sprintf("Encode cmd failed, %v", err)
+		return rp
+	}
+
+	future := c.raft.Apply(cmd, c.raftTimeout)
+	if err = future.Error(); err != nil {
+		rp.Msg = err.Error()
+		return rp
+	}
+	return future.Response().(*APIBorrowResp)
 }
 
 // Return 归还执行资格，如果成功返回nil
-func (c *clusterV2) Return(clientId []byte, rcId string) error {
-	// TODO:
-	return nil
+func (c *clusterV2) Return(r *APIReturnReq) *APIReturnResp {
+	rp := &APIReturnResp{Code: 500}
+	cmd, err := encodeCMD(ActionReturn, r)
+	if err != nil {
+		rp.Msg = fmt.Sprintf("Encode cmd failed, %v", err)
+		return rp
+	}
+
+	future := c.raft.Apply(cmd, c.raftTimeout)
+	if err = future.Error(); err != nil {
+		rp.Msg = err.Error()
+		return rp
+	}
+	return future.Response().(*APIReturnResp)
 }
 
 // ReturnAll 归还某个用户所有的执行资格，通常在用户主动关闭的时候
-// 返回回收的资源数量
-func (c *clusterV2) ReturnAll(rcType, clientId []byte) (int, error) {
-	// TODO:
-	return 0, nil
+func (c *clusterV2) ReturnAll(r *APIReturnAllReq) *APIReturnAllResp {
+	rp := &APIReturnAllResp{Code: 500}
+	cmd, err := encodeCMD(ActionReturnAll, r)
+	if err != nil {
+		rp.Msg = fmt.Sprintf("Encode cmd failed, %v", err)
+		return rp
+	}
+
+	future := c.raft.Apply(cmd, c.raftTimeout)
+	if err = future.Error(); err != nil {
+		rp.Msg = err.Error()
+		return rp
+	}
+	return future.Response().(*APIReturnAllResp)
+}
+
+func encodeCMD(cmd byte, args proto.Message) ([]byte, error) {
+	b, err := proto.Marshal(args)
+	if err != nil {
+		return nil, err
+	}
+	buf := bytes.NewBuffer(make([]byte, 0, 1+len(b)))
+	buf.WriteByte(cmd)
+	buf.Write(b)
+	return buf.Bytes(), nil
+}
+
+func resolveCMD(b []byte) (cmd byte, args []byte) {
+	if len(b) < 1 {
+		return 0, nil
+	}
+	return b[0], b[1:]
+}
+
+func resolveArgs(args []byte, v proto.Message) error {
+	return proto.Unmarshal(args, v)
 }

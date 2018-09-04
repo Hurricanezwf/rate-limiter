@@ -30,7 +30,7 @@ func (m *APIRegistQuotaReq) Reset()         { *m = APIRegistQuotaReq{} }
 func (m *APIRegistQuotaReq) String() string { return proto.CompactTextString(m) }
 func (*APIRegistQuotaReq) ProtoMessage()    {}
 func (*APIRegistQuotaReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_e07ba2d713f408f1, []int{0}
+	return fileDescriptor_api_d97179d02bfd156c, []int{0}
 }
 func (m *APIRegistQuotaReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_APIRegistQuotaReq.Unmarshal(m, b)
@@ -76,7 +76,7 @@ func (m *APIRegistQuotaResp) Reset()         { *m = APIRegistQuotaResp{} }
 func (m *APIRegistQuotaResp) String() string { return proto.CompactTextString(m) }
 func (*APIRegistQuotaResp) ProtoMessage()    {}
 func (*APIRegistQuotaResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_e07ba2d713f408f1, []int{1}
+	return fileDescriptor_api_d97179d02bfd156c, []int{1}
 }
 func (m *APIRegistQuotaResp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_APIRegistQuotaResp.Unmarshal(m, b)
@@ -110,22 +110,319 @@ func (m *APIRegistQuotaResp) GetMsg() string {
 	return ""
 }
 
+type APIBorrowReq struct {
+	RCTypeID             []byte   `protobuf:"bytes,1,opt,name=RCTypeID,proto3" json:"RCTypeID,omitempty"`
+	ClientID             []byte   `protobuf:"bytes,2,opt,name=ClientID,proto3" json:"ClientID,omitempty"`
+	Expire               int64    `protobuf:"varint,3,opt,name=Expire,proto3" json:"Expire,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *APIBorrowReq) Reset()         { *m = APIBorrowReq{} }
+func (m *APIBorrowReq) String() string { return proto.CompactTextString(m) }
+func (*APIBorrowReq) ProtoMessage()    {}
+func (*APIBorrowReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_d97179d02bfd156c, []int{2}
+}
+func (m *APIBorrowReq) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_APIBorrowReq.Unmarshal(m, b)
+}
+func (m *APIBorrowReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_APIBorrowReq.Marshal(b, m, deterministic)
+}
+func (dst *APIBorrowReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_APIBorrowReq.Merge(dst, src)
+}
+func (m *APIBorrowReq) XXX_Size() int {
+	return xxx_messageInfo_APIBorrowReq.Size(m)
+}
+func (m *APIBorrowReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_APIBorrowReq.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_APIBorrowReq proto.InternalMessageInfo
+
+func (m *APIBorrowReq) GetRCTypeID() []byte {
+	if m != nil {
+		return m.RCTypeID
+	}
+	return nil
+}
+
+func (m *APIBorrowReq) GetClientID() []byte {
+	if m != nil {
+		return m.ClientID
+	}
+	return nil
+}
+
+func (m *APIBorrowReq) GetExpire() int64 {
+	if m != nil {
+		return m.Expire
+	}
+	return 0
+}
+
+type APIBorrowResp struct {
+	Code                 uint32   `protobuf:"varint,1,opt,name=Code,proto3" json:"Code,omitempty"`
+	Msg                  string   `protobuf:"bytes,2,opt,name=Msg,proto3" json:"Msg,omitempty"`
+	RCID                 string   `protobuf:"bytes,3,opt,name=RCID,proto3" json:"RCID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *APIBorrowResp) Reset()         { *m = APIBorrowResp{} }
+func (m *APIBorrowResp) String() string { return proto.CompactTextString(m) }
+func (*APIBorrowResp) ProtoMessage()    {}
+func (*APIBorrowResp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_d97179d02bfd156c, []int{3}
+}
+func (m *APIBorrowResp) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_APIBorrowResp.Unmarshal(m, b)
+}
+func (m *APIBorrowResp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_APIBorrowResp.Marshal(b, m, deterministic)
+}
+func (dst *APIBorrowResp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_APIBorrowResp.Merge(dst, src)
+}
+func (m *APIBorrowResp) XXX_Size() int {
+	return xxx_messageInfo_APIBorrowResp.Size(m)
+}
+func (m *APIBorrowResp) XXX_DiscardUnknown() {
+	xxx_messageInfo_APIBorrowResp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_APIBorrowResp proto.InternalMessageInfo
+
+func (m *APIBorrowResp) GetCode() uint32 {
+	if m != nil {
+		return m.Code
+	}
+	return 0
+}
+
+func (m *APIBorrowResp) GetMsg() string {
+	if m != nil {
+		return m.Msg
+	}
+	return ""
+}
+
+func (m *APIBorrowResp) GetRCID() string {
+	if m != nil {
+		return m.RCID
+	}
+	return ""
+}
+
+type APIReturnReq struct {
+	ClientID             []byte   `protobuf:"bytes,1,opt,name=ClientID,proto3" json:"ClientID,omitempty"`
+	RCID                 string   `protobuf:"bytes,2,opt,name=RCID,proto3" json:"RCID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *APIReturnReq) Reset()         { *m = APIReturnReq{} }
+func (m *APIReturnReq) String() string { return proto.CompactTextString(m) }
+func (*APIReturnReq) ProtoMessage()    {}
+func (*APIReturnReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_d97179d02bfd156c, []int{4}
+}
+func (m *APIReturnReq) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_APIReturnReq.Unmarshal(m, b)
+}
+func (m *APIReturnReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_APIReturnReq.Marshal(b, m, deterministic)
+}
+func (dst *APIReturnReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_APIReturnReq.Merge(dst, src)
+}
+func (m *APIReturnReq) XXX_Size() int {
+	return xxx_messageInfo_APIReturnReq.Size(m)
+}
+func (m *APIReturnReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_APIReturnReq.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_APIReturnReq proto.InternalMessageInfo
+
+func (m *APIReturnReq) GetClientID() []byte {
+	if m != nil {
+		return m.ClientID
+	}
+	return nil
+}
+
+func (m *APIReturnReq) GetRCID() string {
+	if m != nil {
+		return m.RCID
+	}
+	return ""
+}
+
+type APIReturnResp struct {
+	Code                 uint32   `protobuf:"varint,1,opt,name=Code,proto3" json:"Code,omitempty"`
+	Msg                  string   `protobuf:"bytes,2,opt,name=Msg,proto3" json:"Msg,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *APIReturnResp) Reset()         { *m = APIReturnResp{} }
+func (m *APIReturnResp) String() string { return proto.CompactTextString(m) }
+func (*APIReturnResp) ProtoMessage()    {}
+func (*APIReturnResp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_d97179d02bfd156c, []int{5}
+}
+func (m *APIReturnResp) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_APIReturnResp.Unmarshal(m, b)
+}
+func (m *APIReturnResp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_APIReturnResp.Marshal(b, m, deterministic)
+}
+func (dst *APIReturnResp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_APIReturnResp.Merge(dst, src)
+}
+func (m *APIReturnResp) XXX_Size() int {
+	return xxx_messageInfo_APIReturnResp.Size(m)
+}
+func (m *APIReturnResp) XXX_DiscardUnknown() {
+	xxx_messageInfo_APIReturnResp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_APIReturnResp proto.InternalMessageInfo
+
+func (m *APIReturnResp) GetCode() uint32 {
+	if m != nil {
+		return m.Code
+	}
+	return 0
+}
+
+func (m *APIReturnResp) GetMsg() string {
+	if m != nil {
+		return m.Msg
+	}
+	return ""
+}
+
+type APIReturnAllReq struct {
+	ClientID             []byte   `protobuf:"bytes,1,opt,name=ClientID,proto3" json:"ClientID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *APIReturnAllReq) Reset()         { *m = APIReturnAllReq{} }
+func (m *APIReturnAllReq) String() string { return proto.CompactTextString(m) }
+func (*APIReturnAllReq) ProtoMessage()    {}
+func (*APIReturnAllReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_d97179d02bfd156c, []int{6}
+}
+func (m *APIReturnAllReq) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_APIReturnAllReq.Unmarshal(m, b)
+}
+func (m *APIReturnAllReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_APIReturnAllReq.Marshal(b, m, deterministic)
+}
+func (dst *APIReturnAllReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_APIReturnAllReq.Merge(dst, src)
+}
+func (m *APIReturnAllReq) XXX_Size() int {
+	return xxx_messageInfo_APIReturnAllReq.Size(m)
+}
+func (m *APIReturnAllReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_APIReturnAllReq.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_APIReturnAllReq proto.InternalMessageInfo
+
+func (m *APIReturnAllReq) GetClientID() []byte {
+	if m != nil {
+		return m.ClientID
+	}
+	return nil
+}
+
+type APIReturnAllResp struct {
+	Code                 uint32   `protobuf:"varint,1,opt,name=Code,proto3" json:"Code,omitempty"`
+	Msg                  string   `protobuf:"bytes,2,opt,name=Msg,proto3" json:"Msg,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *APIReturnAllResp) Reset()         { *m = APIReturnAllResp{} }
+func (m *APIReturnAllResp) String() string { return proto.CompactTextString(m) }
+func (*APIReturnAllResp) ProtoMessage()    {}
+func (*APIReturnAllResp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_d97179d02bfd156c, []int{7}
+}
+func (m *APIReturnAllResp) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_APIReturnAllResp.Unmarshal(m, b)
+}
+func (m *APIReturnAllResp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_APIReturnAllResp.Marshal(b, m, deterministic)
+}
+func (dst *APIReturnAllResp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_APIReturnAllResp.Merge(dst, src)
+}
+func (m *APIReturnAllResp) XXX_Size() int {
+	return xxx_messageInfo_APIReturnAllResp.Size(m)
+}
+func (m *APIReturnAllResp) XXX_DiscardUnknown() {
+	xxx_messageInfo_APIReturnAllResp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_APIReturnAllResp proto.InternalMessageInfo
+
+func (m *APIReturnAllResp) GetCode() uint32 {
+	if m != nil {
+		return m.Code
+	}
+	return 0
+}
+
+func (m *APIReturnAllResp) GetMsg() string {
+	if m != nil {
+		return m.Msg
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*APIRegistQuotaReq)(nil), "proto.APIRegistQuotaReq")
 	proto.RegisterType((*APIRegistQuotaResp)(nil), "proto.APIRegistQuotaResp")
+	proto.RegisterType((*APIBorrowReq)(nil), "proto.APIBorrowReq")
+	proto.RegisterType((*APIBorrowResp)(nil), "proto.APIBorrowResp")
+	proto.RegisterType((*APIReturnReq)(nil), "proto.APIReturnReq")
+	proto.RegisterType((*APIReturnResp)(nil), "proto.APIReturnResp")
+	proto.RegisterType((*APIReturnAllReq)(nil), "proto.APIReturnAllReq")
+	proto.RegisterType((*APIReturnAllResp)(nil), "proto.APIReturnAllResp")
 }
 
-func init() { proto.RegisterFile("api.proto", fileDescriptor_api_e07ba2d713f408f1) }
+func init() { proto.RegisterFile("api.proto", fileDescriptor_api_d97179d02bfd156c) }
 
-var fileDescriptor_api_e07ba2d713f408f1 = []byte{
-	// 135 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x4c, 0x2c, 0xc8, 0xd4,
-	0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x05, 0x53, 0x4a, 0xae, 0x5c, 0x82, 0x8e, 0x01, 0x9e,
-	0x41, 0xa9, 0xe9, 0x99, 0xc5, 0x25, 0x81, 0xa5, 0xf9, 0x25, 0x89, 0x41, 0xa9, 0x85, 0x42, 0x52,
-	0x5c, 0x1c, 0x41, 0xce, 0x21, 0x95, 0x05, 0xa9, 0x9e, 0x2e, 0x12, 0x8c, 0x0a, 0x8c, 0x1a, 0x3c,
-	0x41, 0x70, 0xbe, 0x90, 0x08, 0x17, 0x2b, 0x58, 0x9d, 0x04, 0x93, 0x02, 0xa3, 0x06, 0x6f, 0x10,
-	0x84, 0xa3, 0x64, 0xc5, 0x25, 0x84, 0x6e, 0x4c, 0x71, 0x81, 0x90, 0x10, 0x17, 0x8b, 0x73, 0x7e,
-	0x4a, 0x2a, 0xd8, 0x0c, 0xde, 0x20, 0x30, 0x5b, 0x48, 0x80, 0x8b, 0xd9, 0xb7, 0x38, 0x1d, 0xac,
-	0x9b, 0x33, 0x08, 0xc4, 0x4c, 0x62, 0x03, 0xbb, 0xc4, 0x18, 0x10, 0x00, 0x00, 0xff, 0xff, 0x96,
-	0x0a, 0x90, 0x7a, 0x9d, 0x00, 0x00, 0x00,
+var fileDescriptor_api_d97179d02bfd156c = []byte{
+	// 255 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x92, 0xbf, 0x4b, 0xc3, 0x40,
+	0x14, 0xc7, 0xb9, 0xc6, 0x96, 0xe6, 0x91, 0x60, 0x7d, 0x88, 0x84, 0x4e, 0xe1, 0xa6, 0x2c, 0xba,
+	0x88, 0x20, 0x0e, 0x42, 0x4c, 0x3a, 0xdc, 0x20, 0xd4, 0x87, 0xb3, 0x50, 0xf1, 0x28, 0x81, 0xd0,
+	0x3b, 0x2f, 0x57, 0xd4, 0xff, 0x5e, 0xfa, 0x6c, 0x8f, 0xda, 0x25, 0x99, 0xf2, 0xbe, 0xf0, 0xfd,
+	0xf1, 0x21, 0x1c, 0xc4, 0x2b, 0xdb, 0xdc, 0x58, 0x67, 0xbc, 0xc1, 0x31, 0x7f, 0xe4, 0x02, 0x2e,
+	0xca, 0xa5, 0x22, 0xbd, 0x6e, 0x3a, 0xff, 0xb2, 0x35, 0x7e, 0x45, 0xfa, 0x13, 0xe7, 0x30, 0xa5,
+	0xea, 0xf5, 0xc7, 0x6a, 0x55, 0x67, 0x22, 0x17, 0x45, 0x42, 0x41, 0xe3, 0x25, 0x8c, 0xd9, 0x97,
+	0x8d, 0x72, 0x51, 0xa4, 0xf4, 0x27, 0xe4, 0x03, 0xe0, 0x69, 0x4d, 0x67, 0x11, 0xe1, 0xac, 0x32,
+	0x1f, 0x9a, 0x3b, 0x52, 0xe2, 0x1b, 0x67, 0x10, 0x3d, 0x77, 0x6b, 0x4e, 0xc7, 0xb4, 0x3b, 0xe5,
+	0x1b, 0x24, 0xe5, 0x52, 0x3d, 0x19, 0xe7, 0xcc, 0x57, 0xdf, 0xfa, 0x1c, 0xa6, 0x55, 0xdb, 0xe8,
+	0x8d, 0x57, 0x35, 0x57, 0x24, 0x14, 0x34, 0x5e, 0xc1, 0x64, 0xf1, 0x6d, 0x1b, 0xa7, 0xb3, 0x28,
+	0x17, 0x45, 0x44, 0x7b, 0x25, 0x15, 0xa4, 0x47, 0xfd, 0x43, 0xb1, 0x76, 0x2e, 0xaa, 0x54, 0xcd,
+	0x65, 0x31, 0xf1, 0x2d, 0x1f, 0x19, 0x95, 0xb4, 0xdf, 0xba, 0xcd, 0x1e, 0x35, 0xe0, 0x88, 0x13,
+	0x9c, 0x43, 0x7e, 0x74, 0x94, 0xbf, 0x63, 0x94, 0x43, 0x7e, 0xf0, 0x1f, 0xba, 0x86, 0xf3, 0x10,
+	0x2b, 0xdb, 0xb6, 0x67, 0x59, 0xde, 0xc3, 0xec, 0xbf, 0x7d, 0xe8, 0xd0, 0xfb, 0x84, 0x1f, 0xc5,
+	0xed, 0x6f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xa9, 0xc7, 0x15, 0x62, 0x28, 0x02, 0x00, 0x00,
 }

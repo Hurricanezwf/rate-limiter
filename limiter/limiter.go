@@ -11,6 +11,7 @@ func init() {
 }
 
 // Interface limiter的接口抽象
+// 负责接口验证类操作,例如参数校验，集群角色校验等。
 type Interface interface {
 	// Open 启用limiter
 	Open() error

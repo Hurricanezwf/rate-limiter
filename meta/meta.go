@@ -17,7 +17,7 @@ func init() {
 	RegistBuilder("v2", newMetaV2)
 }
 
-// 需要支持并发安全
+// Interface 存储元数据的抽象接口，需要支持并发安全
 type Interface interface {
 	// RegistQuota 注册资源配额
 	RegistQuota(rcType []byte, quota uint32) error
