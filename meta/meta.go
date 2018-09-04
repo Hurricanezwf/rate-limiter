@@ -287,7 +287,63 @@ func (m *metaV2) ReturnAll(rcType, clientId []byte) (uint32, error) {
 }
 
 func (m *metaV2) Recycle() {
-	// TODO:
+	var nowTs int64
+
+	m.gLock.Lock()
+	defer m.gLock.Unlock()
+
+	// 扫描所有使用过的资源类型，清理过期资源和恢复资源额度
+	// 所有调用过Borrow的资源类型都会有锁存在, 当锁存在但是资源类型不存在时直接从map中删除锁
+	for rcTypeHex, mLock := range m.mLock {
+		mLock.Lock()
+
+		// 获取资源管理器
+		rcMgr, exist := m.m.Value[rcTypeHex]
+		if !exist {
+			delete(m.mLock, rcTypeHex)
+			goto UNLOCK
+		}
+
+		// 检测过期资源并回收
+		nowTs = time.Now().Unix()
+		for clientIdHex, rdList := range rcMgr.Used {
+			for itr := rdList.Head; itr != nil; {
+				var next = itr.Next
+				var record PB_BorrowRecord
+				if err := types.UnmarshalAny(itr.Value, &record); err != nil {
+					glog.Warning(err.Error())
+					goto NEXT
+				}
+				if record.ExpireAt < nowTs {
+					goto NEXT
+				}
+
+				// 过期后，从used队列移到canBorrow队列(仅在过期资源清理和资源重用的周期一致时才可以这样做)
+				rdList.Remove(itr)
+				rcMgr.UsedCount--
+				rcMgr.CanBorrow.PushBack(types.NewString(record.RcID))
+				glog.V(2).Infof("'%s' borrowed by client['%s'] is expired, force to recycle", record.RcID, clientIdHex)
+
+			NEXT:
+				itr = next
+			}
+
+			// 当没有此客户的借出记录时，从map中删除
+			if rdList.Len() == 0 {
+				delete(rcMgr.Used, clientIdHex)
+			}
+		}
+
+		// 资源重用
+		if count := rcMgr.Recycled.Len(); count > 0 {
+			rcMgr.CanBorrow.PushBackList(rcMgr.Recycled)
+			rcMgr.Recycled.Init()
+			glog.V(2).Infof("Refresh %d resources to canBorrow queue because of client's return", count)
+		}
+
+	UNLOCK:
+		mLock.Unlock()
+	}
 }
 
 func (m *metaV2) Encode() ([]byte, error) {
