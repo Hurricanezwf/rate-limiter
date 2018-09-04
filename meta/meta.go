@@ -3,8 +3,10 @@ package meta
 import (
 	fmt "fmt"
 	"sync"
+	"time"
 
 	"github.com/Hurricanezwf/rate-limiter/encoding"
+	. "github.com/Hurricanezwf/rate-limiter/proto"
 	"github.com/Hurricanezwf/rate-limiter/types"
 )
 
@@ -50,13 +52,20 @@ func New(name string) Interface {
 
 // metaV2 是Interface接口的具体实现
 type metaV2 struct {
+	// 全局锁
 	gLock *sync.RWMutex
-	m     *PB_Meta
+
+	// 资源粒度的锁
+	mLock map[string]*sync.RWMutex
+
+	// 资源元数据
+	m *PB_Meta
 }
 
 func newMetaV2() Interface {
 	return &metaV2{
 		gLock: &sync.RWMutex{},
+		mLock: make(map[string]*sync.RWMutex),
 		m: &PB_Meta{
 			Value: make(map[string]*PB_M),
 		},
@@ -64,17 +73,30 @@ func newMetaV2() Interface {
 }
 
 func (m *metaV2) RegistQuota(rcType []byte, quota uint32) error {
-	m.gLock.Lock()
-	defer m.gLock.Unlock()
+	var mLock *sync.RWMutex
+	var rcTypeHex = encoding.BytesToStringHex(rcType)
 
-	rcTypeHex := encoding.BytesToStringHex(rcType)
+	// 获取资源锁
+	m.gLock.Lock()
+	mLock = m.mLock[rcTypeHex]
+	if mLock == nil {
+		mLock = &sync.RWMutex{}
+		m.mLock[rcTypeHex] = mLock
+	}
+	m.gLock.Unlock()
+
+	// 判断资源管理器是否存在
+	mLock.Lock()
+	defer mLock.Unlock()
+
 	if _, exist := m.m.Value[rcTypeHex]; exist {
 		return fmt.Errorf("Resource '%s' had been existed", rcTypeHex)
 	}
 
+	// 注册构造资源管理器
 	rcMgr := &PB_M{
-		RcTypeId:  types.NewBytes(rcType),
-		Quota:     types.NewUint32(quota),
+		RcTypeId:  rcType,
+		Quota:     quota,
 		CanBorrow: types.NewQueue(),
 	}
 	for i := uint32(0); i < quota; i++ {
@@ -85,12 +107,62 @@ func (m *metaV2) RegistQuota(rcType []byte, quota uint32) error {
 	}
 
 	m.m.Value[rcTypeHex] = rcMgr
+
 	return nil
 }
 
 func (m *metaV2) Borrow(rcType, clientId []byte, expire int64) (string, error) {
-	// TODO:
-	return "", nil
+	var mLock *sync.RWMutex
+	var rcTypeHex = encoding.BytesToStringHex(rcType)
+
+	// 获取资源锁
+	m.gLock.Lock()
+	mLock = m.mLock[rcTypeHex]
+	if mLock == nil {
+		mLock = &sync.RWMutex{}
+		m.mLock[rcTypeHex] = mLock
+	}
+	m.gLock.Unlock()
+
+	// 验证资源是否注册
+	mLock.Lock()
+	defer mLock.Unlock()
+
+	rcMgr, exist := m.m.Value[rcTypeHex]
+	if !exist {
+		return "", ErrResourceNotRegisted
+	}
+
+	// 借资源
+	e := rcMgr.CanBorrow.PopFront()
+	if e == nil {
+		return "", ErrQuotaNotEnough
+	}
+
+	rcId := types.NewString("")
+	if err := types.UnmarshalAny(e.Value, rcId); err != nil {
+		return "", fmt.Errorf("Resolve resource id failed, %v", err)
+	}
+
+	// 构造出借记录
+	var clientIdHex = encoding.BytesToStringHex(clientId)
+	var nowTs = time.Now().Unix()
+
+	rdQueue := rcMgr.Used[clientIdHex]
+	if rdQueue == nil {
+		rdQueue = types.NewQueue()
+		rcMgr.Used[clientIdHex] = rdQueue
+	}
+
+	rcMgr.UsedCount++
+	rdQueue.PushBack(&PB_BorrowRecord{
+		ClientID: clientId,
+		RcID:     rcId.Value,
+		BorrowAt: nowTs,
+		ExpireAt: nowTs + expire,
+	})
+
+	return rcId.Value, nil
 }
 
 func (m *metaV2) Return(clientId []byte, rcId string) error {
