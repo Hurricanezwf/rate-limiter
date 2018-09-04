@@ -10,6 +10,7 @@ import (
 	. "github.com/Hurricanezwf/rate-limiter/proto"
 	"github.com/Hurricanezwf/rate-limiter/types"
 	"github.com/Hurricanezwf/toolbox/logging/glog"
+	"github.com/gogo/protobuf/proto"
 )
 
 func init() {
@@ -347,11 +348,16 @@ func (m *metaV2) Recycle() {
 }
 
 func (m *metaV2) Encode() ([]byte, error) {
-	// TODO:
-	return nil, nil
+	m.gLock.RLock()
+	defer m.gLock.RUnlock()
+	return proto.Marshal(m.m)
 }
 
 func (m *metaV2) Decode(b []byte) error {
-	// TODO:
-	return nil
+	if len(b) <= 0 {
+		return errors.New("Empty bytes")
+	}
+	m.gLock.Lock()
+	defer m.gLock.Unlock()
+	return proto.Unmarshal(b, m.m)
 }
