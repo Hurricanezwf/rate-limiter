@@ -4,12 +4,12 @@ package meta;
 import "types.proto";
 
 
-message MetaV2 {
-    map<string, M> Value                          = 1;
+message PB_Meta {
+    map<string, PB_M> Value                          = 1;
 }
 
 
-message M {
+message PB_M {
     types.PB_Bytes    rcTypeId                    = 1;
     types.PB_Uint32   quota                       = 2;
     types.PB_Queue    canBorrow                   = 3;
@@ -18,7 +18,7 @@ message M {
 }
 
 
-message BorrowRecord {
+message PB_BorrowRecord {
     types.PB_Bytes  clientID                      = 1;
     types.PB_String rcID                          = 2;
     types.PB_Int64  borrowAt                      = 3;

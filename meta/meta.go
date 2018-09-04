@@ -1,12 +1,11 @@
 package meta
 
 import (
-	"github.com/Hurricanezwf/rate-limiter/encoding"
-	"github.com/golang/protobuf/proto"
+	"sync"
 )
 
 func init() {
-	RegistBuilder("v2", nil)
+	RegistBuilder("v2", newMetaV2)
 }
 
 // 需要支持并发安全
@@ -28,49 +27,68 @@ type Interface interface {
 	// Recycle 清理到期未还的资源并且将recycled队列的资源投递到canBorrow队列
 	Recycle()
 
-	// Serializer 提供了序列化与反序列化的接口
-	encoding.Serializer
+	// Encode 将元数据序列化
+	Encode() ([]byte, error)
 
-	proto.Message
+	// Decode 将元数据反序列化
+	Decode(b []byte) error
 }
 
 func New(name string) Interface {
+	if builders == nil {
+		return nil
+	}
+	if f := builders[name]; f != nil {
+		return f()
+	}
+	return nil
+}
+
+// metaV2 是Interface接口的具体实现
+type metaV2 struct {
+	gLock *sync.RWMutex
+	m     *PB_Meta
+}
+
+func newMetaV2() Interface {
+	return &metaV2{
+		gLock: &sync.RWMutex{},
+		m: &PB_Meta{
+			Value: make(map[string]*PB_M),
+		},
+	}
+}
+
+func (m *metaV2) RegistQuota(rcType []byte, quota uint32) error {
 	// TODO:
 	return nil
 }
 
-//func New(name string, rcTypeId []byte, quota uint32) Interface {
-//	if metaBuilders == nil {
-//		return nil
-//	}
-//	if f := builders[name]; f != nil {
-//		return f(rcTypeId, quota)
-//	}
-//	return nil
-//}
-//
-//func newMetaV2(rcTypeId []byte, quota uint32) Meta {
-//	return &MetaV2{
-//		RcTypeId:  types.NewBytes(rcTypeId),
-//		Quota:     types.NewUint32(quota),
-//		CanBorrow: types.NewQueue(),
-//		Recycled:  types.NewQueue(),
-//		Used:      types.NewMap(),
-//	}
-//}
-//
-//func (m *MetaV2) Borrow(clientId []byte, expire int64) (string, error) {
-//
-//}
-//
-//func (m *MetaV2) Return(clientId []byte, rcId string) error {
-//
-//}
-//
-//func (m *MetaV2) ReturnAll(clientId []byte) (int, error) {
-//
-//}
-//
-//func (m *MetaV2) Recycle() {
-//
-//}
+func (m *metaV2) Borrow(rcType, clientId []byte, expire int64) (string, error) {
+	// TODO:
+	return "", nil
+}
+
+func (m *metaV2) Return(clientId []byte, rcId string) error {
+	// TODO:
+	return nil
+}
+
+func (m *metaV2) ReturnAll(rcType, clientId []byte) (int, error) {
+	// TODO:
+	return 0, nil
+}
+
+func (m *metaV2) Recycle() {
+	// TODO:
+}
+
+func (m *metaV2) Encode() ([]byte, error) {
+	// TODO:
+	return nil, nil
+}
+
+func (m *metaV2) Decode(b []byte) error {
+	// TODO:
+	return nil
+}

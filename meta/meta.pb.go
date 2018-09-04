@@ -3,14 +3,10 @@
 
 package meta
 
-import (
-	fmt "fmt"
-
-	"github.com/Hurricanezwf/rate-limiter/types"
-	proto "github.com/golang/protobuf/proto"
-
-	math "math"
-)
+import . "github.com/Hurricanezwf/rate-limiter/types"
+import proto "github.com/golang/protobuf/proto"
+import fmt "fmt"
+import math "math"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -23,170 +19,170 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
-type MetaV2 struct {
-	Value                map[string]*M `protobuf:"bytes,1,rep,name=Value,proto3" json:"Value,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
-	XXX_unrecognized     []byte        `json:"-"`
-	XXX_sizecache        int32         `json:"-"`
+type PB_Meta struct {
+	Value                map[string]*PB_M `protobuf:"bytes,1,rep,name=Value,proto3" json:"Value,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
-func (m *MetaV2) Reset()         { *m = MetaV2{} }
-func (m *MetaV2) String() string { return proto.CompactTextString(m) }
-func (*MetaV2) ProtoMessage()    {}
-func (*MetaV2) Descriptor() ([]byte, []int) {
-	return fileDescriptor_meta_db077549db872240, []int{0}
+func (m *PB_Meta) Reset()         { *m = PB_Meta{} }
+func (m *PB_Meta) String() string { return proto.CompactTextString(m) }
+func (*PB_Meta) ProtoMessage()    {}
+func (*PB_Meta) Descriptor() ([]byte, []int) {
+	return fileDescriptor_meta_0c4260c0da947ee5, []int{0}
 }
-func (m *MetaV2) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_MetaV2.Unmarshal(m, b)
+func (m *PB_Meta) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PB_Meta.Unmarshal(m, b)
 }
-func (m *MetaV2) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_MetaV2.Marshal(b, m, deterministic)
+func (m *PB_Meta) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PB_Meta.Marshal(b, m, deterministic)
 }
-func (dst *MetaV2) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MetaV2.Merge(dst, src)
+func (dst *PB_Meta) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PB_Meta.Merge(dst, src)
 }
-func (m *MetaV2) XXX_Size() int {
-	return xxx_messageInfo_MetaV2.Size(m)
+func (m *PB_Meta) XXX_Size() int {
+	return xxx_messageInfo_PB_Meta.Size(m)
 }
-func (m *MetaV2) XXX_DiscardUnknown() {
-	xxx_messageInfo_MetaV2.DiscardUnknown(m)
+func (m *PB_Meta) XXX_DiscardUnknown() {
+	xxx_messageInfo_PB_Meta.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_MetaV2 proto.InternalMessageInfo
+var xxx_messageInfo_PB_Meta proto.InternalMessageInfo
 
-func (m *MetaV2) GetValue() map[string]*M {
+func (m *PB_Meta) GetValue() map[string]*PB_M {
 	if m != nil {
 		return m.Value
 	}
 	return nil
 }
 
-type M struct {
-	RcTypeId             *types.PB_Bytes  `protobuf:"bytes,1,opt,name=rcTypeId,proto3" json:"rcTypeId,omitempty"`
-	Quota                *types.PB_Uint32 `protobuf:"bytes,2,opt,name=quota,proto3" json:"quota,omitempty"`
-	CanBorrow            *types.PB_Queue  `protobuf:"bytes,3,opt,name=canBorrow,proto3" json:"canBorrow,omitempty"`
-	Recycled             *types.PB_Queue  `protobuf:"bytes,4,opt,name=recycled,proto3" json:"recycled,omitempty"`
-	Used                 *types.PB_Map    `protobuf:"bytes,5,opt,name=used,proto3" json:"used,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
-	XXX_unrecognized     []byte           `json:"-"`
-	XXX_sizecache        int32            `json:"-"`
+type PB_M struct {
+	RcTypeId             *PB_Bytes  `protobuf:"bytes,1,opt,name=rcTypeId,proto3" json:"rcTypeId,omitempty"`
+	Quota                *PB_Uint32 `protobuf:"bytes,2,opt,name=quota,proto3" json:"quota,omitempty"`
+	CanBorrow            *PB_Queue  `protobuf:"bytes,3,opt,name=canBorrow,proto3" json:"canBorrow,omitempty"`
+	Recycled             *PB_Queue  `protobuf:"bytes,4,opt,name=recycled,proto3" json:"recycled,omitempty"`
+	Used                 *PB_Map    `protobuf:"bytes,5,opt,name=used,proto3" json:"used,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
+	XXX_unrecognized     []byte     `json:"-"`
+	XXX_sizecache        int32      `json:"-"`
 }
 
-func (m *M) Reset()         { *m = M{} }
-func (m *M) String() string { return proto.CompactTextString(m) }
-func (*M) ProtoMessage()    {}
-func (*M) Descriptor() ([]byte, []int) {
-	return fileDescriptor_meta_db077549db872240, []int{1}
+func (m *PB_M) Reset()         { *m = PB_M{} }
+func (m *PB_M) String() string { return proto.CompactTextString(m) }
+func (*PB_M) ProtoMessage()    {}
+func (*PB_M) Descriptor() ([]byte, []int) {
+	return fileDescriptor_meta_0c4260c0da947ee5, []int{1}
 }
-func (m *M) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_M.Unmarshal(m, b)
+func (m *PB_M) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PB_M.Unmarshal(m, b)
 }
-func (m *M) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_M.Marshal(b, m, deterministic)
+func (m *PB_M) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PB_M.Marshal(b, m, deterministic)
 }
-func (dst *M) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_M.Merge(dst, src)
+func (dst *PB_M) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PB_M.Merge(dst, src)
 }
-func (m *M) XXX_Size() int {
-	return xxx_messageInfo_M.Size(m)
+func (m *PB_M) XXX_Size() int {
+	return xxx_messageInfo_PB_M.Size(m)
 }
-func (m *M) XXX_DiscardUnknown() {
-	xxx_messageInfo_M.DiscardUnknown(m)
+func (m *PB_M) XXX_DiscardUnknown() {
+	xxx_messageInfo_PB_M.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_M proto.InternalMessageInfo
+var xxx_messageInfo_PB_M proto.InternalMessageInfo
 
-func (m *M) GetRcTypeId() *types.PB_Bytes {
+func (m *PB_M) GetRcTypeId() *PB_Bytes {
 	if m != nil {
 		return m.RcTypeId
 	}
 	return nil
 }
 
-func (m *M) GetQuota() *types.PB_Uint32 {
+func (m *PB_M) GetQuota() *PB_Uint32 {
 	if m != nil {
 		return m.Quota
 	}
 	return nil
 }
 
-func (m *M) GetCanBorrow() *types.PB_Queue {
+func (m *PB_M) GetCanBorrow() *PB_Queue {
 	if m != nil {
 		return m.CanBorrow
 	}
 	return nil
 }
 
-func (m *M) GetRecycled() *types.PB_Queue {
+func (m *PB_M) GetRecycled() *PB_Queue {
 	if m != nil {
 		return m.Recycled
 	}
 	return nil
 }
 
-func (m *M) GetUsed() *types.PB_Map {
+func (m *PB_M) GetUsed() *PB_Map {
 	if m != nil {
 		return m.Used
 	}
 	return nil
 }
 
-type BorrowRecord struct {
-	ClientID             *types.PB_Bytes  `protobuf:"bytes,1,opt,name=clientID,proto3" json:"clientID,omitempty"`
-	RcID                 *types.PB_String `protobuf:"bytes,2,opt,name=rcID,proto3" json:"rcID,omitempty"`
-	BorrowAt             *types.PB_Int64  `protobuf:"bytes,3,opt,name=borrowAt,proto3" json:"borrowAt,omitempty"`
-	ExpireAt             *types.PB_Int64  `protobuf:"bytes,4,opt,name=expireAt,proto3" json:"expireAt,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
-	XXX_unrecognized     []byte           `json:"-"`
-	XXX_sizecache        int32            `json:"-"`
+type PB_BorrowRecord struct {
+	ClientID             *PB_Bytes  `protobuf:"bytes,1,opt,name=clientID,proto3" json:"clientID,omitempty"`
+	RcID                 *PB_String `protobuf:"bytes,2,opt,name=rcID,proto3" json:"rcID,omitempty"`
+	BorrowAt             *PB_Int64  `protobuf:"bytes,3,opt,name=borrowAt,proto3" json:"borrowAt,omitempty"`
+	ExpireAt             *PB_Int64  `protobuf:"bytes,4,opt,name=expireAt,proto3" json:"expireAt,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
+	XXX_unrecognized     []byte     `json:"-"`
+	XXX_sizecache        int32      `json:"-"`
 }
 
-func (m *BorrowRecord) Reset()         { *m = BorrowRecord{} }
-func (m *BorrowRecord) String() string { return proto.CompactTextString(m) }
-func (*BorrowRecord) ProtoMessage()    {}
-func (*BorrowRecord) Descriptor() ([]byte, []int) {
-	return fileDescriptor_meta_db077549db872240, []int{2}
+func (m *PB_BorrowRecord) Reset()         { *m = PB_BorrowRecord{} }
+func (m *PB_BorrowRecord) String() string { return proto.CompactTextString(m) }
+func (*PB_BorrowRecord) ProtoMessage()    {}
+func (*PB_BorrowRecord) Descriptor() ([]byte, []int) {
+	return fileDescriptor_meta_0c4260c0da947ee5, []int{2}
 }
-func (m *BorrowRecord) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_BorrowRecord.Unmarshal(m, b)
+func (m *PB_BorrowRecord) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PB_BorrowRecord.Unmarshal(m, b)
 }
-func (m *BorrowRecord) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_BorrowRecord.Marshal(b, m, deterministic)
+func (m *PB_BorrowRecord) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PB_BorrowRecord.Marshal(b, m, deterministic)
 }
-func (dst *BorrowRecord) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BorrowRecord.Merge(dst, src)
+func (dst *PB_BorrowRecord) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PB_BorrowRecord.Merge(dst, src)
 }
-func (m *BorrowRecord) XXX_Size() int {
-	return xxx_messageInfo_BorrowRecord.Size(m)
+func (m *PB_BorrowRecord) XXX_Size() int {
+	return xxx_messageInfo_PB_BorrowRecord.Size(m)
 }
-func (m *BorrowRecord) XXX_DiscardUnknown() {
-	xxx_messageInfo_BorrowRecord.DiscardUnknown(m)
+func (m *PB_BorrowRecord) XXX_DiscardUnknown() {
+	xxx_messageInfo_PB_BorrowRecord.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BorrowRecord proto.InternalMessageInfo
+var xxx_messageInfo_PB_BorrowRecord proto.InternalMessageInfo
 
-func (m *BorrowRecord) GetClientID() *types.PB_Bytes {
+func (m *PB_BorrowRecord) GetClientID() *PB_Bytes {
 	if m != nil {
 		return m.ClientID
 	}
 	return nil
 }
 
-func (m *BorrowRecord) GetRcID() *types.PB_String {
+func (m *PB_BorrowRecord) GetRcID() *PB_String {
 	if m != nil {
 		return m.RcID
 	}
 	return nil
 }
 
-func (m *BorrowRecord) GetBorrowAt() *types.PB_Int64 {
+func (m *PB_BorrowRecord) GetBorrowAt() *PB_Int64 {
 	if m != nil {
 		return m.BorrowAt
 	}
 	return nil
 }
 
-func (m *BorrowRecord) GetExpireAt() *types.PB_Int64 {
+func (m *PB_BorrowRecord) GetExpireAt() *PB_Int64 {
 	if m != nil {
 		return m.ExpireAt
 	}
@@ -194,35 +190,35 @@ func (m *BorrowRecord) GetExpireAt() *types.PB_Int64 {
 }
 
 func init() {
-	proto.RegisterType((*MetaV2)(nil), "meta.MetaV2")
-	proto.RegisterMapType((map[string]*M)(nil), "meta.MetaV2.ValueEntry")
-	proto.RegisterType((*M)(nil), "meta.M")
-	proto.RegisterType((*BorrowRecord)(nil), "meta.BorrowRecord")
+	proto.RegisterType((*PB_Meta)(nil), "meta.PB_Meta")
+	proto.RegisterMapType((map[string]*PB_M)(nil), "meta.PB_Meta.ValueEntry")
+	proto.RegisterType((*PB_M)(nil), "meta.PB_M")
+	proto.RegisterType((*PB_BorrowRecord)(nil), "meta.PB_BorrowRecord")
 }
 
-func init() { proto.RegisterFile("meta.proto", fileDescriptor_meta_db077549db872240) }
+func init() { proto.RegisterFile("meta.proto", fileDescriptor_meta_0c4260c0da947ee5) }
 
-var fileDescriptor_meta_db077549db872240 = []byte{
-	// 328 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x74, 0x92, 0x41, 0x4b, 0xc3, 0x40,
-	0x10, 0x85, 0xd9, 0x36, 0xa9, 0x76, 0xa2, 0x58, 0xf6, 0x62, 0x28, 0x08, 0xb5, 0x88, 0x14, 0xa4,
-	0x39, 0xa4, 0x22, 0xe2, 0xad, 0xa5, 0x1e, 0x72, 0x28, 0xe8, 0xaa, 0xbd, 0x4a, 0xba, 0x19, 0x24,
-	0x58, 0x93, 0xb8, 0x9d, 0xa8, 0xf1, 0xaf, 0xf9, 0x43, 0xfc, 0x3b, 0x92, 0xdd, 0xb6, 0x01, 0xa3,
-	0xb7, 0xe5, 0xbd, 0x6f, 0xde, 0xcc, 0x83, 0x05, 0x78, 0x41, 0x0a, 0xbd, 0x4c, 0xa5, 0x94, 0x72,
-	0xab, 0x7c, 0x77, 0x1d, 0x2a, 0x32, 0x5c, 0x19, 0xa9, 0xff, 0x09, 0xad, 0x19, 0x52, 0x38, 0xf7,
-	0xf9, 0x10, 0xec, 0x79, 0xb8, 0xcc, 0xd1, 0x65, 0xbd, 0xe6, 0xc0, 0xf1, 0x0f, 0x3d, 0x3d, 0x68,
-	0x4c, 0x4f, 0x3b, 0xd7, 0x09, 0xa9, 0x42, 0x18, 0xaa, 0x3b, 0x06, 0xa8, 0x44, 0xde, 0x81, 0xe6,
-	0x33, 0x16, 0x2e, 0xeb, 0xb1, 0x41, 0x5b, 0x94, 0x4f, 0x7e, 0x04, 0xf6, 0x9b, 0x8e, 0x6b, 0xf4,
-	0xd8, 0xc0, 0xf1, 0x77, 0xd6, 0x71, 0xc2, 0xa8, 0x57, 0x8d, 0x4b, 0xd6, 0xff, 0x66, 0xc0, 0x66,
-	0xfc, 0x0c, 0x76, 0x95, 0xbc, 0x2f, 0x32, 0x0c, 0x22, 0x3d, 0xef, 0xf8, 0x07, 0x9e, 0xb9, 0xf0,
-	0x66, 0xf2, 0x38, 0x29, 0x08, 0x57, 0x62, 0x0b, 0xf0, 0x53, 0xb0, 0x5f, 0xf3, 0x94, 0xc2, 0x75,
-	0x6a, 0xa7, 0x22, 0x1f, 0xe2, 0x84, 0x46, 0xbe, 0x30, 0x36, 0x1f, 0x42, 0x5b, 0x86, 0xc9, 0x24,
-	0x55, 0x2a, 0x7d, 0x77, 0x9b, 0xbf, 0x53, 0x6f, 0x73, 0xcc, 0x51, 0x54, 0x84, 0xbe, 0x01, 0x65,
-	0x21, 0x97, 0x18, 0xb9, 0xd6, 0xdf, 0xf4, 0x16, 0xe0, 0xc7, 0x60, 0xe5, 0x2b, 0x8c, 0x5c, 0x5b,
-	0x83, 0xfb, 0x15, 0x38, 0x0b, 0x33, 0xa1, 0xad, 0xfe, 0x17, 0x83, 0x3d, 0x13, 0x2d, 0x50, 0xa6,
-	0x2a, 0x2a, 0x17, 0xc8, 0x65, 0x8c, 0x09, 0x05, 0xd3, 0x7f, 0x4b, 0x6e, 0x00, 0x7e, 0x02, 0x96,
-	0x92, 0xc1, 0xb4, 0xde, 0xf1, 0x8e, 0x54, 0x9c, 0x3c, 0x09, 0xed, 0x96, 0x91, 0x0b, 0xbd, 0x62,
-	0x4c, 0xf5, 0x86, 0x41, 0x42, 0x17, 0xe7, 0x62, 0x0b, 0x94, 0x30, 0x7e, 0x64, 0xb1, 0xc2, 0x31,
-	0xd5, 0x0b, 0xae, 0xe1, 0x0d, 0xb0, 0x68, 0xe9, 0xaf, 0x31, 0xfa, 0x09, 0x00, 0x00, 0xff, 0xff,
-	0xfa, 0x1a, 0x70, 0x2a, 0x3b, 0x02, 0x00, 0x00,
+var fileDescriptor_meta_0c4260c0da947ee5 = []byte{
+	// 332 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x74, 0x92, 0x4f, 0x4b, 0xf3, 0x40,
+	0x10, 0xc6, 0xd9, 0x36, 0x79, 0x5f, 0x3b, 0x41, 0x5a, 0xf6, 0x14, 0x7a, 0x8a, 0x45, 0xa4, 0x20,
+	0xe6, 0x90, 0x8a, 0x88, 0xb7, 0x86, 0x7a, 0xc8, 0xa1, 0x50, 0xd7, 0x3f, 0xd7, 0x92, 0x6e, 0x06,
+	0x09, 0xd6, 0x24, 0x6e, 0x27, 0x6a, 0x4e, 0x7e, 0x33, 0x3f, 0x88, 0x9f, 0x46, 0x76, 0xd3, 0x36,
+	0x60, 0xf4, 0xb6, 0xcc, 0xf3, 0xcb, 0x6f, 0xe6, 0x81, 0x00, 0x3c, 0x23, 0xc5, 0x7e, 0xa1, 0x72,
+	0xca, 0xb9, 0xa5, 0xdf, 0x43, 0x87, 0xaa, 0x02, 0x37, 0xf5, 0x68, 0xf4, 0x01, 0xff, 0x17, 0xe1,
+	0x72, 0x8e, 0x14, 0x73, 0x1f, 0xec, 0x87, 0x78, 0x5d, 0xa2, 0xcb, 0xbc, 0xee, 0xd8, 0x09, 0x5c,
+	0xdf, 0x7c, 0xb9, 0x4d, 0x7d, 0x13, 0x5d, 0x67, 0xa4, 0x2a, 0x51, 0x63, 0xc3, 0x19, 0x40, 0x33,
+	0xe4, 0x03, 0xe8, 0x3e, 0x61, 0xe5, 0x32, 0x8f, 0x8d, 0x7b, 0x42, 0x3f, 0xb9, 0x07, 0xf6, 0xab,
+	0xf1, 0x75, 0x3c, 0x36, 0x76, 0x02, 0x68, 0x7c, 0xa2, 0x0e, 0xae, 0x3a, 0x97, 0x6c, 0xf4, 0xc5,
+	0xc0, 0xd2, 0x33, 0x7e, 0x0a, 0x07, 0x4a, 0xde, 0x55, 0x05, 0x46, 0x89, 0xb1, 0x38, 0x41, 0xdf,
+	0xaf, 0x2f, 0x5d, 0x84, 0xcb, 0xb0, 0x22, 0xdc, 0x88, 0x3d, 0xc0, 0x4f, 0xc0, 0x7e, 0x29, 0x73,
+	0x8a, 0xb7, 0xee, 0x41, 0x43, 0xde, 0xa7, 0x19, 0x4d, 0x02, 0x51, 0xc7, 0xfc, 0x0c, 0x7a, 0x32,
+	0xce, 0xc2, 0x5c, 0xa9, 0xfc, 0xcd, 0xed, 0xfe, 0xb4, 0xde, 0x94, 0x58, 0xa2, 0x68, 0x08, 0x73,
+	0x03, 0xca, 0x4a, 0xae, 0x31, 0x71, 0xad, 0xdf, 0xe9, 0x3d, 0xc0, 0x8f, 0xc0, 0x2a, 0x37, 0x98,
+	0xb8, 0xb6, 0x01, 0x0f, 0x1b, 0x70, 0x1e, 0x17, 0xc2, 0x44, 0xa3, 0x4f, 0x06, 0x7d, 0x7d, 0xbd,
+	0xb1, 0x0b, 0x94, 0xb9, 0x4a, 0xf4, 0x0e, 0xb9, 0x4e, 0x31, 0xa3, 0x68, 0xf6, 0x67, 0xcf, 0x1d,
+	0xc0, 0x8f, 0xc1, 0x52, 0x32, 0x9a, 0xb5, 0x6b, 0xde, 0x92, 0x4a, 0xb3, 0x47, 0x61, 0x52, 0xad,
+	0x5c, 0x99, 0x15, 0x53, 0x6a, 0x97, 0x8c, 0x32, 0xba, 0x38, 0x17, 0x7b, 0x40, 0xc3, 0xf8, 0x5e,
+	0xa4, 0x0a, 0xa7, 0xd4, 0xee, 0xb8, 0x85, 0x77, 0xc0, 0xea, 0x9f, 0xf9, 0x4b, 0x26, 0xdf, 0x01,
+	0x00, 0x00, 0xff, 0xff, 0x0b, 0xfc, 0xed, 0xe6, 0x46, 0x02, 0x00, 0x00,
 }
