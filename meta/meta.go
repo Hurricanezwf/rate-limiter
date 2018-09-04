@@ -1,12 +1,12 @@
 package meta
 
 import (
-	"github.com/Hurricanezwf/rate-limiter/types"
+	"github.com/Hurricanezwf/rate-limiter/encoding"
 	"github.com/golang/protobuf/proto"
 )
 
 func init() {
-	RegistBuilder("v2", newMetaV2)
+	RegistBuilder("v2", nil)
 }
 
 // 需要支持并发安全
@@ -28,41 +28,49 @@ type Interface interface {
 	// Recycle 清理到期未还的资源并且将recycled队列的资源投递到canBorrow队列
 	Recycle()
 
+	// Serializer 提供了序列化与反序列化的接口
+	encoding.Serializer
+
 	proto.Message
 }
 
-func New(name string, rcTypeId []byte, quota uint32) Interface {
-	if metaBuilders == nil {
-		return nil
-	}
-	if f := builders[name]; f != nil {
-		return f(rcTypeId, quota)
-	}
+func New(name string) Interface {
+	// TODO:
 	return nil
 }
 
-func newMetaV2(rcTypeId []byte, quota uint32) Meta {
-	return &MetaV2{
-		RcTypeId:  types.NewBytes(rcTypeId),
-		Quota:     types.NewUint32(quota),
-		CanBorrow: types.NewQueue(),
-		Recycled:  types.NewQueue(),
-		Used:      types.NewMap(),
-	}
-}
-
-func (m *MetaV2) Borrow(clientId []byte, expire int64) (string, error) {
-
-}
-
-func (m *MetaV2) Return(clientId []byte, rcId string) error {
-
-}
-
-func (m *MetaV2) ReturnAll(clientId []byte) (int, error) {
-
-}
-
-func (m *MetaV2) Recycle() {
-
-}
+//func New(name string, rcTypeId []byte, quota uint32) Interface {
+//	if metaBuilders == nil {
+//		return nil
+//	}
+//	if f := builders[name]; f != nil {
+//		return f(rcTypeId, quota)
+//	}
+//	return nil
+//}
+//
+//func newMetaV2(rcTypeId []byte, quota uint32) Meta {
+//	return &MetaV2{
+//		RcTypeId:  types.NewBytes(rcTypeId),
+//		Quota:     types.NewUint32(quota),
+//		CanBorrow: types.NewQueue(),
+//		Recycled:  types.NewQueue(),
+//		Used:      types.NewMap(),
+//	}
+//}
+//
+//func (m *MetaV2) Borrow(clientId []byte, expire int64) (string, error) {
+//
+//}
+//
+//func (m *MetaV2) Return(clientId []byte, rcId string) error {
+//
+//}
+//
+//func (m *MetaV2) ReturnAll(clientId []byte) (int, error) {
+//
+//}
+//
+//func (m *MetaV2) Recycle() {
+//
+//}

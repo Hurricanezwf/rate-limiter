@@ -3,9 +3,14 @@
 
 package meta
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	fmt "fmt"
+
+	"github.com/Hurricanezwf/rate-limiter/types"
+	proto "github.com/golang/protobuf/proto"
+
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -57,14 +62,14 @@ func (m *MetaV2) GetValue() map[string]*M {
 }
 
 type M struct {
-	RcTypeId             *PB_Bytes  `protobuf:"bytes,1,opt,name=rcTypeId,proto3" json:"rcTypeId,omitempty"`
-	Quota                *PB_Uint32 `protobuf:"bytes,2,opt,name=quota,proto3" json:"quota,omitempty"`
-	CanBorrow            *PB_Queue  `protobuf:"bytes,3,opt,name=canBorrow,proto3" json:"canBorrow,omitempty"`
-	Recycled             *PB_Queue  `protobuf:"bytes,4,opt,name=recycled,proto3" json:"recycled,omitempty"`
-	Used                 *PB_Map    `protobuf:"bytes,5,opt,name=used,proto3" json:"used,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
-	XXX_unrecognized     []byte     `json:"-"`
-	XXX_sizecache        int32      `json:"-"`
+	RcTypeId             *types.PB_Bytes  `protobuf:"bytes,1,opt,name=rcTypeId,proto3" json:"rcTypeId,omitempty"`
+	Quota                *types.PB_Uint32 `protobuf:"bytes,2,opt,name=quota,proto3" json:"quota,omitempty"`
+	CanBorrow            *types.PB_Queue  `protobuf:"bytes,3,opt,name=canBorrow,proto3" json:"canBorrow,omitempty"`
+	Recycled             *types.PB_Queue  `protobuf:"bytes,4,opt,name=recycled,proto3" json:"recycled,omitempty"`
+	Used                 *types.PB_Map    `protobuf:"bytes,5,opt,name=used,proto3" json:"used,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *M) Reset()         { *m = M{} }
@@ -91,35 +96,35 @@ func (m *M) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_M proto.InternalMessageInfo
 
-func (m *M) GetRcTypeId() *PB_Bytes {
+func (m *M) GetRcTypeId() *types.PB_Bytes {
 	if m != nil {
 		return m.RcTypeId
 	}
 	return nil
 }
 
-func (m *M) GetQuota() *PB_Uint32 {
+func (m *M) GetQuota() *types.PB_Uint32 {
 	if m != nil {
 		return m.Quota
 	}
 	return nil
 }
 
-func (m *M) GetCanBorrow() *PB_Queue {
+func (m *M) GetCanBorrow() *types.PB_Queue {
 	if m != nil {
 		return m.CanBorrow
 	}
 	return nil
 }
 
-func (m *M) GetRecycled() *PB_Queue {
+func (m *M) GetRecycled() *types.PB_Queue {
 	if m != nil {
 		return m.Recycled
 	}
 	return nil
 }
 
-func (m *M) GetUsed() *PB_Map {
+func (m *M) GetUsed() *types.PB_Map {
 	if m != nil {
 		return m.Used
 	}
@@ -127,13 +132,13 @@ func (m *M) GetUsed() *PB_Map {
 }
 
 type BorrowRecord struct {
-	ClientID             *PB_Bytes  `protobuf:"bytes,1,opt,name=clientID,proto3" json:"clientID,omitempty"`
-	RcID                 *PB_String `protobuf:"bytes,2,opt,name=rcID,proto3" json:"rcID,omitempty"`
-	BorrowAt             *PB_Int64  `protobuf:"bytes,3,opt,name=borrowAt,proto3" json:"borrowAt,omitempty"`
-	ExpireAt             *PB_Int64  `protobuf:"bytes,4,opt,name=expireAt,proto3" json:"expireAt,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
-	XXX_unrecognized     []byte     `json:"-"`
-	XXX_sizecache        int32      `json:"-"`
+	ClientID             *types.PB_Bytes  `protobuf:"bytes,1,opt,name=clientID,proto3" json:"clientID,omitempty"`
+	RcID                 *types.PB_String `protobuf:"bytes,2,opt,name=rcID,proto3" json:"rcID,omitempty"`
+	BorrowAt             *types.PB_Int64  `protobuf:"bytes,3,opt,name=borrowAt,proto3" json:"borrowAt,omitempty"`
+	ExpireAt             *types.PB_Int64  `protobuf:"bytes,4,opt,name=expireAt,proto3" json:"expireAt,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *BorrowRecord) Reset()         { *m = BorrowRecord{} }
@@ -160,28 +165,28 @@ func (m *BorrowRecord) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_BorrowRecord proto.InternalMessageInfo
 
-func (m *BorrowRecord) GetClientID() *PB_Bytes {
+func (m *BorrowRecord) GetClientID() *types.PB_Bytes {
 	if m != nil {
 		return m.ClientID
 	}
 	return nil
 }
 
-func (m *BorrowRecord) GetRcID() *PB_String {
+func (m *BorrowRecord) GetRcID() *types.PB_String {
 	if m != nil {
 		return m.RcID
 	}
 	return nil
 }
 
-func (m *BorrowRecord) GetBorrowAt() *PB_Int64 {
+func (m *BorrowRecord) GetBorrowAt() *types.PB_Int64 {
 	if m != nil {
 		return m.BorrowAt
 	}
 	return nil
 }
 
-func (m *BorrowRecord) GetExpireAt() *PB_Int64 {
+func (m *BorrowRecord) GetExpireAt() *types.PB_Int64 {
 	if m != nil {
 		return m.ExpireAt
 	}

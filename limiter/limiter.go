@@ -1,6 +1,7 @@
 package limiter
 
 import (
+	"github.com/Hurricanezwf/rate-limiter/cluster"
 	"github.com/Hurricanezwf/rate-limiter/limiter"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
 )
@@ -53,6 +54,22 @@ func (l *limiterV2) Open() error {
 	return l.c.Open()
 }
 
-func (l *limiterV2) Do(r *Request) *Response {
+func (l *limiterV2) RegistQuota(req *APIRegistQuotaReq) *APIRegistQuotaResp {
+	// TODO
+	return nil
+}
+
+func (l *limiterV2) Borrow(req *APIBorrowReq) *APIBorrowResp {
+	// TODO:
+	return nil
+}
+
+func (l *limiterV2) Return(req *APIReturnReq) *APIReturnResp {
+	// TODO:
+	return nil
+}
+
+func (l *limiterV2) ReturnAll(req *APIReturnAllReq) *APIReturnAllResp {
+	// TODO:
 	return nil
 }
