@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -11,14 +14,16 @@ import (
 	"github.com/Hurricanezwf/rate-limiter/meta"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
 	"github.com/Hurricanezwf/toolbox/logging/glog"
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	raftlib "github.com/hashicorp/raft"
+	raftboltdb "github.com/hashicorp/raft-boltdb"
 )
 
 func init() {
 	RegistBuilder("v2", newClusterV2)
 }
 
+// Interface 集群的抽象接口
 type Interface interface {
 	// Open 启用集群
 	Open() error
@@ -88,11 +93,198 @@ func newClusterV2() Interface {
 	}
 }
 
+// Open 启动集群
 func (c *clusterV2) Open() error {
-	// TODO:
+	const (
+		STMOpenRaft = iota
+		STMStartCleaner
+		STMStartLeaderWatcher
+		STMExit
+	)
+
+	for st := STMOpenRaft; st != STMExit; {
+		switch st {
+		case STMOpenRaft:
+			// Raft集群初始化
+			if err := c.initRaftCluster(); err != nil {
+				return err
+			}
+			st = STMStartLeaderWatcher
+
+		case STMStartLeaderWatcher:
+			// 定时输出谁是Leader & 服务注册
+			if g.Config.Raft.Enable {
+				go c.initRaftLeaderWatcher()
+			}
+			st = STMStartCleaner
+
+		case STMStartCleaner:
+			// 定时回收&重用资源
+			go c.initMetaCleaner()
+			st = STMExit
+		}
+	}
+
 	return nil
 }
 
+// initRaftCluster 初始化启动raft集群
+func (c *clusterV2) initRaftCluster() error {
+	if g.Config.Raft.Enable == false {
+		glog.V(1).Info("Raft is disabled")
+		return nil
+	}
+
+	var (
+		bind            = g.Config.Raft.Bind
+		localID         = g.Config.Raft.LocalID
+		clusterConfJson = g.Config.Raft.ClusterConfJson
+		storage         = g.Config.Raft.Storage
+		rootDir         = g.Config.Raft.RootDir
+		tcpMaxPool      = g.Config.Raft.TCPMaxPool
+		timeout         = time.Duration(g.Config.Raft.Timeout) * time.Millisecond
+		bootstrap       = false
+	)
+
+	// 检测集群是否需要bootstrap
+	dbPath := filepath.Join(rootDir, "raft.db")
+	if _, err := os.Lstat(dbPath); err == nil {
+		bootstrap = false
+	} else if os.IsNotExist(err) {
+		bootstrap = true
+	} else {
+		return fmt.Errorf("Lstat failed, %v", err)
+	}
+
+	// 加载集群配置
+	clusterConf, err := raftlib.ReadConfigJSON(clusterConfJson)
+	if err != nil {
+		return fmt.Errorf("Load raft servers' config failed, %v", err)
+	}
+
+	raftConf := raftlib.DefaultConfig()
+	raftConf.LocalID = raftlib.ServerID(localID)
+	if g.Config.Log.Verbose < 5 {
+		raftConf.LogOutput = nil
+		raftConf.Logger = nil
+	} else {
+		raftConf.LogOutput = os.Stderr
+	}
+
+	// 创建Raft网络传输
+	addr, err := net.ResolveTCPAddr("tcp", bind)
+	if err != nil {
+		return err
+	}
+	transport, err := raftlib.NewTCPTransport(
+		bind,               // bindAddr
+		addr,               // advertise
+		tcpMaxPool,         // maxPool
+		timeout,            // timeout
+		raftConf.LogOutput, // logOutput
+	)
+	if err != nil {
+		return fmt.Errorf("Create tcp transport failed, %v", err)
+	}
+
+	// 创建Log Entry存储引擎
+	// 此处的存储引擎的选择基本决定了接口的延迟。
+	// 本地落地存储效率比较低，单个请求响应时间在50ms以上；如果换成内存存储的话，单个请求响应时间在2ms左右。
+	logStore, stableStore, err := c.storageEngineFactory(storage)
+	if err != nil {
+		return fmt.Errorf("Create storage instance failed, %v", err)
+	}
+
+	// 创建持久化快照存储引擎
+	snapshotStore, err := raftlib.NewFileSnapshotStore(rootDir, 3, raftConf.LogOutput)
+	if err != nil {
+		return fmt.Errorf("Create file snapshot store failed, %v", err)
+	}
+
+	// 创建Raft实例
+	raft, err := raftlib.NewRaft(
+		raftConf,
+		c,
+		logStore,
+		stableStore,
+		snapshotStore,
+		transport,
+	)
+	if err != nil {
+		return fmt.Errorf("Create raft instance failed, %v", err)
+	}
+
+	// 启动集群
+	if bootstrap {
+		future := raft.BootstrapCluster(clusterConf)
+		if err = future.Error(); err != nil {
+			return fmt.Errorf("Bootstrap raft cluster failed, %v", err)
+		}
+	}
+
+	// 变量初始化
+	c.raft = raft
+
+	return nil
+}
+
+// initRaftWatcher 初始化启动Raft Leader监听器
+func (c *clusterV2) initRaftLeaderWatcher() {
+	ticker := time.NewTicker(time.Duration(g.Config.Raft.LeaderWatchInterval) * time.Second)
+
+	for {
+		select {
+		case <-c.stopC:
+			return
+		case <-ticker.C:
+			glog.V(2).Infof("(L) %s  ==>  %s", c.raft.Leader(), c.LeaderHTTPAddr())
+		case <-c.raft.LeaderCh():
+			{
+				glog.V(2).Infof("Leader changed, %s is Leader", c.raft.Leader())
+
+				if c.IsLeader() == false {
+					continue
+				}
+
+				// 通知所有结点到Leader上去服务注册
+				cmd, err := encodeCMD(ActionLeaderNotify, &CMDLeaderNotify{
+					RaftAddr: g.Config.Raft.Bind,
+					HttpAddr: g.Config.Httpd.Listen,
+				})
+				if err != nil {
+					glog.Warningf("Marshal ActionLeaderNotify failed, %v", err)
+					continue
+				}
+
+				future := c.raft.Apply(cmd, c.raftTimeout)
+				if err := future.Error(); err != nil {
+					glog.Warningf("Raft apply CMDLeaderNotify failed, %v", err)
+					continue
+				}
+				if future.Response() != nil {
+					glog.Warningf("Raft Apply CMDBLeaderNotify failed, %v", future.Response())
+					continue
+				}
+			}
+		}
+	}
+
+}
+
+// initMetaCleaner 周期性清理过期资源和重用已回收的资源
+func (c *clusterV2) initMetaCleaner() {
+	ticker := time.NewTicker(time.Second)
+	for {
+		select {
+		case <-c.stopC:
+			return
+		case <-ticker.C:
+			c.m.Recycle()
+		}
+	}
+}
+
+// IsLeader 该结点在集群中是否是Leader
 func (c *clusterV2) IsLeader() bool {
 	if g.Config.Raft.Enable == false {
 		return true
@@ -100,6 +292,7 @@ func (c *clusterV2) IsLeader() bool {
 	return c.raft.State() == raftlib.Leader
 }
 
+// LeaderHTTPAddr 返回Leader结点的HTTP服务地址
 func (c *clusterV2) LeaderHTTPAddr() string {
 	c.gLock.RLock()
 	defer c.gLock.RUnlock()
@@ -114,7 +307,7 @@ func (c *clusterV2) Apply(log *raftlib.Log) interface{} {
 	case raftlib.LogCommand:
 		{
 			cmd, args := resolveCMD(log.Data)
-			return l.switchDo(cmd, args)
+			return c.switchDo(cmd, args)
 		}
 	default:
 		return fmt.Errorf("Unknown LogType(%v)", log.Type)
@@ -329,39 +522,42 @@ func (c *clusterV2) handleRegistQuota(args []byte) *APIRegistQuotaResp {
 	var rp APIRegistQuotaResp
 
 	if err = resolveArgs(args, &r); err != nil {
-		r.Code = 500
-		r.Msg = fmt.Sprintf("Resolve request failed, %v", err)
-		return &r
+		rp.Code = 500
+		rp.Msg = fmt.Sprintf("Resolve request failed, %v", err)
+		return &rp
 	}
 
-	if err = c.m.RegistQuota(r.RCTypeID, r.Quota); err != nil {
-		r.Code = 500
-		r.Msg = err.Error()
-		return &r
+	if err = c.m.RegistQuota(r.RCType, r.Quota); err != nil {
+		rp.Code = 500
+		rp.Msg = err.Error()
+		return &rp
 	}
 
-	return &r
+	return &rp
 }
 
 // handleBorrow 处理借取资源的逻辑
 func (c *clusterV2) handleBorrow(args []byte) *APIBorrowResp {
 	var err error
+	var rcId string
 	var r APIBorrowReq
 	var rp APIBorrowResp
 
 	if err = resolveArgs(args, &r); err != nil {
-		r.Code = 500
-		r.Msg = fmt.Sprintf("Resolve request failed, %v", err)
-		return &r
+		rp.Code = 500
+		rp.Msg = fmt.Sprintf("Resolve request failed, %v", err)
+		return &rp
 	}
 
-	if err = c.m.Borrow(r.RCTypeID, r.ClientID, r.Expire); err != nil {
-		r.Code = 500
-		r.Msg = err.Error()
-		return &r
+	if rcId, err = c.m.Borrow(r.RCType, r.ClientID, r.Expire); err != nil {
+		rp.Code = 500
+		rp.Msg = err.Error()
+		return &rp
+	} else {
+		rp.RCID = rcId
 	}
 
-	return &r
+	return &rp
 }
 
 // handleReturn 处理归还单个资源的逻辑
@@ -371,18 +567,18 @@ func (c *clusterV2) handleReturn(args []byte) *APIReturnResp {
 	var rp APIReturnResp
 
 	if err = resolveArgs(args, &r); err != nil {
-		r.Code = 500
-		r.Msg = fmt.Sprintf("Resolve request failed, %v", err)
-		return &r
+		rp.Code = 500
+		rp.Msg = fmt.Sprintf("Resolve request failed, %v", err)
+		return &rp
 	}
 
 	if err = c.m.Return(r.ClientID, r.RCID); err != nil {
-		r.Code = 500
-		r.Msg = err.Error()
-		return &r
+		rp.Code = 500
+		rp.Msg = err.Error()
+		return &rp
 	}
 
-	return &r
+	return &rp
 }
 
 // handleReturnAll 处理归还某用户占用的所有资源的逻辑
@@ -392,18 +588,18 @@ func (c *clusterV2) handleReturnAll(args []byte) *APIReturnAllResp {
 	var rp APIReturnAllResp
 
 	if err = resolveArgs(args, &r); err != nil {
-		r.Code = 500
-		r.Msg = fmt.Sprintf("Resolve request failed, %v", err)
-		return &r
+		rp.Code = 500
+		rp.Msg = fmt.Sprintf("Resolve request failed, %v", err)
+		return &rp
 	}
 
-	if err = c.m.ReturnAll(r.ClientID); err != nil {
-		r.Code = 500
-		r.Msg = err.Error()
-		return &r
+	if _, err = c.m.ReturnAll(r.RCType, r.ClientID); err != nil {
+		rp.Code = 500
+		rp.Msg = err.Error()
+		return &rp
 	}
 
-	return &r
+	return &rp
 }
 
 // handleLeaderNotify 处理Leader结点通知所有结点服务地址的逻辑
@@ -422,6 +618,42 @@ func (c *clusterV2) handleLeaderNotify(args []byte) error {
 	return err
 }
 
+// storageEngineFactory 根据存储引擎名字构造存储实例
+func (c *clusterV2) storageEngineFactory(name string, dbPath ...string) (raftlib.LogStore, raftlib.StableStore, error) {
+	var (
+		err         error
+		logStore    raftlib.LogStore
+		stableStore raftlib.StableStore
+	)
+
+	switch name {
+	case g.RaftStorageBoltDB:
+		{
+			if len(dbPath) < 1 {
+				err = fmt.Errorf("Missing dbPath for storage '%s'", name)
+				break
+			}
+			if storage, e := raftboltdb.NewBoltStore(dbPath[0]); e != nil {
+				err = e
+			} else {
+				logStore = storage
+				stableStore = storage
+			}
+		}
+	case g.RaftStorageMemory:
+		{
+			storage := raftlib.NewInmemStore()
+			logStore = storage
+			stableStore = storage
+		}
+	default:
+		err = fmt.Errorf("No storage engine found for %s", name)
+	}
+
+	return logStore, stableStore, err
+}
+
+// encodeCMD 编码在Raft集群内执行的命令
 func encodeCMD(cmd byte, args proto.Message) ([]byte, error) {
 	b, err := proto.Marshal(args)
 	if err != nil {
@@ -433,6 +665,7 @@ func encodeCMD(cmd byte, args proto.Message) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// resolveCMD 解析出命令类型
 func resolveCMD(b []byte) (cmd byte, args []byte) {
 	if len(b) < 1 {
 		return 0, nil
@@ -440,6 +673,7 @@ func resolveCMD(b []byte) (cmd byte, args []byte) {
 	return b[0], b[1:]
 }
 
+// resolveArgs 解析出命令参数
 func resolveArgs(args []byte, v proto.Message) error {
 	return proto.Unmarshal(args, v)
 }
