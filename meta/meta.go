@@ -10,7 +10,7 @@ import (
 	. "github.com/Hurricanezwf/rate-limiter/proto"
 	"github.com/Hurricanezwf/rate-limiter/types"
 	"github.com/Hurricanezwf/toolbox/logging/glog"
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 )
 
 func init() {

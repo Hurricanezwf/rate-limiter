@@ -113,16 +113,8 @@ func (c *clusterV2) Apply(log *raftlib.Log) interface{} {
 	switch log.Type {
 	case raftlib.LogCommand:
 		{
-			// 解析远端传过来的命令日志
-			//var r Request
-			//if err := json.Unmarshal(log.Data, &r); err != nil {
-			//	return fmt.Errorf("Bad request format for raft command, %v", err)
-			//}
-
-			// 尝试执行命令
-			//return l.switchDo(&r)
-			// TODO:
-			return nil
+			cmd, args := resolveCMD(log.Data)
+			return l.switchDo(cmd, args)
 		}
 	default:
 		return fmt.Errorf("Unknown LogType(%v)", log.Type)
@@ -310,6 +302,124 @@ func (c *clusterV2) ReturnAll(r *APIReturnAllReq) *APIReturnAllResp {
 		return rp
 	}
 	return future.Response().(*APIReturnAllResp)
+}
+
+// switchDo 根据命令类型选择执行
+func (c *clusterV2) switchDo(cmd byte, args []byte) interface{} {
+	switch cmd {
+	case ActionRegistQuota:
+		return c.handleRegistQuota(args)
+	case ActionBorrow:
+		return c.handleBorrow(args)
+	case ActionReturn:
+		return c.handleReturn(args)
+	case ActionReturnAll:
+		return c.handleReturnAll(args)
+	case ActionLeaderNotify:
+		return c.handleLeaderNotify(args)
+	}
+	glog.Fatalf("Unknown cmd '%#v'", cmd)
+	return fmt.Errorf("Unknown cmd '%#v'", cmd)
+}
+
+// handleRegistQuota 处理注册资源配额的逻辑
+func (c *clusterV2) handleRegistQuota(args []byte) *APIRegistQuotaResp {
+	var err error
+	var r APIRegistQuotaReq
+	var rp APIRegistQuotaResp
+
+	if err = resolveArgs(args, &r); err != nil {
+		r.Code = 500
+		r.Msg = fmt.Sprintf("Resolve request failed, %v", err)
+		return &r
+	}
+
+	if err = c.m.RegistQuota(r.RCTypeID, r.Quota); err != nil {
+		r.Code = 500
+		r.Msg = err.Error()
+		return &r
+	}
+
+	return &r
+}
+
+// handleBorrow 处理借取资源的逻辑
+func (c *clusterV2) handleBorrow(args []byte) *APIBorrowResp {
+	var err error
+	var r APIBorrowReq
+	var rp APIBorrowResp
+
+	if err = resolveArgs(args, &r); err != nil {
+		r.Code = 500
+		r.Msg = fmt.Sprintf("Resolve request failed, %v", err)
+		return &r
+	}
+
+	if err = c.m.Borrow(r.RCTypeID, r.ClientID, r.Expire); err != nil {
+		r.Code = 500
+		r.Msg = err.Error()
+		return &r
+	}
+
+	return &r
+}
+
+// handleReturn 处理归还单个资源的逻辑
+func (c *clusterV2) handleReturn(args []byte) *APIReturnResp {
+	var err error
+	var r APIReturnReq
+	var rp APIReturnResp
+
+	if err = resolveArgs(args, &r); err != nil {
+		r.Code = 500
+		r.Msg = fmt.Sprintf("Resolve request failed, %v", err)
+		return &r
+	}
+
+	if err = c.m.Return(r.ClientID, r.RCID); err != nil {
+		r.Code = 500
+		r.Msg = err.Error()
+		return &r
+	}
+
+	return &r
+}
+
+// handleReturnAll 处理归还某用户占用的所有资源的逻辑
+func (c *clusterV2) handleReturnAll(args []byte) *APIReturnAllResp {
+	var err error
+	var r APIReturnAllReq
+	var rp APIReturnAllResp
+
+	if err = resolveArgs(args, &r); err != nil {
+		r.Code = 500
+		r.Msg = fmt.Sprintf("Resolve request failed, %v", err)
+		return &r
+	}
+
+	if err = c.m.ReturnAll(r.ClientID); err != nil {
+		r.Code = 500
+		r.Msg = err.Error()
+		return &r
+	}
+
+	return &r
+}
+
+// handleLeaderNotify 处理Leader结点通知所有结点服务地址的逻辑
+func (c *clusterV2) handleLeaderNotify(args []byte) error {
+	var err error
+	var r CMDLeaderNotify
+
+	if err = resolveArgs(args, &r); err != nil {
+		return err
+	}
+
+	c.gLock.Lock()
+	c.leaderHTTPAddr = r.HttpAddr
+	c.gLock.Unlock()
+
+	return err
 }
 
 func encodeCMD(cmd byte, args proto.Message) ([]byte, error) {

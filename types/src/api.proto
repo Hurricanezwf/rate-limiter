@@ -41,3 +41,8 @@ message APIReturnAllResp {
     uint32  Code                            = 1;
     string  Msg                             = 2;
 }
+
+message CMDLeaderNotify {
+    string RaftAddr                         = 1;
+    string HttpAddr                         = 2;
+}
