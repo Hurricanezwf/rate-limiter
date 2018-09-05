@@ -175,7 +175,7 @@ func returnAll(w http.ResponseWriter, req *http.Request) {
 	switch rp.Code {
 	case 0:
 		code = http.StatusOK
-		glog.V(2).Infof("Client '%x' return all resource '%x' SUCCESS", r.ClientID, r.RCType)
+		glog.V(2).Infof("Client '%x' return all resources of type '%x' SUCCESS", r.ClientID, r.RCType)
 	case 307:
 		req.URL.Host = rp.Msg
 		w.Header().Set("Location", req.URL.String())
@@ -183,7 +183,7 @@ func returnAll(w http.ResponseWriter, req *http.Request) {
 	default:
 		code = int(rp.Code)
 		msg = rp.Msg
-		glog.Warningf("Client '%x' return all resource '%x' FAILED, %s", r.ClientID, r.RCType, msg)
+		glog.Warningf("Client '%x' return all resources of type '%x' FAILED, %s", r.ClientID, r.RCType, msg)
 	}
 
 FINISH:

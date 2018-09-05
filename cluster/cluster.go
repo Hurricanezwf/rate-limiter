@@ -548,7 +548,7 @@ func (c *clusterV2) handleRegistQuota(args []byte) *APIRegistQuotaResp {
 	}
 
 	if err = c.m.RegistQuota(r.RCType, r.Quota); err != nil {
-		rp.Code = 500
+		rp.Code = 403
 		rp.Msg = err.Error()
 		return &rp
 	}
@@ -570,7 +570,7 @@ func (c *clusterV2) handleBorrow(args []byte) *APIBorrowResp {
 	}
 
 	if rcId, err = c.m.Borrow(r.RCType, r.ClientID, r.Expire); err != nil {
-		rp.Code = 500
+		rp.Code = 403
 		rp.Msg = err.Error()
 		return &rp
 	} else {
@@ -593,7 +593,7 @@ func (c *clusterV2) handleReturn(args []byte) *APIReturnResp {
 	}
 
 	if err = c.m.Return(r.ClientID, r.RCID); err != nil {
-		rp.Code = 500
+		rp.Code = 403
 		rp.Msg = err.Error()
 		return &rp
 	}
@@ -614,7 +614,7 @@ func (c *clusterV2) handleReturnAll(args []byte) *APIReturnAllResp {
 	}
 
 	if _, err = c.m.ReturnAll(r.RCType, r.ClientID); err != nil {
-		rp.Code = 500
+		rp.Code = 403
 		rp.Msg = err.Error()
 		return &rp
 	}

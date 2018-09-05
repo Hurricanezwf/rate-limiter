@@ -14,6 +14,13 @@ func MarshalAny(v proto.Message) (*any.Any, error) {
 	return any, nil
 }
 
+func UnmarshalAny(a *any.Any, v proto.Message) error {
+	if err := ptypes.UnmarshalAny(a, v); err != nil {
+		return err
+	}
+	return nil
+}
+
 func AnyToString(a *any.Any) (*PB_String, error) {
 	var v PB_String
 	if err := ptypes.UnmarshalAny(a, &v); err != nil {
@@ -100,11 +107,4 @@ func AnyToQueue(a *any.Any) (*PB_Queue, error) {
 		return nil, err
 	}
 	return &v, nil
-}
-
-func UnmarshalAny(a *any.Any, v proto.Message) error {
-	if err := ptypes.UnmarshalAny(a, v); err != nil {
-		return err
-	}
-	return nil
 }

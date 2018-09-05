@@ -140,18 +140,13 @@ func (m *metaV2) Borrow(rcType, clientId []byte, expire int64) (string, error) {
 	}
 
 	// 借资源
-	for itr := rcMgr.CanBorrow.Front(); itr != nil; itr = itr.Next {
-		str := types.NewString("")
-		types.UnmarshalAny(itr.Value, str)
-		glog.Infof("%s, Len: %d\n", str, rcMgr.CanBorrow.Len())
-	}
 	e := rcMgr.CanBorrow.PopFront()
 	if e == nil {
 		return "", ErrQuotaNotEnough
 	}
 
-	rcId := types.NewString("")
-	if err := types.UnmarshalAny(e.Value, rcId); err != nil {
+	rcId, err := types.AnyToString(e.Value)
+	if err != nil {
 		return "", fmt.Errorf("Resolve resource id failed, %v", err)
 	}
 

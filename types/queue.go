@@ -1,6 +1,8 @@
 package types
 
 import (
+	"fmt"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/any"
 )
@@ -106,12 +108,19 @@ func (q *PB_Queue) Remove(e *PB_Element) {
 	if e == nil {
 		panic("Element to remove is nil")
 	}
-	if e.Prev != nil {
+
+	if e.Prev == nil {
+		q.Head = e.Next
+	} else {
 		e.Prev.Next = e.Next
 	}
-	if e.Next != nil {
+
+	if e.Next == nil {
+		q.Tail = e.Prev
+	} else {
 		e.Next.Prev = e.Prev
 	}
+
 	q.Size--
 	e.Prev, e.Next = nil, nil
 }
@@ -119,4 +128,18 @@ func (q *PB_Queue) Remove(e *PB_Element) {
 // Len 获取链表长度
 func (q *PB_Queue) Len() uint32 {
 	return q.Size
+}
+
+func (q *PB_Queue) debug() {
+	var count = 0
+
+	fmt.Printf("============== Queue Debug ==============\n")
+	fmt.Printf("Len : %d\n", q.Len())
+	fmt.Printf("Head: %p\n", q.Head)
+	fmt.Printf("Tail: %p\n", q.Tail)
+	fmt.Printf("Elements: \n")
+	for itr := q.Head; itr != nil; itr = itr.Next {
+		count++
+		fmt.Printf("[%d] Cur:%p, Prev:%p, Next:%p\n", count, itr, itr.Prev, itr.Next)
+	}
 }
