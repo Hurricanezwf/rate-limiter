@@ -6,9 +6,6 @@ import (
 	"github.com/Hurricanezwf/rate-limiter/g"
 	"github.com/Hurricanezwf/rate-limiter/limiter"
 	"github.com/Hurricanezwf/toolbox/logging/glog"
-
-	_ "github.com/Hurricanezwf/rate-limiter/limiter/limiterv1"
-	_ "github.com/Hurricanezwf/rate-limiter/limiter/metav2"
 )
 
 // Rate limiter实例

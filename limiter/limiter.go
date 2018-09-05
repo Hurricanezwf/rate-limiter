@@ -57,6 +57,11 @@ func (l *limiterV2) Open() error {
 func (l *limiterV2) RegistQuota(r *APIRegistQuotaReq) *APIRegistQuotaResp {
 	var rp APIRegistQuotaResp
 
+	if l.c.IsLeader() == false {
+		rp.Code = 307
+		rp.Msg = l.c.LeaderHTTPAddr()
+		return &rp
+	}
 	if len(r.RCType) <= 0 {
 		rp.Code = 403
 		rp.Msg = "Missing 'RCType' field"
@@ -74,6 +79,11 @@ func (l *limiterV2) RegistQuota(r *APIRegistQuotaReq) *APIRegistQuotaResp {
 func (l *limiterV2) Borrow(r *APIBorrowReq) *APIBorrowResp {
 	var rp APIBorrowResp
 
+	if l.c.IsLeader() == false {
+		rp.Code = 307
+		rp.Msg = l.c.LeaderHTTPAddr()
+		return &rp
+	}
 	if len(r.RCType) <= 0 {
 		rp.Code = 403
 		rp.Msg = "Missing 'RCType' field"
@@ -96,6 +106,11 @@ func (l *limiterV2) Borrow(r *APIBorrowReq) *APIBorrowResp {
 func (l *limiterV2) Return(r *APIReturnReq) *APIReturnResp {
 	var rp APIReturnResp
 
+	if l.c.IsLeader() == false {
+		rp.Code = 307
+		rp.Msg = l.c.LeaderHTTPAddr()
+		return &rp
+	}
 	if len(r.RCID) <= 0 {
 		rp.Code = 403
 		rp.Msg = "Missing 'RCID' field"
@@ -113,6 +128,11 @@ func (l *limiterV2) Return(r *APIReturnReq) *APIReturnResp {
 func (l *limiterV2) ReturnAll(r *APIReturnAllReq) *APIReturnAllResp {
 	var rp APIReturnAllResp
 
+	if l.c.IsLeader() == false {
+		rp.Code = 307
+		rp.Msg = l.c.LeaderHTTPAddr()
+		return &rp
+	}
 	if len(r.RCType) <= 0 {
 		rp.Code = 403
 		rp.Msg = "Missing 'RCType' field"
