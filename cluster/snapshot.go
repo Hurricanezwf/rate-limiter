@@ -6,17 +6,17 @@ import (
 	raftlib "github.com/hashicorp/raft"
 )
 
-type LimiterSnapshot struct {
+type Snapshot struct {
 	dataToPersist io.Reader
 }
 
-func NewLimiterSnapshot(dataToPersist io.Reader) *LimiterSnapshot {
-	return &LimiterSnapshot{
+func NewSnapshot(dataToPersist io.Reader) *Snapshot {
+	return &Snapshot{
 		dataToPersist: dataToPersist,
 	}
 }
 
-func (s *LimiterSnapshot) Persist(sink raftlib.SnapshotSink) error {
+func (s *Snapshot) Persist(sink raftlib.SnapshotSink) error {
 	_, err := io.Copy(sink, s.dataToPersist)
 	if err != nil {
 		sink.Cancel()
@@ -26,6 +26,6 @@ func (s *LimiterSnapshot) Persist(sink raftlib.SnapshotSink) error {
 	return err
 }
 
-func (s *LimiterSnapshot) Release() {
+func (s *Snapshot) Release() {
 	// do nothing
 }

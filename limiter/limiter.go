@@ -2,7 +2,6 @@ package limiter
 
 import (
 	"github.com/Hurricanezwf/rate-limiter/cluster"
-	"github.com/Hurricanezwf/rate-limiter/limiter"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
 )
 
@@ -17,16 +16,16 @@ type Interface interface {
 	Open() error
 
 	// RegistQuota 注册资源配额
-	RegistQuota(req *APIRegistQuotaReq) *APIRegistQuotaResp
+	RegistQuota(r *APIRegistQuotaReq) *APIRegistQuotaResp
 
 	// Borrow 借资源
-	Borrow(req *APIBorrowReq) *APIBorrowResp
+	Borrow(r *APIBorrowReq) *APIBorrowResp
 
 	// Return 归还单个资源
-	Return(req *APIReturnReq) *APIReturnResp
+	Return(r *APIReturnReq) *APIReturnResp
 
 	// ReturnAll 归还用户借取的所有资源，通常用于客户端关闭时
-	ReturnAll(req *APIReturnAllReq) *APIReturnAllResp
+	ReturnAll(r *APIReturnAllReq) *APIReturnAllResp
 }
 
 // New 新建一个limiter接口实例
@@ -42,12 +41,12 @@ func New(name string) Interface {
 
 // limiterV2 limiter的具体实现
 type limiterV2 struct {
-	cluster.Interface
+	c cluster.Interface
 }
 
-func newLimiterV2() limiter.Interface {
+func newLimiterV2() Interface {
 	return &limiterV2{
-		cluster.New("v2"),
+		c: cluster.New("v2"),
 	}
 }
 
@@ -55,22 +54,75 @@ func (l *limiterV2) Open() error {
 	return l.c.Open()
 }
 
-func (l *limiterV2) RegistQuota(req *APIRegistQuotaReq) *APIRegistQuotaResp {
-	// TODO
-	return nil
+func (l *limiterV2) RegistQuota(r *APIRegistQuotaReq) *APIRegistQuotaResp {
+	var rp APIRegistQuotaResp
+
+	if len(r.RCType) <= 0 {
+		rp.Code = 403
+		rp.Msg = "Missing 'RCType' field"
+		return &rp
+	}
+	if r.Quota <= 0 || r.Quota > 1000000 {
+		rp.Code = 403
+		rp.Msg = "Invalid 'Quota' value range, it should be in (0, 100000]"
+		return &rp
+	}
+
+	return l.c.RegistQuota(r)
 }
 
-func (l *limiterV2) Borrow(req *APIBorrowReq) *APIBorrowResp {
-	// TODO:
-	return nil
+func (l *limiterV2) Borrow(r *APIBorrowReq) *APIBorrowResp {
+	var rp APIBorrowResp
+
+	if len(r.RCType) <= 0 {
+		rp.Code = 403
+		rp.Msg = "Missing 'RCType' field"
+		return &rp
+	}
+	if len(r.ClientID) <= 0 {
+		rp.Code = 403
+		rp.Msg = "Missing 'ClientID' field"
+		return &rp
+	}
+	if r.Expire <= 0 {
+		rp.Code = 403
+		rp.Msg = "Missing 'Expire' field"
+		return &rp
+	}
+
+	return l.c.Borrow(r)
 }
 
-func (l *limiterV2) Return(req *APIReturnReq) *APIReturnResp {
-	// TODO:
-	return nil
+func (l *limiterV2) Return(r *APIReturnReq) *APIReturnResp {
+	var rp APIReturnResp
+
+	if len(r.RCID) <= 0 {
+		rp.Code = 403
+		rp.Msg = "Missing 'RCID' field"
+		return &rp
+	}
+	if len(r.ClientID) <= 0 {
+		rp.Code = 403
+		rp.Msg = "Missing 'ClientID' field"
+		return &rp
+	}
+
+	return l.c.Return(r)
 }
 
-func (l *limiterV2) ReturnAll(req *APIReturnAllReq) *APIReturnAllResp {
-	// TODO:
-	return nil
+func (l *limiterV2) ReturnAll(r *APIReturnAllReq) *APIReturnAllResp {
+	var rp APIReturnAllResp
+
+	if len(r.RCType) <= 0 {
+		rp.Code = 403
+		rp.Msg = "Missing 'RCType' field"
+		return &rp
+	}
+	if len(r.ClientID) <= 0 {
+		rp.Code = 403
+		rp.Msg = "Missing 'ClientID' field"
+		return &rp
+	}
+
+	return l.c.ReturnAll(r)
 }
