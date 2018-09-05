@@ -93,7 +93,7 @@ func (m *metaV2) RegistQuota(rcType []byte, quota uint32) error {
 	defer mLock.Unlock()
 
 	if _, exist := m.m.Value[rcTypeHex]; exist {
-		return fmt.Errorf("Resource '%s' had been existed", rcTypeHex)
+		return ErrExisted
 	}
 
 	// 注册构造资源管理器
@@ -101,6 +101,9 @@ func (m *metaV2) RegistQuota(rcType []byte, quota uint32) error {
 		RcTypeId:  rcType,
 		Quota:     quota,
 		CanBorrow: types.NewQueue(),
+		Recycled:  types.NewQueue(),
+		Used:      make(map[string]*types.PB_Queue),
+		UsedCount: 0,
 	}
 	for i := uint32(0); i < quota; i++ {
 		rcId := types.NewString(MakeResourceID(rcType, i))
@@ -137,6 +140,11 @@ func (m *metaV2) Borrow(rcType, clientId []byte, expire int64) (string, error) {
 	}
 
 	// 借资源
+	for itr := rcMgr.CanBorrow.Front(); itr != nil; itr = itr.Next {
+		str := types.NewString("")
+		types.UnmarshalAny(itr.Value, str)
+		glog.Infof("%s, Len: %d\n", str, rcMgr.CanBorrow.Len())
+	}
 	e := rcMgr.CanBorrow.PopFront()
 	if e == nil {
 		return "", ErrQuotaNotEnough
@@ -219,7 +227,7 @@ func (m *metaV2) Return(clientId []byte, rcId string) error {
 			continue
 		}
 
-		glog.V(3).Infof("Client[%s] return %s to recycle.", clientIdHex, rcId)
+		//glog.V(3).Infof("Client[%s] return %s to recycle.", clientIdHex, rcId)
 
 		find = true
 		rdList.Remove(itr)
@@ -315,7 +323,7 @@ func (m *metaV2) Recycle() {
 					glog.Warning(err.Error())
 					goto NEXT
 				}
-				if record.ExpireAt < nowTs {
+				if record.ExpireAt > nowTs {
 					goto NEXT
 				}
 

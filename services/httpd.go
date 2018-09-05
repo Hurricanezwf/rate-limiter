@@ -1,13 +1,14 @@
 package services
 
 import (
+	"bytes"
 	"errors"
-	"io/ioutil"
 	"net/http"
 	"time"
 
 	. "github.com/Hurricanezwf/rate-limiter/proto"
 	"github.com/Hurricanezwf/toolbox/logging/glog"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -59,6 +60,7 @@ func registQuota(w http.ResponseWriter, req *http.Request) {
 	switch rp.Code {
 	case 0:
 		code = http.StatusOK
+		glog.V(2).Infof("Regist '%d' quotas for resource '%x' SUCCESS", r.Quota, r.RCType)
 	case 307:
 		req.URL.Host = rp.Msg
 		w.Header().Set("Location", req.URL.String())
@@ -66,6 +68,7 @@ func registQuota(w http.ResponseWriter, req *http.Request) {
 	default:
 		code = int(rp.Code)
 		msg = rp.Msg
+		glog.Warningf("Regist '%d' quotas for resource '%x' FAILED, %s", r.Quota, r.RCType, msg)
 	}
 
 FINISH:
@@ -95,6 +98,8 @@ func borrow(w http.ResponseWriter, req *http.Request) {
 	switch rp.Code {
 	case 0:
 		code = http.StatusOK
+		msg = rp.RCID
+		glog.V(2).Infof("Client '%x' borrow '%s' SUCCESS", r.ClientID, rp.RCID)
 	case 307:
 		req.URL.Host = rp.Msg
 		w.Header().Set("Location", req.URL.String())
@@ -102,6 +107,7 @@ func borrow(w http.ResponseWriter, req *http.Request) {
 	default:
 		code = int(rp.Code)
 		msg = rp.Msg
+		glog.Warningf("Client '%x' borrow '%x' FAILED, %s", r.ClientID, r.RCType, msg)
 	}
 
 FINISH:
@@ -131,6 +137,7 @@ func return_(w http.ResponseWriter, req *http.Request) {
 	switch rp.Code {
 	case 0:
 		code = http.StatusOK
+		glog.V(2).Infof("Client '%x' return '%s' SUCCESS", r.ClientID, r.RCID)
 	case 307:
 		req.URL.Host = rp.Msg
 		w.Header().Set("Location", req.URL.String())
@@ -138,6 +145,7 @@ func return_(w http.ResponseWriter, req *http.Request) {
 	default:
 		code = int(rp.Code)
 		msg = rp.Msg
+		glog.Warningf("Client '%x' return '%s' FAILED, %s", r.ClientID, r.RCID, msg)
 	}
 
 FINISH:
@@ -167,6 +175,7 @@ func returnAll(w http.ResponseWriter, req *http.Request) {
 	switch rp.Code {
 	case 0:
 		code = http.StatusOK
+		glog.V(2).Infof("Client '%x' return all resource '%x' SUCCESS", r.ClientID, r.RCType)
 	case 307:
 		req.URL.Host = rp.Msg
 		w.Header().Set("Location", req.URL.String())
@@ -174,6 +183,7 @@ func returnAll(w http.ResponseWriter, req *http.Request) {
 	default:
 		code = int(rp.Code)
 		msg = rp.Msg
+		glog.Warningf("Client '%x' return all resource '%x' FAILED, %s", r.ClientID, r.RCType, msg)
 	}
 
 FINISH:
@@ -274,16 +284,14 @@ func resolveRequest(w http.ResponseWriter, req *http.Request, message proto.Mess
 		return http.StatusMethodNotAllowed, "Method `POST` is needed"
 	}
 
-	// 读取Body
-	b, err := ioutil.ReadAll(req.Body)
-	defer req.Body.Close()
-
-	if err != nil {
-		return http.StatusInternalServerError, err.Error()
-	}
-
 	// 解析请求
-	if err = proto.Unmarshal(b, message); err != nil {
+	buf := bytes.NewBuffer(make([]byte, 0, 1024))
+	buf.ReadFrom(req.Body)
+	req.Body.Close()
+
+	glog.V(4).Infof("%s [%s] %s", req.Method, req.RequestURI, buf.String())
+
+	if err := jsonpb.Unmarshal(buf, message); err != nil {
 		return http.StatusBadRequest, err.Error()
 	}
 

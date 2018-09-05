@@ -438,6 +438,11 @@ func (c *clusterV2) RegistQuota(r *APIRegistQuotaReq) *APIRegistQuotaResp {
 		return rp
 	}
 
+	if g.Config.Raft.Enable == false {
+		_, args := resolveCMD(cmd)
+		return c.handleRegistQuota(args)
+	}
+
 	future := c.raft.Apply(cmd, c.raftTimeout)
 	if err = future.Error(); err != nil {
 		rp.Msg = err.Error()
@@ -453,6 +458,11 @@ func (c *clusterV2) Borrow(r *APIBorrowReq) *APIBorrowResp {
 	if err != nil {
 		rp.Msg = fmt.Sprintf("Encode cmd failed, %v", err)
 		return rp
+	}
+
+	if g.Config.Raft.Enable == false {
+		_, args := resolveCMD(cmd)
+		return c.handleBorrow(args)
 	}
 
 	future := c.raft.Apply(cmd, c.raftTimeout)
@@ -472,6 +482,11 @@ func (c *clusterV2) Return(r *APIReturnReq) *APIReturnResp {
 		return rp
 	}
 
+	if g.Config.Raft.Enable == false {
+		_, args := resolveCMD(cmd)
+		return c.handleReturn(args)
+	}
+
 	future := c.raft.Apply(cmd, c.raftTimeout)
 	if err = future.Error(); err != nil {
 		rp.Msg = err.Error()
@@ -487,6 +502,11 @@ func (c *clusterV2) ReturnAll(r *APIReturnAllReq) *APIReturnAllResp {
 	if err != nil {
 		rp.Msg = fmt.Sprintf("Encode cmd failed, %v", err)
 		return rp
+	}
+
+	if g.Config.Raft.Enable == false {
+		_, args := resolveCMD(cmd)
+		return c.handleReturnAll(args)
 	}
 
 	future := c.raft.Apply(cmd, c.raftTimeout)

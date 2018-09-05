@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -41,4 +42,18 @@ func TestQueue(t *testing.T) {
 
 	q1.Remove(back)
 	t.Logf("Queue1 Len:%d\n", q1.Len())
+}
+func TestQueuePushBack(t *testing.T) {
+	q := NewQueue()
+
+	for i := 0; i < 10; i++ {
+		str := NewString(fmt.Sprintf("ID#%d", i))
+		q.PushBack(str)
+	}
+
+	for itr := q.Front(); itr != nil; itr = itr.Next {
+		str := NewString("")
+		UnmarshalAny(itr.Value, str)
+		t.Logf("%s\n", str.Value)
+	}
 }

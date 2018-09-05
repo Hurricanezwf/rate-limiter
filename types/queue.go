@@ -17,27 +17,54 @@ func (q *PB_Queue) Init() *PB_Queue {
 	return q
 }
 
+// PushFront 向队列头部添加一个值
+func (q *PB_Queue) PushFront(value proto.Message) (*PB_Element, error) {
+	v, err := MarshalAny(value)
+	if err != nil {
+		return nil, err
+	}
+
+	if q.Size == 0 {
+		q.Head = &PB_Element{
+			Prev:  nil,
+			Next:  nil,
+			Value: v,
+		}
+		q.Tail = q.Head
+	} else {
+		e := &PB_Element{
+			Prev:  nil,
+			Next:  q.Head.Next,
+			Value: v,
+		}
+		q.Head = e
+	}
+	q.Size++
+
+	return q.Head, nil
+}
+
 // PushBack 向队列中添加一个值
 func (q *PB_Queue) PushBack(value proto.Message) (*PB_Element, error) {
 	v, err := MarshalAny(value)
 	if err != nil {
 		return nil, err
 	}
+
 	return q.pushBackAny(v), nil
 }
 
 // pushBackAny 添加一个类型是*any.Any的元素到队列
 func (q *PB_Queue) pushBackAny(v *any.Any) *PB_Element {
-	element := &PB_Element{
-		Next:  nil,
-		Prev:  q.Tail,
-		Value: v,
-	}
+	element := &PB_Element{Value: v}
+
 	if q.Size == 0 {
-		q.Head = element
-		q.Tail = element
+		element.Prev, element.Next = nil, nil
+		q.Head, q.Tail = element, element
 	} else {
+		element.Prev, element.Next = q.Tail, nil
 		q.Tail.Next = element
+		q.Tail = element
 	}
 
 	q.Size++

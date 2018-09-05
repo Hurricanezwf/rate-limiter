@@ -8,7 +8,7 @@ Httpd:
 # 【日志配置】
 Log:
   # 日志冗余度，取值[0,10]
-  Verbose: 5
+  Verbose: 3
   # 日志记录方式，"console" | "file"
   Way: console
   # 日志记录到目标目录

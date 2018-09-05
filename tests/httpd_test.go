@@ -30,8 +30,8 @@ func TestRegist(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 
 	json.NewEncoder(buf).Encode(APIRegistQuotaReq{
-		RCTypeID: tId,
-		Quota:    10,
+		RCType: tId,
+		Quota:  10,
 	})
 
 	for {
@@ -64,7 +64,7 @@ func TestBorrow(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 
 	json.NewEncoder(buf).Encode(APIBorrowReq{
-		RCTypeID: tId,
+		RCType:   tId,
 		ClientID: cId,
 		Expire:   1000,
 	})
@@ -124,7 +124,9 @@ func TestReturnOne(t *testing.T) {
 }
 
 func TestReturnAll(t *testing.T) {
+	tIdMd5 := md5.Sum([]byte("create_host"))
 	cIdMd5 := md5.Sum([]byte("zwf"))
+	tId = tIdMd5[:]
 	cId = cIdMd5[:]
 
 	url := fmt.Sprintf("http://%s/v1/returnAll", hostAddr)
@@ -132,6 +134,7 @@ func TestReturnAll(t *testing.T) {
 
 	json.NewEncoder(buf).Encode(APIReturnAllReq{
 		ClientID: cId,
+		RCType:   tId,
 	})
 
 	for {
@@ -183,6 +186,7 @@ func TestSnapshot(t *testing.T) {
 }
 
 func TestRestore(t *testing.T) {
+
 	url := fmt.Sprintf("http://%s/v1/restore", hostAddr)
 	buf := bytes.NewBuffer(nil)
 
