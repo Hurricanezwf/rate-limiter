@@ -19,17 +19,17 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type PB_Meta struct {
-	Value                map[string]*PB_M `protobuf:"bytes,1,rep,name=Value,proto3" json:"Value,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
-	XXX_unrecognized     []byte           `json:"-"`
-	XXX_sizecache        int32            `json:"-"`
+	Value                map[string]*PB_Manager `protobuf:"bytes,1,rep,name=Value,proto3" json:"Value,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
+	XXX_unrecognized     []byte                 `json:"-"`
+	XXX_sizecache        int32                  `json:"-"`
 }
 
 func (m *PB_Meta) Reset()         { *m = PB_Meta{} }
 func (m *PB_Meta) String() string { return proto.CompactTextString(m) }
 func (*PB_Meta) ProtoMessage()    {}
 func (*PB_Meta) Descriptor() ([]byte, []int) {
-	return fileDescriptor_meta_c958edfccb6d040d, []int{0}
+	return fileDescriptor_meta_d8c774e544aed08c, []int{0}
 }
 func (m *PB_Meta) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PB_Meta.Unmarshal(m, b)
@@ -49,135 +49,96 @@ func (m *PB_Meta) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_PB_Meta proto.InternalMessageInfo
 
-func (m *PB_Meta) GetValue() map[string]*PB_M {
+func (m *PB_Meta) GetValue() map[string]*PB_Manager {
 	if m != nil {
 		return m.Value
 	}
 	return nil
 }
 
-// 这里将map当作list使用
-type PB_M struct {
-	RcTypeId             []byte                          `protobuf:"bytes,1,opt,name=rcTypeId,proto3" json:"rcTypeId,omitempty"`
-	Quota                uint32                          `protobuf:"varint,2,opt,name=quota,proto3" json:"quota,omitempty"`
-	CanBorrow            map[string]bool                 `protobuf:"bytes,3,rep,name=canBorrow,proto3" json:"canBorrow,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
-	Recycled             map[string]bool                 `protobuf:"bytes,4,rep,name=recycled,proto3" json:"recycled,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
-	Used                 map[string]*PB_BorrowRecordList `protobuf:"bytes,5,rep,name=used,proto3" json:"used,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	UsedCount            uint32                          `protobuf:"varint,6,opt,name=usedCount,proto3" json:"usedCount,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}                        `json:"-"`
-	XXX_unrecognized     []byte                          `json:"-"`
-	XXX_sizecache        int32                           `json:"-"`
+type PB_Manager struct {
+	RCType               []byte             `protobuf:"bytes,1,opt,name=RCType,proto3" json:"RCType,omitempty"`
+	Quota                uint32             `protobuf:"varint,2,opt,name=Quota,proto3" json:"Quota,omitempty"`
+	CanBorrow            []string           `protobuf:"bytes,3,rep,name=CanBorrow,proto3" json:"CanBorrow,omitempty"`
+	Recycled             []string           `protobuf:"bytes,4,rep,name=Recycled,proto3" json:"Recycled,omitempty"`
+	Used                 []*PB_BorrowRecord `protobuf:"bytes,5,rep,name=Used,proto3" json:"Used,omitempty"`
+	UsedCount            uint32             `protobuf:"varint,6,opt,name=UsedCount,proto3" json:"UsedCount,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
+	XXX_unrecognized     []byte             `json:"-"`
+	XXX_sizecache        int32              `json:"-"`
 }
 
-func (m *PB_M) Reset()         { *m = PB_M{} }
-func (m *PB_M) String() string { return proto.CompactTextString(m) }
-func (*PB_M) ProtoMessage()    {}
-func (*PB_M) Descriptor() ([]byte, []int) {
-	return fileDescriptor_meta_c958edfccb6d040d, []int{1}
+func (m *PB_Manager) Reset()         { *m = PB_Manager{} }
+func (m *PB_Manager) String() string { return proto.CompactTextString(m) }
+func (*PB_Manager) ProtoMessage()    {}
+func (*PB_Manager) Descriptor() ([]byte, []int) {
+	return fileDescriptor_meta_d8c774e544aed08c, []int{1}
 }
-func (m *PB_M) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_PB_M.Unmarshal(m, b)
+func (m *PB_Manager) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PB_Manager.Unmarshal(m, b)
 }
-func (m *PB_M) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_PB_M.Marshal(b, m, deterministic)
+func (m *PB_Manager) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PB_Manager.Marshal(b, m, deterministic)
 }
-func (dst *PB_M) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PB_M.Merge(dst, src)
+func (dst *PB_Manager) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PB_Manager.Merge(dst, src)
 }
-func (m *PB_M) XXX_Size() int {
-	return xxx_messageInfo_PB_M.Size(m)
+func (m *PB_Manager) XXX_Size() int {
+	return xxx_messageInfo_PB_Manager.Size(m)
 }
-func (m *PB_M) XXX_DiscardUnknown() {
-	xxx_messageInfo_PB_M.DiscardUnknown(m)
+func (m *PB_Manager) XXX_DiscardUnknown() {
+	xxx_messageInfo_PB_Manager.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_PB_M proto.InternalMessageInfo
+var xxx_messageInfo_PB_Manager proto.InternalMessageInfo
 
-func (m *PB_M) GetRcTypeId() []byte {
+func (m *PB_Manager) GetRCType() []byte {
 	if m != nil {
-		return m.RcTypeId
+		return m.RCType
 	}
 	return nil
 }
 
-func (m *PB_M) GetQuota() uint32 {
+func (m *PB_Manager) GetQuota() uint32 {
 	if m != nil {
 		return m.Quota
 	}
 	return 0
 }
 
-func (m *PB_M) GetCanBorrow() map[string]bool {
+func (m *PB_Manager) GetCanBorrow() []string {
 	if m != nil {
 		return m.CanBorrow
 	}
 	return nil
 }
 
-func (m *PB_M) GetRecycled() map[string]bool {
+func (m *PB_Manager) GetRecycled() []string {
 	if m != nil {
 		return m.Recycled
 	}
 	return nil
 }
 
-func (m *PB_M) GetUsed() map[string]*PB_BorrowRecordList {
+func (m *PB_Manager) GetUsed() []*PB_BorrowRecord {
 	if m != nil {
 		return m.Used
 	}
 	return nil
 }
 
-func (m *PB_M) GetUsedCount() uint32 {
+func (m *PB_Manager) GetUsedCount() uint32 {
 	if m != nil {
 		return m.UsedCount
 	}
 	return 0
 }
 
-type PB_BorrowRecordList struct {
-	Value                map[string]bool `protobuf:"bytes,1,rep,name=value,proto3" json:"value,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
-}
-
-func (m *PB_BorrowRecordList) Reset()         { *m = PB_BorrowRecordList{} }
-func (m *PB_BorrowRecordList) String() string { return proto.CompactTextString(m) }
-func (*PB_BorrowRecordList) ProtoMessage()    {}
-func (*PB_BorrowRecordList) Descriptor() ([]byte, []int) {
-	return fileDescriptor_meta_c958edfccb6d040d, []int{2}
-}
-func (m *PB_BorrowRecordList) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_PB_BorrowRecordList.Unmarshal(m, b)
-}
-func (m *PB_BorrowRecordList) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_PB_BorrowRecordList.Marshal(b, m, deterministic)
-}
-func (dst *PB_BorrowRecordList) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PB_BorrowRecordList.Merge(dst, src)
-}
-func (m *PB_BorrowRecordList) XXX_Size() int {
-	return xxx_messageInfo_PB_BorrowRecordList.Size(m)
-}
-func (m *PB_BorrowRecordList) XXX_DiscardUnknown() {
-	xxx_messageInfo_PB_BorrowRecordList.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_PB_BorrowRecordList proto.InternalMessageInfo
-
-func (m *PB_BorrowRecordList) GetValue() map[string]bool {
-	if m != nil {
-		return m.Value
-	}
-	return nil
-}
-
 type PB_BorrowRecord struct {
-	ClientID             []byte   `protobuf:"bytes,1,opt,name=clientID,proto3" json:"clientID,omitempty"`
-	RcID                 string   `protobuf:"bytes,2,opt,name=rcID,proto3" json:"rcID,omitempty"`
-	BorrowAt             int64    `protobuf:"varint,3,opt,name=borrowAt,proto3" json:"borrowAt,omitempty"`
-	ExpireAt             int64    `protobuf:"varint,4,opt,name=expireAt,proto3" json:"expireAt,omitempty"`
+	ClientID             []byte   `protobuf:"bytes,1,opt,name=ClientID,proto3" json:"ClientID,omitempty"`
+	RCID                 string   `protobuf:"bytes,2,opt,name=RCID,proto3" json:"RCID,omitempty"`
+	BorrowAt             int64    `protobuf:"varint,3,opt,name=BorrowAt,proto3" json:"BorrowAt,omitempty"`
+	ExpireAt             int64    `protobuf:"varint,4,opt,name=ExpireAt,proto3" json:"ExpireAt,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -187,7 +148,7 @@ func (m *PB_BorrowRecord) Reset()         { *m = PB_BorrowRecord{} }
 func (m *PB_BorrowRecord) String() string { return proto.CompactTextString(m) }
 func (*PB_BorrowRecord) ProtoMessage()    {}
 func (*PB_BorrowRecord) Descriptor() ([]byte, []int) {
-	return fileDescriptor_meta_c958edfccb6d040d, []int{3}
+	return fileDescriptor_meta_d8c774e544aed08c, []int{2}
 }
 func (m *PB_BorrowRecord) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PB_BorrowRecord.Unmarshal(m, b)
@@ -214,9 +175,9 @@ func (m *PB_BorrowRecord) GetClientID() []byte {
 	return nil
 }
 
-func (m *PB_BorrowRecord) GetRcID() string {
+func (m *PB_BorrowRecord) GetRCID() string {
 	if m != nil {
-		return m.RcID
+		return m.RCID
 	}
 	return ""
 }
@@ -237,43 +198,33 @@ func (m *PB_BorrowRecord) GetExpireAt() int64 {
 
 func init() {
 	proto.RegisterType((*PB_Meta)(nil), "meta.PB_Meta")
-	proto.RegisterMapType((map[string]*PB_M)(nil), "meta.PB_Meta.ValueEntry")
-	proto.RegisterType((*PB_M)(nil), "meta.PB_M")
-	proto.RegisterMapType((map[string]bool)(nil), "meta.PB_M.CanBorrowEntry")
-	proto.RegisterMapType((map[string]bool)(nil), "meta.PB_M.RecycledEntry")
-	proto.RegisterMapType((map[string]*PB_BorrowRecordList)(nil), "meta.PB_M.UsedEntry")
-	proto.RegisterType((*PB_BorrowRecordList)(nil), "meta.PB_BorrowRecordList")
-	proto.RegisterMapType((map[string]bool)(nil), "meta.PB_BorrowRecordList.ValueEntry")
+	proto.RegisterMapType((map[string]*PB_Manager)(nil), "meta.PB_Meta.ValueEntry")
+	proto.RegisterType((*PB_Manager)(nil), "meta.PB_Manager")
 	proto.RegisterType((*PB_BorrowRecord)(nil), "meta.PB_BorrowRecord")
 }
 
-func init() { proto.RegisterFile("meta.proto", fileDescriptor_meta_c958edfccb6d040d) }
+func init() { proto.RegisterFile("meta.proto", fileDescriptor_meta_d8c774e544aed08c) }
 
-var fileDescriptor_meta_c958edfccb6d040d = []byte{
-	// 394 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x53, 0xcd, 0x4e, 0xe3, 0x30,
-	0x10, 0x56, 0x9a, 0xa4, 0xdb, 0x4c, 0xb7, 0xbb, 0x2b, 0x6f, 0x0f, 0x26, 0xe2, 0x10, 0x55, 0x1c,
-	0x72, 0x0a, 0x52, 0x41, 0xa2, 0x2a, 0x5c, 0xfa, 0xc3, 0xa1, 0x12, 0x48, 0xc8, 0x02, 0xae, 0x28,
-	0x4d, 0x7c, 0xa8, 0x28, 0x49, 0x71, 0x1d, 0x20, 0x27, 0x1e, 0x80, 0x77, 0xe2, 0xd9, 0x50, 0xc6,
-	0xcd, 0x5f, 0xd5, 0x0a, 0x71, 0x8a, 0xc7, 0xdf, 0x8f, 0x3f, 0x8f, 0x27, 0x00, 0x4f, 0x5c, 0xfa,
-	0xde, 0x4a, 0xc4, 0x32, 0x26, 0x46, 0xb6, 0xee, 0xbd, 0xc3, 0xaf, 0x9b, 0xf1, 0xc3, 0x35, 0x97,
-	0x3e, 0xf1, 0xc0, 0xbc, 0xf7, 0x97, 0x09, 0xa7, 0x9a, 0xa3, 0xbb, 0xed, 0x3e, 0xf5, 0x90, 0xbc,
-	0x41, 0x3d, 0x84, 0x2e, 0x23, 0x29, 0x52, 0xa6, 0x68, 0xf6, 0x14, 0xa0, 0xdc, 0x24, 0xff, 0x40,
-	0x7f, 0xe4, 0x29, 0xd5, 0x1c, 0xcd, 0xb5, 0x58, 0xb6, 0x24, 0x0e, 0x98, 0x2f, 0xe8, 0xd7, 0x70,
-	0x34, 0xb7, 0xdd, 0x87, 0xd2, 0x8f, 0x29, 0x60, 0xd8, 0x18, 0x68, 0xbd, 0x4f, 0x1d, 0x8c, 0x6c,
-	0x8f, 0xd8, 0xd0, 0x12, 0xc1, 0x6d, 0xba, 0xe2, 0xb3, 0x10, 0x5d, 0x7e, 0xb3, 0xa2, 0x26, 0x5d,
-	0x30, 0x9f, 0x93, 0x58, 0xfa, 0x68, 0xd5, 0x61, 0xaa, 0x20, 0x67, 0x60, 0x05, 0x7e, 0x34, 0x8e,
-	0x85, 0x88, 0x5f, 0xa9, 0x8e, 0xa1, 0x0f, 0xca, 0x43, 0xbc, 0x49, 0x8e, 0xa9, 0xd4, 0x25, 0x97,
-	0x9c, 0x42, 0x4b, 0xf0, 0x20, 0x0d, 0x96, 0x3c, 0xa4, 0xc6, 0xf6, 0x65, 0x3d, 0xb6, 0x81, 0x94,
-	0xac, 0x60, 0x12, 0x17, 0x8c, 0x64, 0xcd, 0x43, 0x6a, 0xa2, 0xa2, 0x5b, 0x51, 0xdc, 0xad, 0x73,
-	0x36, 0x32, 0xc8, 0x21, 0x58, 0xd9, 0x77, 0x12, 0x27, 0x91, 0xa4, 0x4d, 0x8c, 0x5c, 0x6e, 0xd8,
-	0x17, 0xf0, 0xa7, 0x1e, 0x6d, 0x47, 0xef, 0xba, 0xd5, 0xde, 0xb5, 0x2a, 0xfd, 0xb2, 0xcf, 0xa1,
-	0x53, 0x0b, 0xf8, 0x23, 0x31, 0x03, 0xab, 0xc8, 0xba, 0x43, 0x78, 0x5c, 0x7f, 0xb1, 0xb2, 0x99,
-	0x2a, 0x2c, 0xe3, 0x41, 0x2c, 0xc2, 0xab, 0xc5, 0x5a, 0x56, 0x1f, 0xf0, 0x43, 0x83, 0xff, 0x3b,
-	0x28, 0x64, 0x98, 0x9b, 0xa9, 0x71, 0x3a, 0xda, 0x6b, 0x56, 0x1b, 0x2d, 0x94, 0xd8, 0x83, 0x6f,
-	0x46, 0x6b, 0xef, 0x0d, 0x7b, 0x29, 0xfc, 0xdd, 0x3a, 0x22, 0x1b, 0xac, 0x60, 0xb9, 0xe0, 0x91,
-	0x9c, 0x4d, 0xf3, 0xc1, 0xca, 0x6b, 0x42, 0xc0, 0x10, 0xc1, 0x6c, 0x8a, 0x3e, 0x16, 0xc3, 0x75,
-	0xc6, 0x9f, 0xa3, 0x7e, 0x24, 0xa9, 0xee, 0x68, 0xae, 0xce, 0x8a, 0x3a, 0xc3, 0xf8, 0xdb, 0x6a,
-	0x21, 0xf8, 0x48, 0x52, 0x43, 0x61, 0x79, 0x3d, 0x6f, 0xe2, 0x7f, 0x75, 0xf2, 0x15, 0x00, 0x00,
-	0xff, 0xff, 0x3f, 0x41, 0xec, 0x21, 0x65, 0x03, 0x00, 0x00,
+var fileDescriptor_meta_d8c774e544aed08c = []byte{
+	// 309 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x5c, 0x91, 0xc1, 0x4a, 0xfb, 0x40,
+	0x10, 0xc6, 0xd9, 0x26, 0xe9, 0xff, 0x9f, 0xa9, 0x62, 0x59, 0x54, 0x96, 0xe2, 0x21, 0xf4, 0x20,
+	0xf1, 0x92, 0x43, 0xbd, 0x88, 0xb7, 0x36, 0xed, 0xa1, 0x82, 0xa0, 0x83, 0x7a, 0x95, 0xb5, 0x1d,
+	0xa4, 0x58, 0xb3, 0x65, 0xdd, 0xaa, 0x79, 0x00, 0x1f, 0xcb, 0x77, 0x93, 0x9d, 0xad, 0x09, 0x78,
+	0xca, 0x7c, 0xf3, 0xfb, 0xe6, 0x9b, 0x0c, 0x0b, 0xf0, 0x4a, 0x4e, 0x17, 0x1b, 0x6b, 0x9c, 0x91,
+	0xb1, 0xaf, 0x87, 0x5f, 0x02, 0xfe, 0xdd, 0x4c, 0x1e, 0xaf, 0xc9, 0x69, 0x59, 0x40, 0xf2, 0xa0,
+	0xd7, 0x5b, 0x52, 0x22, 0x8b, 0xf2, 0xde, 0x48, 0x15, 0xec, 0xde, 0xd1, 0x82, 0xd1, 0xac, 0x72,
+	0xb6, 0xc6, 0x60, 0x1b, 0x5c, 0x01, 0xb4, 0x4d, 0xd9, 0x87, 0xe8, 0x85, 0x6a, 0x25, 0x32, 0x91,
+	0xa7, 0xe8, 0x4b, 0x79, 0x0a, 0xc9, 0x3b, 0xe7, 0x75, 0x32, 0x91, 0xf7, 0x46, 0xfd, 0x36, 0x4f,
+	0x57, 0xfa, 0x99, 0x2c, 0x06, 0x7c, 0xd9, 0xb9, 0x10, 0xc3, 0x6f, 0x01, 0xd0, 0x12, 0x79, 0x0c,
+	0x5d, 0x2c, 0xef, 0xea, 0x0d, 0x71, 0xde, 0x1e, 0xee, 0x94, 0x3c, 0x84, 0xe4, 0x76, 0x6b, 0x9c,
+	0xe6, 0xc8, 0x7d, 0x0c, 0x42, 0x9e, 0x40, 0x5a, 0xea, 0x6a, 0x62, 0xac, 0x35, 0x1f, 0x2a, 0xca,
+	0xa2, 0x3c, 0xc5, 0xb6, 0x21, 0x07, 0xf0, 0x1f, 0x69, 0x51, 0x2f, 0xd6, 0xb4, 0x54, 0x31, 0xc3,
+	0x46, 0xcb, 0x33, 0x88, 0xef, 0xdf, 0x68, 0xa9, 0x12, 0xbe, 0xf8, 0xa8, 0xf9, 0xc3, 0x30, 0x8a,
+	0xb4, 0x30, 0x76, 0x89, 0x6c, 0xf1, 0x4b, 0xfc, 0xb7, 0x34, 0xdb, 0xca, 0xa9, 0x2e, 0xaf, 0x6f,
+	0x1b, 0xc3, 0x1a, 0x0e, 0xfe, 0x8c, 0xf9, 0xbd, 0xe5, 0x7a, 0x45, 0x95, 0x9b, 0x4f, 0x77, 0x57,
+	0x34, 0x5a, 0x4a, 0x88, 0xb1, 0x9c, 0x4f, 0xf9, 0x8c, 0x14, 0xb9, 0xf6, 0xfe, 0x30, 0x3f, 0x76,
+	0x2a, 0xca, 0x44, 0x1e, 0x61, 0xa3, 0x3d, 0x9b, 0x7d, 0x6e, 0x56, 0x96, 0xc6, 0x4e, 0xc5, 0x81,
+	0xfd, 0xea, 0xa7, 0x2e, 0xbf, 0xe7, 0xf9, 0x4f, 0x00, 0x00, 0x00, 0xff, 0xff, 0x58, 0x68, 0xd4,
+	0x8d, 0xdd, 0x01, 0x00, 0x00,
 }

@@ -1,15 +1,13 @@
 package meta
 
 import (
+	"cmp/public-cloud/proxy-layer/logging/glog"
 	"errors"
 	fmt "fmt"
 	"sync"
-	"time"
 
 	"github.com/Hurricanezwf/rate-limiter/encoding"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
-	"github.com/Hurricanezwf/rate-limiter/types"
-	"github.com/Hurricanezwf/toolbox/logging/glog"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -62,112 +60,52 @@ type metaV2 struct {
 	// 全局锁
 	gLock *sync.RWMutex
 
-	// 资源粒度的锁
-	mLock map[string]*sync.RWMutex
-
-	// 资源元数据
-	meta *PB_Meta
+	// 资源元数据容器
+	mgr map[string]*rcManager
 }
 
 func newMetaV2() Interface {
 	return &metaV2{
 		gLock: &sync.RWMutex{},
-		mLock: make(map[string]*sync.RWMutex),
-		meta: &PB_Meta{
-			Value: make(map[string]*PB_M),
-		},
+		mgr:   newRCManager(),
 	}
 }
 
+func (m *metaV2) safeFindManager(rcTypeHex string) *rcManager {
+	m.gLock.RLock()
+	defer m.gLock.RUnlock()
+	return m.mgr[rcTypeHex]
+}
+
 func (m *metaV2) RegistQuota(rcType []byte, quota uint32) error {
-	var mLock *sync.RWMutex
-	var rcTypeHex = encoding.BytesToStringHex(rcType)
-
-	// 获取资源锁
 	m.gLock.Lock()
-	mLock = m.mLock[rcTypeHex]
-	if mLock == nil {
-		mLock = &sync.RWMutex{}
-		m.mLock[rcTypeHex] = mLock
-	}
-	m.gLock.Unlock()
+	defer m.gLock.Unlock()
 
-	// 判断资源管理器是否存在
-	mLock.Lock()
-	defer mLock.Unlock()
-
-	if _, exist := m.meta.Value[rcTypeHex]; exist {
+	// 验证是否已经注册
+	rcTypeHex := encoding.BytesToStringHex(rcType)
+	rcMgr := m.mgr[rcTypeHex]
+	if rcMgr != nil {
 		return ErrExisted
 	}
 
-	// 注册构造资源管理器
-	rcMgr := &PB_M{
-		RcTypeId:  rcType,
-		Quota:     quota,
-		CanBorrow: types.NewQueue(),
-		Recycled:  types.NewQueue(),
-		Used:      make(map[string]*types.PB_Queue),
-		UsedCount: 0,
-	}
+	// 初始化资源元数据
+	rcMgr = newRCManager(rcType, quota)
 	for i := uint32(0); i < quota; i++ {
-		rcId := types.NewString(MakeResourceID(rcType, i))
-		if _, err := rcMgr.CanBorrow.PushBack(rcId); err != nil {
-			return fmt.Errorf("Generate canBorrow resource failed, %v", err)
-		}
+		rcMgr.canBorrow.PushBack(MakeResourceID(rcType, i))
 	}
 
-	m.meta.Value[rcTypeHex] = rcMgr
+	m.mgr[rcTypeHex] = rcMgr
 
 	return nil
 }
 
 func (m *metaV2) Borrow(rcType, clientId []byte, expire int64) (string, error) {
-	var mLock *sync.RWMutex
-	var rcTypeHex = encoding.BytesToStringHex(rcType)
-
-	// 获取资源锁
-	m.gLock.Lock()
-	mLock = m.mLock[rcTypeHex]
-	if mLock == nil {
-		mLock = &sync.RWMutex{}
-		m.mLock[rcTypeHex] = mLock
+	rcTypeHex := encoding.BytesToStringHex(rcType)
+	rcMgr := m.safeFindManager(rcTypeHex)
+	if rcMgr == nil {
+		return "", proto.ErrResourceNotRegisted
 	}
-	m.gLock.Unlock()
-
-	// 获取资源管理器
-	mLock.Lock()
-	defer mLock.Unlock()
-
-	rcMgr, exist := m.meta.Value[rcTypeHex]
-	if !exist {
-		return "", ErrResourceNotRegisted
-	}
-
-	// 借资源
-	rcId, ok := m.pickResourceFrom(rcMgr.CanBorrow)
-	if !ok {
-		return "", ErrQuotaNotEnough
-	}
-
-	// 构造出借记录
-	var clientIdHex = encoding.BytesToStringHex(clientId)
-	var nowTs = time.Now().Unix()
-
-	rdQueue := rcMgr.Used[clientIdHex]
-	if rdQueue == nil {
-		rdQueue = &PB_BorrowRecordList{Value: make(map[string]bool)}
-		rcMgr.Used[clientIdHex] = rdQueue
-	}
-
-	rcMgr.UsedCount++
-	rdQueue.PushBack(&PB_BorrowRecord{
-		ClientID: clientId,
-		RcID:     rcId.Value,
-		BorrowAt: nowTs,
-		ExpireAt: nowTs + expire,
-	})
-
-	return rcId.Value, nil
+	return rcMgr.safeBorrow(rcType, clientId, expire)
 }
 
 func (m *metaV2) Return(clientId []byte, rcId string) error {
@@ -176,176 +114,28 @@ func (m *metaV2) Return(clientId []byte, rcId string) error {
 		return fmt.Errorf("Resolve resource id failed, %v", err)
 	}
 
-	var mLock *sync.RWMutex
-	var rcTypeHex = encoding.BytesToStringHex(rcType)
-
-	// 获取资源锁
-	m.gLock.Lock()
-	mLock = m.mLock[rcTypeHex]
-	if mLock == nil {
-		mLock = &sync.RWMutex{}
-		m.mLock[rcTypeHex] = mLock
+	rcTypeHex := encoding.BytesToStringHex(rcType)
+	rcMgr := m.safeFindManager(rcTypeHex)
+	if rcMgr == nil {
+		return "", proto.ErrResourceNotRegisted
 	}
-	m.gLock.Unlock()
-
-	// 获取资源管理器
-	mLock.Lock()
-	defer mLock.Unlock()
-
-	rcMgr, exist := m.meta.Value[rcTypeHex]
-	if !exist {
-		return ErrResourceNotRegisted
-	}
-
-	// 安全性检测
-	if rcMgr.Recycled.Len() >= rcMgr.Quota {
-		return fmt.Errorf("There's something wrong, recycled queue len(%d) >= quota(%d)", rcMgr.Recycled.Len(), rcMgr.Quota)
-	}
-
-	// 归还资源
-	// 从出借记录中删除并加入recycle队列
-	var find = false
-	var clientIdHex = encoding.BytesToStringHex(clientId)
-
-	rdList, exist := rcMgr.Used[clientIdHex]
-	if !exist || rdList == nil {
-		return fmt.Errorf("There's something wrong, no client['%s'] found in used queue", clientIdHex)
-	}
-
-	for itr := rdList.Head; itr != nil; itr = itr.Next {
-		var record PB_BorrowRecord
-		if err := types.UnmarshalAny(itr.Value, &record); err != nil {
-			return fmt.Errorf("Unmarshal BorrowRecord failed, %v", err)
-		}
-		if record.RcID != rcId {
-			continue
-		}
-
-		//glog.V(3).Infof("Client[%s] return %s to recycle.", clientIdHex, rcId)
-
-		find = true
-		rdList.Remove(itr)
-		rcMgr.UsedCount--
-		rcMgr.Recycled.PushBack(types.NewString(rcId))
-
-		// 如果该client没有借入记录，则从map中删除，防止map累积增长
-		if rdList.Len() <= 0 {
-			delete(rcMgr.Used, clientIdHex)
-		}
-		break
-	}
-
-	if !find {
-		glog.Warningf("No resource[%s] found at used queue. client=%s", rcId, clientIdHex)
-		return ErrNotFound
-	}
-
-	return nil
+	return rcMgr.safeReturn(rcType, clientId, expire)
 }
 
 func (m *metaV2) ReturnAll(rcType, clientId []byte) (uint32, error) {
-	var mLock *sync.RWMutex
-	var rcTypeHex = encoding.BytesToStringHex(rcType)
-
-	// 获取资源锁
-	m.gLock.Lock()
-	mLock = m.mLock[rcTypeHex]
-	if mLock == nil {
-		mLock = &sync.RWMutex{}
-		m.mLock[rcTypeHex] = mLock
+	rcTypeHex := encoding.BytesToStringHex(rcType)
+	rcMgr := m.safeFindManager(rcTypeHex)
+	if rcMgr == nil {
+		return "", proto.ErrResourceNotRegisted
 	}
-	m.gLock.Unlock()
-
-	// 获取资源管理器
-	mLock.Lock()
-	defer mLock.Unlock()
-
-	rcMgr, exist := m.meta.Value[rcTypeHex]
-	if !exist {
-		return 0, ErrResourceNotRegisted
-	}
-
-	// 归还指定用户所有指定类型的资源
-	clientIdHex := encoding.BytesToStringHex(clientId)
-	rdList, exist := rcMgr.Used[clientIdHex]
-	if !exist || rdList == nil {
-		return 0, nil
-	}
-
-	count := rdList.Len()
-	for itr := rdList.Head; itr != nil; itr = itr.Next {
-		var record PB_BorrowRecord
-		if err := types.UnmarshalAny(itr.Value, &record); err != nil {
-			return 0, fmt.Errorf("Unmarshal BorrowRecord failed, %v", err)
-		}
-		if rcMgr.Recycled.Len() >= rcMgr.Quota {
-			return 0, errors.New("There's something wrong, recycled queue overflow")
-		}
-		rcMgr.Recycled.PushBack(types.NewString(record.RcID))
-	}
-	delete(rcMgr.Used, clientIdHex)
-	rcMgr.UsedCount -= count
-
-	return count, nil
+	return rcMgr.safeReturnAll(clientId)
 }
 
 func (m *metaV2) Recycle() {
-	var nowTs int64
-
-	m.gLock.Lock()
-	defer m.gLock.Unlock()
-
-	// 扫描所有使用过的资源类型，清理过期资源和恢复资源额度
-	// 所有调用过Borrow的资源类型都会有锁存在, 当锁存在但是资源类型不存在时直接从map中删除锁
-	for rcTypeHex, mLock := range m.mLock {
-		mLock.Lock()
-
-		// 获取资源管理器
-		rcMgr, exist := m.meta.Value[rcTypeHex]
-		if !exist {
-			delete(m.mLock, rcTypeHex)
-			goto UNLOCK
-		}
-
-		// 检测过期资源并回收
-		nowTs = time.Now().Unix()
-		for clientIdHex, rdList := range rcMgr.Used {
-			for itr := rdList.Head; itr != nil; {
-				var next = itr.Next
-				var record PB_BorrowRecord
-				if err := types.UnmarshalAny(itr.Value, &record); err != nil {
-					glog.Warning(err.Error())
-					goto NEXT
-				}
-				if record.ExpireAt > nowTs {
-					goto NEXT
-				}
-
-				// 过期后，从used队列移到canBorrow队列(仅在过期资源清理和资源重用的周期一致时才可以这样做)
-				rdList.Remove(itr)
-				rcMgr.UsedCount--
-				rcMgr.CanBorrow.PushBack(types.NewString(record.RcID))
-				glog.V(2).Infof("'%s' borrowed by client['%s'] is expired, force to recycle", record.RcID, clientIdHex)
-
-			NEXT:
-				itr = next
-			}
-
-			// 当没有此客户的借出记录时，从map中删除
-			if rdList.Len() == 0 {
-				delete(rcMgr.Used, clientIdHex)
-			}
-		}
-
-		// 资源重用
-		if count := rcMgr.Recycled.Len(); count > 0 {
-			rcMgr.CanBorrow.PushBackList(rcMgr.Recycled)
-			rcMgr.Recycled.Init()
-			glog.V(2).Infof("Refresh %d resources to canBorrow queue because of client's return", count)
-		}
-
-	UNLOCK:
-		mLock.Unlock()
+	m.gLock.RLock()
+	defer m.gLock.RUnlock()
+	for _, rcMgr := range m.mgr {
+		rcMgr.recycle()
 	}
 }
 
@@ -364,14 +154,51 @@ func (m *metaV2) Decode(b []byte) error {
 	return proto.Unmarshal(b, m.meta)
 }
 
-func (m *metaV2) pickResourceFrom(container map[string]bool) (string, bool) {
-	for k, _ := range container {
-		delete(container, k)
-		return k, true
+func (m *metaV2) copyToProtobuf() *PB_Meta {
+	m.gLock.RLock()
+	defer m.gLock.RUnlock()
+
+	pb := &PB_Meta{Value: make([string]*PB_Manager, len(m.mgr))}
+
+	for rcTypeHex, rcMgr := range m.mgr {
+		pbMgr := &PB_Manager{
+			RCType:    rcMgr.rcType,
+			Quota:     rcMgr.Quota,
+			CanBorrow: make([]string, 0, len(rcMgr.canBorrow.Len())),
+			Recycled:  make([]string, 0, len(rcMgr.recycled.Len())),
+			Used:      make([]*PB_BorrowRecord, 0, rcMgr.UsedCount),
+			UsedCount: rcMgr.usedCount,
+		}
+		pb[rcTypeHex] = pbMgr
+
+		for itr := rcMgr.canBorrow.Front(); itr != nil; itr = itr.Next {
+			rcId := itr.Value.(string)
+			pbMgr.CanBorrow = append(pbMgr.CanBorrow, rcId)
+		}
+		for itr := rcMgr.recycled.Front(); itr != nil; itr = itr.Next {
+			rcId := itr.Value.(string)
+			pbMgr.Recycled = append(pbMgr.Recycled, rcId)
+		}
+		for clientIdHex, rdTable := range rcMgr.Used {
+			clientId, err := encoding.StringHexToBytes(clientIdHex)
+			if err != nil {
+				glog.Warningf("Convert clientIdHex '%s' to bytes failed, %v", clientIdHex, err)
+				continue
+			}
+			for rcId, rd := range rdTable {
+				pbMgr.Used = append(pbMgr.Used, &PB_BorrowRecord{
+					ClientID: clientId,
+					RCID:     rcId,
+					BorrowAt: rd.BorrowAt,
+					ExpireAt: rd.expireAt,
+				})
+			}
+		}
 	}
-	return "", false
+
+	return pb
 }
 
-func (m *metaV2) putResourceTo(container map[string]bool, rcId string) {
-	container[rcId] = true
+func (m *metaV2) copyFromProtobuf(pb *PB_Meta) {
+
 }

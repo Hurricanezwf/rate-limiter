@@ -625,7 +625,6 @@ func (c *clusterV2) handleReturnAll(args []byte) *APIReturnAllResp {
 		rp.Msg = fmt.Sprintf("Resolve request failed, %v", err)
 		return &rp
 	}
-
 	if _, err = c.m.ReturnAll(r.RCType, r.ClientID); err != nil {
 		rp.Code = 403
 		rp.Msg = err.Error()
