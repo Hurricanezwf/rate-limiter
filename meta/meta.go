@@ -144,14 +144,9 @@ func (m *metaV2) Borrow(rcType, clientId []byte, expire int64) (string, error) {
 	}
 
 	// 借资源
-	e := rcMgr.CanBorrow.PopFront()
-	if e == nil {
+	rcId, ok := m.pickResourceFrom(rcMgr.CanBorrow)
+	if !ok {
 		return "", ErrQuotaNotEnough
-	}
-
-	rcId, err := types.AnyToString(e.Value)
-	if err != nil {
-		return "", fmt.Errorf("Resolve resource id failed, %v", err)
 	}
 
 	// 构造出借记录
@@ -160,7 +155,7 @@ func (m *metaV2) Borrow(rcType, clientId []byte, expire int64) (string, error) {
 
 	rdQueue := rcMgr.Used[clientIdHex]
 	if rdQueue == nil {
-		rdQueue = types.NewQueue()
+		rdQueue = &PB_BorrowRecordList{Value: make(map[string]bool)}
 		rcMgr.Used[clientIdHex] = rdQueue
 	}
 
@@ -367,4 +362,16 @@ func (m *metaV2) Decode(b []byte) error {
 	m.gLock.Lock()
 	defer m.gLock.Unlock()
 	return proto.Unmarshal(b, m.meta)
+}
+
+func (m *metaV2) pickResourceFrom(container map[string]bool) (string, bool) {
+	for k, _ := range container {
+		delete(container, k)
+		return k, true
+	}
+	return "", false
+}
+
+func (m *metaV2) putResourceTo(container map[string]bool, rcId string) {
+	container[rcId] = true
 }

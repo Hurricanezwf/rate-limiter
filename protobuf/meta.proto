@@ -1,21 +1,24 @@
 syntax = "proto3";
 package meta;
 
-import "types.proto";
-
 
 message PB_Meta {
     map<string, PB_M> Value                       = 1;
 }
 
 
+// 这里将map当作list使用
 message PB_M {
     bytes             rcTypeId                    = 1;
     uint32            quota                       = 2;
-    types.PB_Queue    canBorrow                   = 3;
-    types.PB_Queue    recycled                    = 4;
-    map<string, types.PB_Queue> used              = 5; // map<clientId, borrowRecordList>
+    map<string,bool>  canBorrow                   = 3;
+    map<string,bool>  recycled                    = 4;
+    map<string, PB_BorrowRecordList> used         = 5;
     uint32            usedCount                   = 6;
+}
+
+message PB_BorrowRecordList {
+    map<string,bool> value                        = 1;
 }
 
 
