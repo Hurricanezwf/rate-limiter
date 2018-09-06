@@ -152,16 +152,22 @@ func (c *clusterV2) initRaftCluster() error {
 		tcpMaxPool      = g.Config.Raft.TCPMaxPool
 		timeout         = time.Duration(g.Config.Raft.Timeout) * time.Millisecond
 		bootstrap       = false
+		dbPath          = ""
 	)
 
 	// 检测集群是否需要bootstrap
-	dbPath := filepath.Join(rootDir, "raft.db")
-	if _, err := os.Lstat(dbPath); err == nil {
-		bootstrap = false
-	} else if os.IsNotExist(err) {
+	switch storage {
+	case g.RaftStorageMemory:
 		bootstrap = true
-	} else {
-		return fmt.Errorf("Lstat failed, %v", err)
+	default:
+		dbPath = filepath.Join(rootDir, "raft.db")
+		if _, err := os.Lstat(dbPath); err == nil {
+			bootstrap = false
+		} else if os.IsNotExist(err) {
+			bootstrap = true
+		} else {
+			return fmt.Errorf("Lstat failed, %v", err)
+		}
 	}
 
 	// 加载集群配置
@@ -198,7 +204,7 @@ func (c *clusterV2) initRaftCluster() error {
 	// 创建Log Entry存储引擎
 	// 此处的存储引擎的选择基本决定了接口的延迟。
 	// 本地落地存储效率比较低，单个请求响应时间在50ms以上；如果换成内存存储的话，单个请求响应时间在2ms左右。
-	logStore, stableStore, err := c.storageEngineFactory(storage)
+	logStore, stableStore, err := c.storageEngineFactory(storage, dbPath)
 	if err != nil {
 		return fmt.Errorf("Create storage instance failed, %v", err)
 	}
@@ -309,12 +315,11 @@ func (c *clusterV2) LeaderHTTPAddr() string {
 
 // Apply 主要接收从其他结点过来的已提交的操作日志，然后应用到本结点
 func (c *clusterV2) Apply(log *raftlib.Log) interface{} {
-	glog.V(4).Infof("Apply Log: %s", string(log.Data))
-
 	switch log.Type {
 	case raftlib.LogCommand:
 		{
 			cmd, args := resolveCMD(log.Data)
+			glog.V(4).Infof("Apply CMD: %#v", cmd)
 			return c.switchDo(cmd, args)
 		}
 	default:

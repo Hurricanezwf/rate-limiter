@@ -2,6 +2,8 @@ package types
 
 import (
 	"testing"
+
+	proto "github.com/golang/protobuf/proto"
 )
 
 func TestMap(t *testing.T) {
@@ -22,4 +24,15 @@ func TestMap(t *testing.T) {
 
 	m.Remove(k)
 	t.Logf("len=%d\n", m.Len())
+}
+
+func TestMapMarshal(t *testing.T) {
+	m := NewMap()
+	m.Set("1", NewString("1"))
+
+	b, err := proto.Marshal(m)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	t.Logf("Len:%d, Bytes: %#v\n", len(b), b)
 }

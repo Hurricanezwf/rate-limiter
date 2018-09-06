@@ -66,14 +66,14 @@ type metaV2 struct {
 	mLock map[string]*sync.RWMutex
 
 	// 资源元数据
-	m *PB_Meta
+	meta *PB_Meta
 }
 
 func newMetaV2() Interface {
 	return &metaV2{
 		gLock: &sync.RWMutex{},
 		mLock: make(map[string]*sync.RWMutex),
-		m: &PB_Meta{
+		meta: &PB_Meta{
 			Value: make(map[string]*PB_M),
 		},
 	}
@@ -96,7 +96,7 @@ func (m *metaV2) RegistQuota(rcType []byte, quota uint32) error {
 	mLock.Lock()
 	defer mLock.Unlock()
 
-	if _, exist := m.m.Value[rcTypeHex]; exist {
+	if _, exist := m.meta.Value[rcTypeHex]; exist {
 		return ErrExisted
 	}
 
@@ -116,7 +116,7 @@ func (m *metaV2) RegistQuota(rcType []byte, quota uint32) error {
 		}
 	}
 
-	m.m.Value[rcTypeHex] = rcMgr
+	m.meta.Value[rcTypeHex] = rcMgr
 
 	return nil
 }
@@ -138,7 +138,7 @@ func (m *metaV2) Borrow(rcType, clientId []byte, expire int64) (string, error) {
 	mLock.Lock()
 	defer mLock.Unlock()
 
-	rcMgr, exist := m.m.Value[rcTypeHex]
+	rcMgr, exist := m.meta.Value[rcTypeHex]
 	if !exist {
 		return "", ErrResourceNotRegisted
 	}
@@ -197,7 +197,7 @@ func (m *metaV2) Return(clientId []byte, rcId string) error {
 	mLock.Lock()
 	defer mLock.Unlock()
 
-	rcMgr, exist := m.m.Value[rcTypeHex]
+	rcMgr, exist := m.meta.Value[rcTypeHex]
 	if !exist {
 		return ErrResourceNotRegisted
 	}
@@ -265,7 +265,7 @@ func (m *metaV2) ReturnAll(rcType, clientId []byte) (uint32, error) {
 	mLock.Lock()
 	defer mLock.Unlock()
 
-	rcMgr, exist := m.m.Value[rcTypeHex]
+	rcMgr, exist := m.meta.Value[rcTypeHex]
 	if !exist {
 		return 0, ErrResourceNotRegisted
 	}
@@ -306,7 +306,7 @@ func (m *metaV2) Recycle() {
 		mLock.Lock()
 
 		// 获取资源管理器
-		rcMgr, exist := m.m.Value[rcTypeHex]
+		rcMgr, exist := m.meta.Value[rcTypeHex]
 		if !exist {
 			delete(m.mLock, rcTypeHex)
 			goto UNLOCK
@@ -357,7 +357,7 @@ func (m *metaV2) Recycle() {
 func (m *metaV2) Encode() ([]byte, error) {
 	m.gLock.RLock()
 	defer m.gLock.RUnlock()
-	return proto.Marshal(m.m)
+	return proto.Marshal(m.meta)
 }
 
 func (m *metaV2) Decode(b []byte) error {
@@ -366,5 +366,5 @@ func (m *metaV2) Decode(b []byte) error {
 	}
 	m.gLock.Lock()
 	defer m.gLock.Unlock()
-	return proto.Unmarshal(b, m.m)
+	return proto.Unmarshal(b, m.meta)
 }

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 )
@@ -112,6 +113,19 @@ func TestQueueRemove(t *testing.T) {
 		tail = prev
 		t.Logf("Len:%d\n", q.Len())
 	}
+}
+
+func TestQueueMarshal(t *testing.T) {
+	q := NewQueue()
+	q.PushBack(NewString("rc#0"))
+	q.PushBack(NewString("rc#1"))
+
+	b, err := json.Marshal(q)
+	//b, err := proto.Marshal(q)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	t.Logf("Len:%d, Bytes: %#v", len(b), b)
 }
 
 func getString(e *PB_Element) string {
