@@ -1,7 +1,10 @@
 package cluster
 
 import (
+	"bufio"
 	"bytes"
+	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -52,6 +55,11 @@ type Interface interface {
 	ReturnAll(r *APIReturnAllReq) *APIReturnAllResp
 }
 
+// Default 新建一个默认cluster实例
+func Default() Interface {
+	return New("v2")
+}
+
 // New 新建一个cluster接口实例
 func New(name string) Interface {
 	if builders == nil {
@@ -87,7 +95,7 @@ type clusterV2 struct {
 func newClusterV2() Interface {
 	return &clusterV2{
 		gLock:       &sync.RWMutex{},
-		m:           meta.New("v2"),
+		m:           meta.Default(),
 		raftTimeout: time.Duration(g.Config.Raft.Timeout) * time.Millisecond,
 		stopC:       make(chan struct{}),
 	}
@@ -322,111 +330,111 @@ func (c *clusterV2) Apply(log *raftlib.Log) interface{} {
 // > [8 bytes] timestamp
 // > [N bytes] data encoded bytes
 func (c *clusterV2) Snapshot() (raftlib.FSMSnapshot, error) {
-	// TODO
-	return nil, nil
+	start := time.Now()
+	glog.V(1).Info("Create snapshot starting...")
 
-	//l.mutex.RLock()
-	//defer l.mutex.RUnlock()
+	// 编码元数据
+	b, err := c.metaBytes()
+	if err != nil {
+		glog.Warning(err.Error())
+		return nil, err
+	}
 
-	//start := time.Now()
-	//glog.V(1).Info("Create snapshot starting...")
+	// 构造快照格式
+	buf := bytes.NewBuffer(make([]byte, 0, len(b)+10))
 
-	//// 编码元数据
-	//b, err := proto.Marshal(l.meta)
-	//if err != nil {
-	//	glog.Warning(err.Error())
-	//	return nil, err
-	//}
+	if err = buf.WriteByte(MagicNumber); err != nil {
+		glog.Warning(err.Error())
+		return nil, err
+	}
+	if err = buf.WriteByte(ProtocolVersion); err != nil {
+		glog.Warning(err.Error())
+		return nil, err
+	}
+	if err = binary.Write(buf, binary.BigEndian, start.Unix()); err != nil {
+		glog.Warning(err.Error())
+		return nil, err
+	}
+	if _, err = buf.Write(b); err != nil {
+		glog.Warning(err.Error())
+		return nil, err
+	}
 
-	//// 编码时间戳
-	//ts := make([]byte, 8)
-	//binary.BigEndian.PutUint64(ts, uint64(start.Unix()))
+	glog.V(1).Infof("Create snapshot finished, elapse:%v, totalSize:%d", time.Since(start), buf.Len())
 
-	//// 构造快照
-	//buf := bytes.NewBuffer(make([]byte, 0, 10+len(b)))
-	//buf.WriteByte(MagicNumber)
-	//buf.WriteByte(ProtocolVersion)
-	//buf.Write(ts)
-	//buf.Write(b)
-
-	//glog.V(1).Infof("Create snapshot finished, elapse:%v, totalSize:%d", time.Since(start), buf.Len())
-
-	//return limiter.NewLimiterSnapshot(buf), nil
+	return NewSnapshot(buf), nil
 }
 
 // Restore 从快照中恢复LimiterFSM
 func (c *clusterV2) Restore(rc io.ReadCloser) error {
-	// TODO
+	defer rc.Close()
+
+	glog.V(1).Info("Restore snapshot starting...")
+
+	start := time.Now()
+	reader := bufio.NewReader(rc)
+
+	// 读取识别魔数
+	magicNumber, err := reader.ReadByte()
+	if err != nil {
+		glog.Warningf("Read magic number failed, %v", err)
+		return err
+	}
+	if magicNumber != MagicNumber {
+		err = fmt.Errorf("Unknown magic number %#x", magicNumber)
+		glog.Warning(err.Error())
+		return err
+	}
+
+	// 读取识别协议版本
+	protocolVersion, err := reader.ReadByte()
+	if err != nil {
+		glog.Warningf("Read protocol version failed, %v", err)
+		return err
+	}
+	if protocolVersion != ProtocolVersion {
+		err = fmt.Errorf("ProtocolVersion(%#x) is not match with %#x", protocolVersion, ProtocolVersion)
+		glog.Warning(err.Error())
+		return err
+	}
+
+	// 读取快照时间戳
+	ts := make([]byte, 8)
+	n, err := reader.Read(ts)
+	if err != nil {
+		glog.Warningf("Read timestamp failed, %v", err)
+		return err
+	}
+	if n != len(ts) {
+		err = errors.New("Read timestamp failed, missing data")
+		glog.Warning(err.Error())
+		return err
+	}
+	tsInt64 := binary.BigEndian.Uint64(ts)
+	glog.V(2).Infof("Restore from snapshot created at %d", tsInt64)
+
+	// 读取元数据并解析
+	buf := bytes.NewBuffer(make([]byte, 0, 10240))
+	bodyBytesCount, err := buf.ReadFrom(reader)
+	if err != nil && err != io.EOF {
+		glog.Warningf("Read meta data failed, %v", err)
+		return err
+	}
+
+	m := meta.Default()
+	if err = m.Decode(buf.Bytes()); err != nil {
+		glog.Warningf("Decode meta data failed, %v", err)
+		return err
+	}
+
+	// 替换元数据
+	c.gLock.Lock()
+	c.m = m
+	c.gLock.Unlock()
+
+	glog.V(1).Infof("Restore snapshot finished, elapse:%v, totalBytes:%d", time.Since(start), 10+bodyBytesCount)
+
 	return nil
-
-	//defer rc.Close()
-
-	//glog.V(1).Info("Restore snapshot starting...")
-
-	//start := time.Now()
-	//reader := bufio.NewReader(rc)
-
-	//// 读取识别魔数
-	//magicNumber, err := reader.ReadByte()
-	//if err != nil {
-	//	glog.Warningf("Read magic number failed, %v", err)
-	//	return err
-	//}
-	//if magicNumber != MagicNumber {
-	//	err = fmt.Errorf("Unknown magic number %#x", magicNumber)
-	//	glog.Warning(err.Error())
-	//	return err
-	//}
-
-	//// 读取识别协议版本
-	//protocolVersion, err := reader.ReadByte()
-	//if err != nil {
-	//	glog.Warningf("Read protocol version failed, %v", err)
-	//	return err
-	//}
-	//if protocolVersion != ProtocolVersion {
-	//	err = fmt.Errorf("ProtocolVersion(%#x) is not match with %#x", protocolVersion, ProtocolVersion)
-	//	glog.Warning(err.Error())
-	//	return err
-	//}
-
-	//// 读取快照时间戳
-	//ts := make([]byte, 8)
-	//n, err := reader.Read(ts)
-	//if err != nil {
-	//	glog.Warningf("Read timestamp failed, %v", err)
-	//	return err
-	//}
-	//if n != len(ts) {
-	//	err = errors.New("Read timestamp failed, missing data")
-	//	glog.Warning(err.Error())
-	//	return err
-	//}
-	//tsInt64 := binary.BigEndian.Uint64(ts)
-	//glog.V(1).Infof("Restore from snapshot created at %d", tsInt64)
-
-	//// 读取元数据并解析
-	//buf := bytes.NewBuffer(make([]byte, 0, 10240))
-	//bodyBytesCount, err := buf.ReadFrom(reader)
-	//if err != nil && err != io.EOF {
-	//	glog.Warningf("Read meta data failed, %v", err)
-	//	return err
-	//}
-
-	//meta := types.NewMap()
-	//if err := proto.Unmarshal(buf.Bytes(), meta); err != nil {
-	//	glog.Warningf("Decode meta data failed, %v", err)
-	//	return err
-	//}
-
-	//// 替换元数据
-	//l.mutex.Lock()
-	//l.meta = meta
-	//l.mutex.Unlock()
-
-	//glog.V(1).Infof("Restore snapshot finished, elapse:%v, totalBytes:%d", time.Since(start), 10+bodyBytesCount)
-
-	//return nil
 }
 
 // RegistQuota 注册资源配额
@@ -671,6 +679,13 @@ func (c *clusterV2) storageEngineFactory(name string, dbPath ...string) (raftlib
 	}
 
 	return logStore, stableStore, err
+}
+
+// metaBytes 并发安全地将元数据序列化
+func (c *clusterV2) metaBytes() ([]byte, error) {
+	c.gLock.RLock()
+	defer c.gLock.RUnlock()
+	return c.m.Encode()
 }
 
 // encodeCMD 编码在Raft集群内执行的命令

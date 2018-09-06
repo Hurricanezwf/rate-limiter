@@ -28,6 +28,11 @@ type Interface interface {
 	ReturnAll(r *APIReturnAllReq) *APIReturnAllResp
 }
 
+// Default 新建一个默认limiter实例
+func Default() Interface {
+	return New("v2")
+}
+
 // New 新建一个limiter接口实例
 func New(name string) Interface {
 	if builders == nil {
@@ -46,7 +51,7 @@ type limiterV2 struct {
 
 func newLimiterV2() Interface {
 	return &limiterV2{
-		c: cluster.New("v2"),
+		c: cluster.Default(),
 	}
 }
 

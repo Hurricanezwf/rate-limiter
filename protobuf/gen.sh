@@ -1,15 +1,19 @@
 #!/bin/bash
 
+# 项目根目录
+__ROOT_DIR__=$GOPATH/src/github.com/Hurricanezwf/rate-limiter
+
+
 function types(){
-    protoc -I=./ --go_out=../  ./types.proto
+    protoc -I=./ --go_out=${__ROOT_DIR__}/types/  ./types.proto
 }
 
 function meta(){
-    protoc -I=./ --go_out=../../meta/ ./meta.proto
+    protoc -I=./ --go_out=${__ROOT_DIR__}/meta/ ./meta.proto
 }
 
 function api(){
-    protoc -I=./ --go_out=../../proto/ ./api.proto
+    protoc -I=./ --go_out=${__ROOT_DIR__}/proto/ ./api.proto
 }
 
 

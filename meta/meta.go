@@ -43,6 +43,10 @@ type Interface interface {
 	Decode(b []byte) error
 }
 
+func Default() Interface {
+	return New("v2")
+}
+
 func New(name string) Interface {
 	if builders == nil {
 		return nil
