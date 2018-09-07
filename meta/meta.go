@@ -135,7 +135,7 @@ func (m *metaV2) Recycle() {
 	m.gLock.RLock()
 	defer m.gLock.RUnlock()
 	for _, rcMgr := range m.mgr {
-		rcMgr.recycle()
+		rcMgr.safeRecycle()
 	}
 }
 
@@ -200,5 +200,33 @@ func (m *metaV2) copyToProtobuf() *PB_Meta {
 }
 
 func (m *metaV2) copyFromProtobuf(pb *PB_Meta) {
+	m.gLock.Lock()
+	defer m.gLock.Unlock()
 
+	for rcTypeHex, pbMgr := range pb.Value {
+		rcMgr := newRCManager(pbMgr.RCType, pbMgr.Quota)
+		rcMgr.quota = pbMgr.Quota
+		rcMgr.usedCount = pbMgr.UsedCount
+
+		for _, rcId := range pbMgr.CanBorrow {
+			rcMgr.canBorrow.PushBack(rcId)
+		}
+		for _, rcId := range pbMgr.Recycled {
+			rcMgr.recycled.PushBack(rcId)
+		}
+		for clientIdHex, pbRdTable := range pbMgr.Used {
+			rdTable := rcMgr.used[clientIdHex]
+			if rdTable == nil {
+				rdTable = make(map[string]*borrowRecord)
+			}
+			for _, pbRd := range pbRdTable {
+				rdTable[pbRd.RCID] = &borrowRecord{
+					borrowAt: pbRd.BorrowAt,
+					expireAt: pbRd.ExpireAt,
+				}
+			}
+			rcMgr.used[clientIdHex] = rdTable
+		}
+		m.mgr[rcTypeHex] = rcMgr
+	}
 }

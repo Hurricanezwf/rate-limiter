@@ -142,7 +142,7 @@ func (mgr *rcManager) safeReturnAll(clientId []byte) (uint32, error) {
 	return count, nil
 }
 
-func (mgr *rcManager) recycle() {
+func (mgr *rcManager) safeRecycle() {
 	mgr.gLock.Lock()
 	defer mgr.gLock.Unlock()
 
