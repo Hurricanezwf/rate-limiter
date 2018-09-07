@@ -93,8 +93,8 @@ func (c *RateLimiterClient) Close() error {
 func (c *RateLimiterClient) RegistQuota(resourceType []byte, quota uint32) error {
 	buf := bytes.NewBuffer(nil)
 	err := json.NewEncoder(buf).Encode(proto.APIRegistQuotaReq{
-		RCTypeID: resourceType,
-		Quota:    quota,
+		RCType: resourceType,
+		Quota:  quota,
 	})
 	if err != nil {
 		return err
@@ -111,7 +111,7 @@ func (c *RateLimiterClient) RegistQuota(resourceType []byte, quota uint32) error
 func (c *RateLimiterClient) Borrow(resourceType []byte, expire int64) (resourceId string, err error) {
 	buf := bytes.NewBuffer(nil)
 	err = json.NewEncoder(buf).Encode(proto.APIBorrowReq{
-		RCTypeID: resourceType,
+		RCType:   resourceType,
 		ClientID: c.clientId,
 		Expire:   expire,
 	})
@@ -124,7 +124,7 @@ func (c *RateLimiterClient) Borrow(resourceType []byte, expire int64) (resourceI
 		return resourceId, err
 	}
 	if len(rcId) <= 0 {
-		return resourceId, proto.ErrMissingResourceID
+		return resourceId, errors.New("Missing 'resourceId' in response")
 	}
 	return string(rcId), nil
 }
@@ -134,7 +134,7 @@ func (c *RateLimiterClient) Borrow(resourceType []byte, expire int64) (resourceI
 // expire      : 过期自动回收时间，单位秒。该时间建议与请求超时时间一致
 func (c *RateLimiterClient) BorrowWithTimeout(resourceType []byte, expire int64, timeout time.Duration) (resourceId string, err error) {
 	b, err := json.Marshal(proto.APIBorrowReq{
-		RCTypeID: resourceType,
+		RCType:   resourceType,
 		ClientID: c.clientId,
 		Expire:   expire,
 	})
@@ -157,7 +157,7 @@ func (c *RateLimiterClient) BorrowWithTimeout(resourceType []byte, expire int64,
 		// 请求成功
 		if err == nil {
 			if len(rcId) <= 0 {
-				return "", proto.ErrMissingResourceID
+				return "", errors.New("Missing 'resourceId' in response")
 			} else {
 				return string(rcId), nil
 			}
