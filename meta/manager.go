@@ -49,7 +49,7 @@ func newRCManager(rcType []byte, quota uint32) *rcManager {
 		quota:     quota,
 		canBorrow: list.New(),
 		recycled:  list.New(),
-		used:      make(map[string]make(map[string]*borrowRecord)),
+		used:      make(map[string]map[string]*borrowRecord),
 		usedCount: 0,
 	}
 }
@@ -93,7 +93,7 @@ func (mgr *rcManager) safeReturn(clientId []byte, rcId string) error {
 	defer mgr.gLock.Unlock()
 
 	// 安全性检测
-	if mgr.recycled.Len() >= mgr.quota {
+	if uint32(mgr.recycled.Len()) >= mgr.quota {
 		return fmt.Errorf("There's something wrong, recycled queue len(%d) >= quota(%d)", mgr.recycled.Len(), mgr.quota)
 	}
 
@@ -108,7 +108,7 @@ func (mgr *rcManager) safeReturn(clientId []byte, rcId string) error {
 	}
 	delete(rdTable, rcId)
 	mgr.usedCount--
-	if err := m.safePutRecycle(rcId); err != nil {
+	if err := mgr.safePutRecycle(rcId); err != nil {
 		glog.Fatalf("%v when merge expired record into recycled queue", err)
 	}
 
@@ -121,21 +121,20 @@ func (mgr *rcManager) safeReturn(clientId []byte, rcId string) error {
 }
 
 func (mgr *rcManager) safeReturnAll(clientId []byte) (uint32, error) {
-	rcTypeHex := encoding.BytesToStringHex(rcType)
 	clientIdHex := encoding.BytesToStringHex(clientId)
 
 	mgr.gLock.Lock()
 	defer mgr.gLock.Unlock()
 
 	rdTable, _ := mgr.used[clientIdHex]
-	count := len(rdTable)
+	count := uint32(len(rdTable))
 	if count > 0 {
 		for rcId, _ := range rdTable {
-			if err := m.safePutRecycle(rcId); err != nil {
+			if err := mgr.safePutRecycle(rcId); err != nil {
 				glog.Fatalf("%v when merge expired record into recycled queue", err)
 			}
 		}
-		m.usedCount -= count
+		mgr.usedCount -= count
 		delete(mgr.used, clientIdHex)
 	}
 
@@ -176,15 +175,15 @@ func (mgr *rcManager) safeRecycle() {
 }
 
 func (mgr *rcManager) safePutCanBorrowWith(recycled *list.List) error {
-	if mgr.canBorrow.Len()+recycled.Len() < mgr.quota {
-		mgr.canBorrow.PushBack(recycled)
+	if uint32(mgr.canBorrow.Len()+recycled.Len()) < mgr.quota {
+		mgr.canBorrow.PushBackList(recycled)
 		return nil
 	}
 	return proto.ErrQuotaOverflow
 }
 
 func (mgr *rcManager) safePutRecycle(rcId string) error {
-	if mgr.canBorrow.Len()+mgr.recycled.Len() < mgr.quota {
+	if uint32(mgr.canBorrow.Len()+mgr.recycled.Len()) < mgr.quota {
 		mgr.recycled.PushBack(rcId)
 		return nil
 	}
