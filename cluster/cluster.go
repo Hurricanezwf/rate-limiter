@@ -319,8 +319,10 @@ func (c *clusterV2) Apply(log *raftlib.Log) interface{} {
 	case raftlib.LogCommand:
 		{
 			cmd, args := resolveCMD(log.Data)
-			glog.V(4).Infof("Apply CMD: %#v", cmd)
-			return c.switchDo(cmd, args)
+			glog.V(3).Infof("Apply CMD: %#v", cmd)
+			rt := c.switchDo(cmd, args)
+			glog.V(3).Infof("Response : %+v", rt)
+			return rt
 		}
 	default:
 		return fmt.Errorf("Unknown LogType(%v)", log.Type)
