@@ -319,9 +319,10 @@ func (c *clusterV2) Apply(log *raftlib.Log) interface{} {
 	case raftlib.LogCommand:
 		{
 			cmd, args := resolveCMD(log.Data)
+			start := time.Now()
 			glog.V(3).Infof("Apply CMD: %#v", cmd)
 			rt := c.switchDo(cmd, args)
-			glog.V(3).Infof("Response : %+v", rt)
+			glog.V(3).Infof("Response : %+v, elapse:%v", rt, time.Since(start))
 			return rt
 		}
 	default:
