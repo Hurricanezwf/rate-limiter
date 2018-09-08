@@ -285,7 +285,7 @@ func resolveRequest(w http.ResponseWriter, req *http.Request, message proto.Mess
 	}
 
 	// 解析请求
-	buf := bytes.NewBuffer(make([]byte, 0, 1024))
+	buf := bytes.NewBuffer(nil)
 	buf.ReadFrom(req.Body)
 	req.Body.Close()
 
