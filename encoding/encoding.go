@@ -1,6 +1,6 @@
 package encoding
 
-import "encoding/hex"
+import "encoding/base64"
 
 type Serializer interface {
 	// Encode encode object to []byte
@@ -11,10 +11,10 @@ type Serializer interface {
 	Decode([]byte) ([]byte, error)
 }
 
-func BytesToStringHex(b []byte) string {
-	return hex.EncodeToString(b)
+func BytesToString(b []byte) string {
+	return base64.StdEncoding.EncodeToString(b)
 }
 
-func StringHexToBytes(v string) ([]byte, error) {
-	return hex.DecodeString(v)
+func StringToBytes(v string) ([]byte, error) {
+	return base64.StdEncoding.DecodeString(v)
 }

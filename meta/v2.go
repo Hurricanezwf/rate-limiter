@@ -29,10 +29,10 @@ func newMetaV2() Interface {
 	}
 }
 
-func (m *metaV2) safeFindManager(rcTypeHex string) *rcManager {
+func (m *metaV2) safeFindManager(rcTypeStr string) *rcManager {
 	m.gLock.RLock()
 	defer m.gLock.RUnlock()
-	return m.mgr[rcTypeHex]
+	return m.mgr[rcTypeStr]
 }
 
 func (m *metaV2) RegistQuota(rcType []byte, quota uint32) error {
@@ -40,8 +40,8 @@ func (m *metaV2) RegistQuota(rcType []byte, quota uint32) error {
 	defer m.gLock.Unlock()
 
 	// 验证是否已经注册
-	rcTypeHex := encoding.BytesToStringHex(rcType)
-	rcMgr := m.mgr[rcTypeHex]
+	rcTypeStr := encoding.BytesToString(rcType)
+	rcMgr := m.mgr[rcTypeStr]
 	if rcMgr != nil {
 		return ErrExisted
 	}
@@ -52,14 +52,14 @@ func (m *metaV2) RegistQuota(rcType []byte, quota uint32) error {
 		rcMgr.canBorrow.PushBack(MakeResourceID(rcType, i))
 	}
 
-	m.mgr[rcTypeHex] = rcMgr
+	m.mgr[rcTypeStr] = rcMgr
 
 	return nil
 }
 
 func (m *metaV2) Borrow(rcType, clientId []byte, expire int64) (string, error) {
-	rcTypeHex := encoding.BytesToStringHex(rcType)
-	rcMgr := m.safeFindManager(rcTypeHex)
+	rcTypeStr := encoding.BytesToString(rcType)
+	rcMgr := m.safeFindManager(rcTypeStr)
 	if rcMgr == nil {
 		return "", ErrResourceNotRegisted
 	}
@@ -72,8 +72,8 @@ func (m *metaV2) Return(clientId []byte, rcId string) error {
 		return fmt.Errorf("Resolve resource id failed, %v", err)
 	}
 
-	rcTypeHex := encoding.BytesToStringHex(rcType)
-	rcMgr := m.safeFindManager(rcTypeHex)
+	rcTypeStr := encoding.BytesToString(rcType)
+	rcMgr := m.safeFindManager(rcTypeStr)
 	if rcMgr == nil {
 		return ErrResourceNotRegisted
 	}
@@ -81,8 +81,8 @@ func (m *metaV2) Return(clientId []byte, rcId string) error {
 }
 
 func (m *metaV2) ReturnAll(rcType, clientId []byte) (uint32, error) {
-	rcTypeHex := encoding.BytesToStringHex(rcType)
-	rcMgr := m.safeFindManager(rcTypeHex)
+	rcTypeStr := encoding.BytesToString(rcType)
+	rcMgr := m.safeFindManager(rcTypeStr)
 	if rcMgr == nil {
 		return 0, ErrResourceNotRegisted
 	}
@@ -124,7 +124,7 @@ func (m *metaV2) copyToProtobuf() *PB_Meta {
 		Value: make(map[string]*PB_Manager, len(m.mgr)),
 	}
 
-	for rcTypeHex, rcMgr := range m.mgr {
+	for rcTypeStr, rcMgr := range m.mgr {
 		pbMgr := &PB_Manager{
 			RCType:    rcMgr.rcType,
 			Quota:     rcMgr.quota,
@@ -133,7 +133,7 @@ func (m *metaV2) copyToProtobuf() *PB_Meta {
 			Used:      make([]*PB_BorrowRecord, 0, rcMgr.usedCount),
 			UsedCount: rcMgr.usedCount,
 		}
-		pb.Value[rcTypeHex] = pbMgr
+		pb.Value[rcTypeStr] = pbMgr
 
 		for itr := rcMgr.canBorrow.Front(); itr != nil; itr = itr.Next() {
 			rcId := itr.Value.(string)
@@ -143,10 +143,10 @@ func (m *metaV2) copyToProtobuf() *PB_Meta {
 			rcId := itr.Value.(string)
 			pbMgr.Recycled = append(pbMgr.Recycled, rcId)
 		}
-		for clientIdHex, rdTable := range rcMgr.used {
-			clientId, err := encoding.StringHexToBytes(clientIdHex)
+		for clientIdStr, rdTable := range rcMgr.used {
+			clientId, err := encoding.StringToBytes(clientIdStr)
 			if err != nil {
-				glog.Warningf("Convert clientIdHex '%s' to bytes failed, %v", clientIdHex, err)
+				glog.Warningf("Convert clientIdStr '%s' to bytes failed, %v", clientIdStr, err)
 				continue
 			}
 			for rcId, rd := range rdTable {
@@ -167,7 +167,7 @@ func (m *metaV2) copyFromProtobuf(pb *PB_Meta) {
 	m.gLock.Lock()
 	defer m.gLock.Unlock()
 
-	for rcTypeHex, pbMgr := range pb.Value {
+	for rcTypeStr, pbMgr := range pb.Value {
 		rcMgr := newRCManager(pbMgr.RCType, pbMgr.Quota)
 		rcMgr.quota = pbMgr.Quota
 		rcMgr.usedCount = pbMgr.UsedCount
@@ -179,8 +179,8 @@ func (m *metaV2) copyFromProtobuf(pb *PB_Meta) {
 			rcMgr.recycled.PushBack(rcId)
 		}
 		for _, pbRd := range pbMgr.Used {
-			clientIdHex := encoding.BytesToStringHex(pbRd.ClientID)
-			rdTable := rcMgr.used[clientIdHex]
+			clientIdStr := encoding.BytesToString(pbRd.ClientID)
+			rdTable := rcMgr.used[clientIdStr]
 			if rdTable == nil {
 				rdTable = make(map[string]*borrowRecord)
 			}
@@ -188,9 +188,9 @@ func (m *metaV2) copyFromProtobuf(pb *PB_Meta) {
 				borrowAt: pbRd.BorrowAt,
 				expireAt: pbRd.ExpireAt,
 			}
-			rcMgr.used[clientIdHex] = rdTable
+			rcMgr.used[clientIdStr] = rdTable
 		}
-		m.mgr[rcTypeHex] = rcMgr
+		m.mgr[rcTypeStr] = rcMgr
 	}
 }
 
@@ -238,7 +238,7 @@ func newRCManager(rcType []byte, quota uint32) *rcManager {
 }
 
 func (mgr *rcManager) safeBorrow(rcType, clientId []byte, expire int64) (string, error) {
-	clientIdHex := encoding.BytesToStringHex(clientId)
+	clientIdStr := encoding.BytesToString(clientId)
 
 	mgr.gLock.Lock()
 	defer mgr.gLock.Unlock()
@@ -258,12 +258,12 @@ func (mgr *rcManager) safeBorrow(rcType, clientId []byte, expire int64) (string,
 	}
 
 	// 执行借出
-	rdTable := mgr.used[clientIdHex]
+	rdTable := mgr.used[clientIdStr]
 	if rdTable == nil {
 		rdTable = make(map[string]*borrowRecord)
 	}
 	rdTable[rcId] = rd
-	mgr.used[clientIdHex] = rdTable
+	mgr.used[clientIdStr] = rdTable
 	mgr.canBorrow.Remove(e)
 	mgr.usedCount++
 
@@ -271,7 +271,7 @@ func (mgr *rcManager) safeBorrow(rcType, clientId []byte, expire int64) (string,
 }
 
 func (mgr *rcManager) safeReturn(clientId []byte, rcId string) error {
-	clientIdHex := encoding.BytesToStringHex(clientId)
+	clientIdStr := encoding.BytesToString(clientId)
 
 	mgr.gLock.Lock()
 	defer mgr.gLock.Unlock()
@@ -283,7 +283,7 @@ func (mgr *rcManager) safeReturn(clientId []byte, rcId string) error {
 
 	// 归还资源
 	// 从出借记录中删除并加入recycle队列
-	rdTable, exist := mgr.used[clientIdHex]
+	rdTable, exist := mgr.used[clientIdStr]
 	if !exist {
 		return ErrNoBorrowRecordFound
 	}
@@ -298,19 +298,19 @@ func (mgr *rcManager) safeReturn(clientId []byte, rcId string) error {
 
 	if len(rdTable) <= 0 {
 		// 没有该用户的借入记录时，清除防止累积增长
-		delete(mgr.used, clientIdHex)
+		delete(mgr.used, clientIdStr)
 	}
 
 	return nil
 }
 
 func (mgr *rcManager) safeReturnAll(clientId []byte) (uint32, error) {
-	clientIdHex := encoding.BytesToStringHex(clientId)
+	clientIdStr := encoding.BytesToString(clientId)
 
 	mgr.gLock.Lock()
 	defer mgr.gLock.Unlock()
 
-	rdTable, _ := mgr.used[clientIdHex]
+	rdTable, _ := mgr.used[clientIdStr]
 	count := uint32(len(rdTable))
 	if count > 0 {
 		for rcId, _ := range rdTable {
@@ -319,7 +319,7 @@ func (mgr *rcManager) safeReturnAll(clientId []byte) (uint32, error) {
 			}
 		}
 		mgr.usedCount -= count
-		delete(mgr.used, clientIdHex)
+		delete(mgr.used, clientIdStr)
 	}
 
 	return count, nil
@@ -331,12 +331,12 @@ func (mgr *rcManager) safeRecycle() {
 
 	// 过期资源清理
 	nowTs := time.Now().Unix()
-	for clientIdHex, rdTable := range mgr.used {
+	for clientIdStr, rdTable := range mgr.used {
 		for rcId, rd := range rdTable {
 			if rd.expireAt > nowTs {
 				continue
 			}
-			glog.V(2).Infof("'%s' borrowed by client '%s' is expired, force to recycle", rcId, clientIdHex)
+			glog.V(2).Infof("'%s' borrowed by client '%s' is expired, force to recycle", rcId, clientIdStr)
 			delete(rdTable, rcId)
 			mgr.usedCount--
 			if err := mgr.safePutRecycle(rcId); err != nil {
@@ -344,7 +344,7 @@ func (mgr *rcManager) safeRecycle() {
 			}
 		}
 		if len(rdTable) <= 0 {
-			delete(mgr.used, clientIdHex)
+			delete(mgr.used, clientIdStr)
 		}
 	}
 
