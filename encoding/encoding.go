@@ -12,9 +12,9 @@ type Serializer interface {
 }
 
 func BytesToString(b []byte) string {
-	return base64.StdEncoding.EncodeToString(b)
+	return base64.RawStdEncoding.EncodeToString(b)
 }
 
 func StringToBytes(v string) ([]byte, error) {
-	return base64.StdEncoding.DecodeString(v)
+	return base64.RawStdEncoding.DecodeString(v)
 }

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Hurricanezwf/rate-limiter/encoding"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
 	"github.com/Hurricanezwf/toolbox/logging/glog"
 	"github.com/golang/protobuf/jsonpb"
@@ -60,7 +61,7 @@ func registQuota(w http.ResponseWriter, req *http.Request) {
 	switch rp.Code {
 	case 0:
 		code = http.StatusOK
-		glog.V(2).Infof("Regist '%d' quotas for resource '%x' SUCCESS", r.Quota, r.RCType)
+		glog.V(2).Infof("Regist '%d' quotas for resource '%s' SUCCESS", r.Quota, encoding.BytesToString(r.RCType))
 	case 307:
 		req.URL.Host = rp.Msg
 		w.Header().Set("Location", req.URL.String())
@@ -68,7 +69,7 @@ func registQuota(w http.ResponseWriter, req *http.Request) {
 	default:
 		code = int(rp.Code)
 		msg = rp.Msg
-		glog.Warningf("Regist '%d' quotas for resource '%x' FAILED, %s", r.Quota, r.RCType, msg)
+		glog.Warningf("Regist '%d' quotas for resource '%s' FAILED, %s", r.Quota, encoding.BytesToString(r.RCType), msg)
 	}
 
 FINISH:
@@ -99,7 +100,7 @@ func borrow(w http.ResponseWriter, req *http.Request) {
 	case 0:
 		code = http.StatusOK
 		msg = rp.RCID
-		glog.V(2).Infof("Client '%x' borrow '%s' SUCCESS", r.ClientID, rp.RCID)
+		glog.V(2).Infof("Client '%s' borrow '%s' SUCCESS", encoding.BytesToString(r.ClientID), rp.RCID)
 	case 307:
 		req.URL.Host = rp.Msg
 		w.Header().Set("Location", req.URL.String())
@@ -107,7 +108,7 @@ func borrow(w http.ResponseWriter, req *http.Request) {
 	default:
 		code = int(rp.Code)
 		msg = rp.Msg
-		glog.Warningf("Client '%x' borrow '%x' FAILED, %s", r.ClientID, r.RCType, msg)
+		glog.Warningf("Client '%s' borrow '%s' FAILED, %s", encoding.BytesToString(r.ClientID), encoding.BytesToString(r.RCType), msg)
 	}
 
 FINISH:
@@ -137,7 +138,7 @@ func return_(w http.ResponseWriter, req *http.Request) {
 	switch rp.Code {
 	case 0:
 		code = http.StatusOK
-		glog.V(2).Infof("Client '%x' return '%s' SUCCESS", r.ClientID, r.RCID)
+		glog.V(2).Infof("Client '%s' return '%s' SUCCESS", encoding.BytesToString(r.ClientID), r.RCID)
 	case 307:
 		req.URL.Host = rp.Msg
 		w.Header().Set("Location", req.URL.String())
@@ -145,7 +146,7 @@ func return_(w http.ResponseWriter, req *http.Request) {
 	default:
 		code = int(rp.Code)
 		msg = rp.Msg
-		glog.Warningf("Client '%x' return '%s' FAILED, %s", r.ClientID, r.RCID, msg)
+		glog.Warningf("Client '%s' return '%s' FAILED, %s", encoding.BytesToString(r.ClientID), r.RCID, msg)
 	}
 
 FINISH:
@@ -175,7 +176,7 @@ func returnAll(w http.ResponseWriter, req *http.Request) {
 	switch rp.Code {
 	case 0:
 		code = http.StatusOK
-		glog.V(2).Infof("Client '%x' return all resources of type '%x' SUCCESS", r.ClientID, r.RCType)
+		glog.V(2).Infof("Client '%s' return all resources of type '%s' SUCCESS", encoding.BytesToString(r.ClientID), encoding.BytesToString(r.RCType))
 	case 307:
 		req.URL.Host = rp.Msg
 		w.Header().Set("Location", req.URL.String())
@@ -183,7 +184,7 @@ func returnAll(w http.ResponseWriter, req *http.Request) {
 	default:
 		code = int(rp.Code)
 		msg = rp.Msg
-		glog.Warningf("Client '%x' return all resources of type '%x' FAILED, %s", r.ClientID, r.RCType, msg)
+		glog.Warningf("Client '%s' return all resources of type '%s' FAILED, %s", encoding.BytesToString(r.ClientID), encoding.BytesToString(r.RCType), msg)
 	}
 
 FINISH:
