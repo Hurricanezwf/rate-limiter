@@ -76,7 +76,7 @@ FINISH:
 	w.WriteHeader(code)
 	w.Write([]byte(msg))
 
-	glog.V(1).Infof("%s [/v1/registQuota]  statusCode:%d, msg:%s, elapse:%v", req.Method, code, msg, time.Since(start))
+	glog.V(1).Infof("%s [/v1/registQuota] RSP: statusCode:%d, msg:%s, elapse:%v", req.Method, code, msg, time.Since(start))
 }
 
 // borrow 获取一次执行权限
@@ -115,7 +115,7 @@ FINISH:
 	w.WriteHeader(code)
 	w.Write([]byte(msg))
 
-	glog.V(1).Infof("%s [/v1/borrow]  statusCode:%d, msg:%s, elapse:%v", req.Method, code, msg, time.Since(start))
+	glog.V(1).Infof("%s [/v1/borrow] RSP: statusCode:%d, msg:%s, elapse:%v", req.Method, code, msg, time.Since(start))
 }
 
 // return_ 释放一次执行权限
@@ -153,7 +153,7 @@ FINISH:
 	w.WriteHeader(code)
 	w.Write([]byte(msg))
 
-	glog.V(1).Infof("%s [/v1/return]  statusCode:%d, msg:%s, elapse:%v", req.Method, code, msg, time.Since(start))
+	glog.V(1).Infof("%s [/v1/return] RSP: statusCode:%d, msg:%s, elapse:%v", req.Method, code, msg, time.Since(start))
 }
 
 // returnAll 释放用户的所有占用的权限
@@ -191,7 +191,7 @@ FINISH:
 	w.WriteHeader(code)
 	w.Write([]byte(msg))
 
-	glog.V(1).Infof("%s [/v1/returnAll]  statusCode:%d, msg:%s, elapse:%v", req.Method, code, msg, time.Since(start))
+	glog.V(1).Infof("%s [/v1/returnAll] RSP: statusCode:%d, msg:%s, elapse:%v", req.Method, code, msg, time.Since(start))
 }
 
 // snapshot 对元数据做快照
@@ -290,7 +290,7 @@ func resolveRequest(w http.ResponseWriter, req *http.Request, message proto.Mess
 	buf.ReadFrom(req.Body)
 	req.Body.Close()
 
-	glog.V(4).Infof("%s [%s] %s", req.Method, req.RequestURI, buf.String())
+	glog.V(1).Infof("%s [%s] REQ: %s", req.Method, req.RequestURI, buf.String())
 
 	if err := jsonpb.Unmarshal(buf, message); err != nil {
 		return http.StatusBadRequest, err.Error()
@@ -298,38 +298,6 @@ func resolveRequest(w http.ResponseWriter, req *http.Request, message proto.Mess
 
 	return 0, ""
 }
-
-//func resolveRequest(w http.ResponseWriter, req *http.Request, argToResolve interface{}) (statusCode int, msg string) {
-//	if req.Method != http.MethodPost {
-//		return 405, "Method `POST` is needed"
-//	}
-//
-//	// check leader
-//	if l.IsLeader() == false {
-//		addr := l.LeaderHTTPAddr()
-//		if len(addr) <= 0 {
-//			return 503, ErrLeaderNotFound.Error()
-//		}
-//		req.URL.Host = addr
-//		w.Header().Set("Location", req.URL.String())
-//		return 307, ""
-//	}
-//
-//	// 读取body
-//	b, err := ioutil.ReadAll(req.Body)
-//	defer req.Body.Close()
-//
-//	if err != nil {
-//		return 500, err.Error()
-//	}
-//
-//	// 解析参数
-//	if err := json.Unmarshal(b, argToResolve); err != nil {
-//		return 500, err.Error()
-//	}
-//
-//	return 200, ""
-//}
 
 // controller 访问控制器
 type controller struct {

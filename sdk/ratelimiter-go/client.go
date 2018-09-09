@@ -10,12 +10,20 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/Hurricanezwf/rate-limiter/proto"
 	uuid "github.com/satori/go.uuid"
+)
+
+var (
+	ErrTooBusy             = proto.ErrTooBusy
+	ErrQuotaNotEnough      = proto.ErrQuotaNotEnough
+	ErrExisted             = proto.ErrExisted
+	ErrResourceNotRegisted = proto.ErrResourceNotRegisted
+	ErrNoBorrowRecordFound = proto.ErrNoBorrowRecordFound
+	ErrQuotaOverflow       = proto.ErrQuotaOverflow
 )
 
 // 客户端配置
@@ -130,8 +138,8 @@ func (c *RateLimiterClient) Borrow(resourceType []byte, expire int64) (resourceI
 }
 
 // BorrowWithTimeout 带超时的借用资源
-// resourceType: 用户自定义资源类型
-// expire      : 过期自动回收时间，单位秒。该时间建议与请求超时时间一致
+// @resourceType: 用户自定义资源类型
+// @expire      : 过期自动回收时间，单位秒。该时间建议与请求超时时间一致
 func (c *RateLimiterClient) BorrowWithTimeout(resourceType []byte, expire int64, timeout time.Duration) (resourceId string, err error) {
 	b, err := json.Marshal(proto.APIBorrowReq{
 		RCType:   resourceType,
@@ -164,7 +172,7 @@ func (c *RateLimiterClient) BorrowWithTimeout(resourceType []byte, expire int64,
 		}
 
 		// 请求失败且不是配额不足的失败，直接返回
-		if strings.Compare(err.Error(), proto.ErrQuotaNotEnough.Error()) != 0 {
+		if err != ErrQuotaNotEnough {
 			return "", err
 		}
 
@@ -175,7 +183,7 @@ func (c *RateLimiterClient) BorrowWithTimeout(resourceType []byte, expire int64,
 		case <-time.After(time.Duration(randSleep) * time.Millisecond):
 			// do nothing
 		case <-ctx.Done():
-			return "", proto.ErrTimeout
+			return "", ErrQuotaNotEnough
 		}
 	}
 }
@@ -260,7 +268,7 @@ func (c *RateLimiterClient) sendPost(uri string, body io.Reader) ([]byte, error)
 		// 请求失败
 		if rp.StatusCode != 200 {
 			if buf.Len() > 0 {
-				return nil, errors.New(buf.String())
+				return nil, parseError(buf.String())
 			} else {
 				return nil, fmt.Errorf("Response StatusCode(%d) != 200, %s", rp.StatusCode, buf.String())
 			}
@@ -274,4 +282,22 @@ func (c *RateLimiterClient) sendPost(uri string, body io.Reader) ([]byte, error)
 		break
 	}
 	return buf.Bytes(), nil
+}
+
+func parseError(errMsg string) error {
+	switch errMsg {
+	case ErrQuotaNotEnough.Error():
+		return ErrQuotaNotEnough
+	case ErrResourceNotRegisted.Error():
+		return ErrResourceNotRegisted
+	case ErrExisted.Error():
+		return ErrExisted
+	case ErrTooBusy.Error():
+		return ErrTooBusy
+	case ErrNoBorrowRecordFound.Error():
+		return ErrNoBorrowRecordFound
+	case ErrQuotaOverflow.Error():
+		return ErrQuotaOverflow
+	}
+	return errors.New(errMsg)
 }
