@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Hurricanezwf/rate-limiter/encoding"
 	"github.com/Hurricanezwf/rate-limiter/proto"
 	uuid "github.com/satori/go.uuid"
 )
@@ -42,6 +43,9 @@ type RateLimiterClient struct {
 	// 集群地址
 	cluster     []string
 	clusterSize int
+
+	// 使用过的资源类型, 这里使用base64存储
+	usedRCType map[string]struct{}
 }
 
 func New(config *ClientConfig) (*RateLimiterClient, error) {
@@ -74,6 +78,7 @@ func New(config *ClientConfig) (*RateLimiterClient, error) {
 		clientId:    clientId.Bytes(),
 		cluster:     config.Cluster,
 		clusterSize: len(config.Cluster),
+		usedRCType:  make(map[string]struct{}),
 	}
 
 	return &c, nil
@@ -82,17 +87,37 @@ func New(config *ClientConfig) (*RateLimiterClient, error) {
 // Close 关闭limiter，释放该客户端占用的所有资源配额. 一般在程序退出时使用
 // 注意：不调用Close操作会使得该客户端占用的资源持续占用直到超时。
 func (c *RateLimiterClient) Close() error {
-	buf := bytes.NewBuffer(nil)
-	err := json.NewEncoder(buf).Encode(proto.APIReturnAllReq{
-		ClientID: c.clientId,
-	})
-	if err != nil {
-		return err
+	var err, lastErr error
+	var rcType []byte
+	var buf = bytes.NewBuffer(nil)
+	var encoder = json.NewEncoder(buf)
+
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	for rcTypeStr := range c.usedRCType {
+		if rcType, err = encoding.StringToBytes(rcTypeStr); err != nil {
+			lastErr = err
+			continue
+		}
+
+		buf.Reset()
+		err = encoder.Encode(proto.APIReturnAllReq{
+			ClientID: c.clientId,
+			RCType:   rcType,
+		})
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		if _, err = c.sendPost("/v1/returnAll", buf); err != nil {
+			lastErr = err
+			continue
+		}
 	}
 
-	_, err = c.sendPost("/v1/returnAll", buf)
-
-	return err
+	return lastErr
 }
 
 // Regist 注册资源配额
@@ -134,6 +159,7 @@ func (c *RateLimiterClient) Borrow(resourceType []byte, expire int64) (resourceI
 	if len(rcId) <= 0 {
 		return resourceId, errors.New("Missing 'resourceId' in response")
 	}
+	c.setUsedRCType(resourceType)
 	return string(rcId), nil
 }
 
@@ -167,6 +193,7 @@ func (c *RateLimiterClient) BorrowWithTimeout(resourceType []byte, expire int64,
 			if len(rcId) <= 0 {
 				return "", errors.New("Missing 'resourceId' in response")
 			} else {
+				c.setUsedRCType(resourceType)
 				return string(rcId), nil
 			}
 		}
@@ -282,6 +309,21 @@ func (c *RateLimiterClient) sendPost(uri string, body io.Reader) ([]byte, error)
 		break
 	}
 	return buf.Bytes(), nil
+}
+
+// setUsedRCType 记录使用过的资源类型，用户在Close的时候进行资源释放
+func (c *RateLimiterClient) setUsedRCType(resourceType []byte) {
+	rcTypeStr := encoding.BytesToString(resourceType)
+
+	c.mutex.RLock()
+	_, exist := c.usedRCType[rcTypeStr]
+	c.mutex.RUnlock()
+
+	if !exist {
+		c.mutex.Lock()
+		c.usedRCType[rcTypeStr] = struct{}{}
+		c.mutex.Unlock()
+	}
 }
 
 func parseError(errMsg string) error {
