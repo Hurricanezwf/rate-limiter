@@ -290,11 +290,12 @@ func (mgr *rcManager) safeReturn(clientId []byte, rcId string) error {
 	if _, exist = rdTable[rcId]; !exist {
 		return ErrNoBorrowRecordFound
 	}
+	if err := mgr.safePutRecycle(rcId); err != nil {
+		glog.Warningf("%v when merge expired record into recycled queue, canBorrow:%d, recycled:%d, quota:%d", err, mgr.canBorrow.Len(), mgr.recycled.Len(), mgr.quota)
+		return err
+	}
 	delete(rdTable, rcId)
 	mgr.usedCount--
-	if err := mgr.safePutRecycle(rcId); err != nil {
-		glog.Fatalf("%v when merge expired record into recycled queue, canBorrow:%d, recycled:%d, quota:%d", err, mgr.canBorrow.Len(), mgr.recycled.Len(), mgr.quota)
-	}
 
 	if len(rdTable) <= 0 {
 		// 没有该用户的借入记录时，清除防止累积增长
@@ -315,7 +316,8 @@ func (mgr *rcManager) safeReturnAll(clientId []byte) (uint32, error) {
 	if count > 0 {
 		for rcId, _ := range rdTable {
 			if err := mgr.safePutRecycle(rcId); err != nil {
-				glog.Fatalf("%v when merge expired record into recycled queue, canBorrow:%d, recycled:%d, quota:%d", err, mgr.canBorrow.Len(), mgr.recycled.Len(), mgr.quota)
+				glog.Warningf("%v when merge expired record into recycled queue, canBorrow:%d, recycled:%d, quota:%d", err, mgr.canBorrow.Len(), mgr.recycled.Len(), mgr.quota)
+				continue
 			}
 		}
 		mgr.usedCount -= count
@@ -337,11 +339,12 @@ func (mgr *rcManager) safeRecycle() {
 				continue
 			}
 			glog.V(2).Infof("'%s' borrowed by client '%s' is expired, force to recycle", rcId, clientIdStr)
+			if err := mgr.safePutRecycle(rcId); err != nil {
+				glog.Warningf("%v when merge expired record into recycled queue, canBorrow:%d, recycled:%d, quota:%d", err, mgr.canBorrow.Len(), mgr.recycled.Len(), mgr.quota)
+				continue
+			}
 			delete(rdTable, rcId)
 			mgr.usedCount--
-			if err := mgr.safePutRecycle(rcId); err != nil {
-				glog.Fatalf("%v when merge expired record into recycled queue, canBorrow:%d, recycled:%d, quota:%d", err, mgr.canBorrow.Len(), mgr.recycled.Len(), mgr.quota)
-			}
 		}
 		if len(rdTable) <= 0 {
 			delete(mgr.used, clientIdStr)
@@ -351,7 +354,7 @@ func (mgr *rcManager) safeRecycle() {
 	// 资源重用
 	if count := mgr.recycled.Len(); count > 0 {
 		if err := mgr.safePutCanBorrowWith(mgr.recycled); err != nil {
-			glog.Fatalf("%v when merge recycled into canBorrow, canBorrow:%d, recycled:%d, quota:%d", err, mgr.canBorrow.Len(), mgr.recycled.Len(), mgr.quota)
+			glog.Warningf("%v when merge recycled into canBorrow, canBorrow:%d, recycled:%d, quota:%d", err, mgr.canBorrow.Len(), mgr.recycled.Len(), mgr.quota)
 		}
 		mgr.recycled.Init()
 		glog.V(2).Infof("Refresh %d resources to canBorrow queue because of client's return", count)

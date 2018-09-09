@@ -547,7 +547,7 @@ func (c *clusterV2) switchDo(cmd byte, args []byte) interface{} {
 	case ActionLeaderNotify:
 		return c.handleLeaderNotify(args)
 	}
-	glog.Fatalf("Unknown cmd '%#v'", cmd)
+	glog.Warningf("Unknown cmd '%#v'", cmd)
 	return fmt.Errorf("Unknown cmd '%#v'", cmd)
 }
 
