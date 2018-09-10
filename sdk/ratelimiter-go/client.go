@@ -121,13 +121,15 @@ func (c *RateLimiterClient) Close() error {
 }
 
 // Regist 注册资源配额
-// resourceType: 用户自定义资源类型
-// quota       : 资源配额，例如quota为10表示限流10次/s
-func (c *RateLimiterClient) RegistQuota(resourceType []byte, quota uint32) error {
+// resourceTypei : 用户自定义资源类型
+// quota         : 资源配额，例如quota为10表示限流10次/s
+// resetInterval : 资源配额重置周期，单位秒
+func (c *RateLimiterClient) RegistQuota(resourceType []byte, quota uint32, resetInterval int64) error {
 	buf := bytes.NewBuffer(nil)
 	err := json.NewEncoder(buf).Encode(proto.APIRegistQuotaReq{
-		RCType: resourceType,
-		Quota:  quota,
+		RCType:        resourceType,
+		Quota:         quota,
+		ResetInterval: resetInterval,
 	})
 	if err != nil {
 		return err

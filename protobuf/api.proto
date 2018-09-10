@@ -2,8 +2,9 @@ syntax = "proto3";
 package proto;
 
 message APIRegistQuotaReq {
-    bytes   RCType                          = 1;
-    uint32  Quota                           = 2;
+    bytes   RCType                          = 1; // 资源类型
+    uint32  Quota                           = 2; // 资源配额
+    int64   ResetInterval                   = 3; // 资源重置配额时间间隔，单位秒
 }
 
 message APIRegistQuotaResp {

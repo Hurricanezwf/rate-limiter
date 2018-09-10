@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Hurricanezwf/rate-limiter/meta"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
 )
 
@@ -30,8 +31,9 @@ func TestRegist(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 
 	json.NewEncoder(buf).Encode(APIRegistQuotaReq{
-		RCType: tId,
-		Quota:  10,
+		RCType:        tId,
+		Quota:         10,
+		ResetInterval: 300,
 	})
 
 	for {
@@ -99,7 +101,7 @@ func TestReturnOne(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 
 	json.NewEncoder(buf).Encode(APIReturnReq{
-		RCID:     "462ec3705249fd4358a1bcd02ce5e43f_rc#0",
+		RCID:     meta.MakeResourceID(tId, 0),
 		ClientID: cId,
 	})
 

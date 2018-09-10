@@ -14,6 +14,8 @@ message PB_Manager {
     repeated string             Recycled          = 4;
     repeated PB_BorrowRecord    Used              = 5;
     uint32                      UsedCount         = 6;
+    int64                       ResetInterval     = 7;
+    int64                       LastReset         = 8;
 }
 
 message PB_BorrowRecord {

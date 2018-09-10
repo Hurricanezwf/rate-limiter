@@ -7,7 +7,8 @@ func init() {
 // Interface 存储元数据的抽象接口，需要支持并发安全
 type Interface interface {
 	// RegistQuota 注册资源配额
-	RegistQuota(rcType []byte, quota uint32) error
+	// resetInterval 表示重置资源配额的时间间隔，单位秒
+	RegistQuota(rcType []byte, quota uint32, resetInterval int64) error
 
 	// Borrow 申请一次执行资格，如果成功返回nil
 	// expire 表示申请的资源的自动回收时间

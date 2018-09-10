@@ -4,10 +4,6 @@
 __ROOT_DIR__=$GOPATH/src/github.com/Hurricanezwf/rate-limiter
 
 
-function types(){
-    protoc -I=./ --go_out=${__ROOT_DIR__}/types/  ./types.proto
-}
-
 function meta(){
     protoc -I=./ --go_out=${__ROOT_DIR__}/meta/ ./meta.proto
 }
@@ -18,9 +14,6 @@ function api(){
 
 
 case $1 in
-    types)
-        types
-        ;;
     meta)
         meta
         ;;
@@ -28,12 +21,11 @@ case $1 in
         api
         ;;
     all)
-        types
         meta
         api
         ;;
     *)
-        echo "Usage: ./gen.sh [types | meta | api | all]"
+        echo "Usage: ./gen.sh [meta | api | all]"
         exit -1
         ;;
 esac

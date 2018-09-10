@@ -77,6 +77,11 @@ func (l *limiterV2) RegistQuota(r *APIRegistQuotaReq) *APIRegistQuotaResp {
 		rp.Msg = "Invalid 'Quota' value range, it should be in (0, 100000]"
 		return &rp
 	}
+	if r.ResetInterval <= 0 {
+		rp.Code = 403
+		rp.Msg = "Invalid 'ResetInterval' value, it should be greater then zero"
+		return &rp
+	}
 
 	return l.c.RegistQuota(r)
 }

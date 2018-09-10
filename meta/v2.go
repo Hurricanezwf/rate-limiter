@@ -35,7 +35,7 @@ func (m *metaV2) safeFindManager(rcTypeStr string) *rcManager {
 	return m.mgr[rcTypeStr]
 }
 
-func (m *metaV2) RegistQuota(rcType []byte, quota uint32) error {
+func (m *metaV2) RegistQuota(rcType []byte, quota uint32, resetInterval int64) error {
 	m.gLock.Lock()
 	defer m.gLock.Unlock()
 
@@ -47,10 +47,11 @@ func (m *metaV2) RegistQuota(rcType []byte, quota uint32) error {
 	}
 
 	// 初始化资源元数据
-	rcMgr = newRCManager(rcType, quota)
+	rcMgr = newRCManager(rcType, quota, resetInterval)
 	for i := uint32(0); i < quota; i++ {
 		rcMgr.canBorrow.PushBack(MakeResourceID(rcType, i))
 	}
+	rcMgr.lastReset = time.Now().Unix()
 
 	m.mgr[rcTypeStr] = rcMgr
 
@@ -126,12 +127,14 @@ func (m *metaV2) copyToProtobuf() *PB_Meta {
 
 	for rcTypeStr, rcMgr := range m.mgr {
 		pbMgr := &PB_Manager{
-			RCType:    rcMgr.rcType,
-			Quota:     rcMgr.quota,
-			CanBorrow: make([]string, 0, rcMgr.canBorrow.Len()),
-			Recycled:  make([]string, 0, rcMgr.recycled.Len()),
-			Used:      make([]*PB_BorrowRecord, 0, rcMgr.usedCount),
-			UsedCount: rcMgr.usedCount,
+			RCType:        rcMgr.rcType,
+			Quota:         rcMgr.quota,
+			ResetInterval: rcMgr.resetInterval,
+			LastReset:     rcMgr.lastReset,
+			CanBorrow:     make([]string, 0, rcMgr.canBorrow.Len()),
+			Recycled:      make([]string, 0, rcMgr.recycled.Len()),
+			Used:          make([]*PB_BorrowRecord, 0, rcMgr.usedCount),
+			UsedCount:     rcMgr.usedCount,
 		}
 		pb.Value[rcTypeStr] = pbMgr
 
@@ -168,8 +171,10 @@ func (m *metaV2) copyFromProtobuf(pb *PB_Meta) {
 	defer m.gLock.Unlock()
 
 	for rcTypeStr, pbMgr := range pb.Value {
-		rcMgr := newRCManager(pbMgr.RCType, pbMgr.Quota)
+		rcMgr := newRCManager(pbMgr.RCType, pbMgr.Quota, pbMgr.ResetInterval)
 		rcMgr.quota = pbMgr.Quota
+		rcMgr.resetInterval = pbMgr.ResetInterval
+		rcMgr.lastReset = pbMgr.LastReset
 		rcMgr.usedCount = pbMgr.UsedCount
 
 		for _, rcId := range pbMgr.CanBorrow {
@@ -201,9 +206,12 @@ type rcManager struct {
 
 	// 资源类型
 	rcType []byte
-
 	// 资源配额
 	quota uint32
+	// 重置资源配额的时间间隔, 单位秒
+	resetInterval int64
+	// 最近一次重置时间
+	lastReset int64
 
 	// 可用资源队列
 	canBorrow *list.List
@@ -225,15 +233,17 @@ type borrowRecord struct {
 	expireAt int64
 }
 
-func newRCManager(rcType []byte, quota uint32) *rcManager {
+func newRCManager(rcType []byte, quota uint32, resetInterval int64) *rcManager {
 	return &rcManager{
-		gLock:     &sync.RWMutex{},
-		rcType:    rcType,
-		quota:     quota,
-		canBorrow: list.New(),
-		recycled:  list.New(),
-		used:      make(map[string]map[string]*borrowRecord),
-		usedCount: 0,
+		gLock:         &sync.RWMutex{},
+		rcType:        rcType,
+		quota:         quota,
+		resetInterval: resetInterval,
+		lastReset:     0,
+		canBorrow:     list.New(),
+		recycled:      list.New(),
+		used:          make(map[string]map[string]*borrowRecord),
+		usedCount:     0,
 	}
 }
 
@@ -352,11 +362,16 @@ func (mgr *rcManager) safeRecycle() {
 	}
 
 	// 资源重用
-	if count := mgr.recycled.Len(); count > 0 {
+	if nowTs >= mgr.lastReset+mgr.resetInterval {
+		count := mgr.recycled.Len()
+		if count <= 0 {
+			return
+		}
 		if err := mgr.safePutCanBorrowWith(mgr.recycled); err != nil {
 			glog.Warningf("%v when merge recycled into canBorrow, canBorrow:%d, recycled:%d, quota:%d", err, mgr.canBorrow.Len(), mgr.recycled.Len(), mgr.quota)
 		}
 		mgr.recycled.Init()
+		mgr.lastReset = nowTs
 		glog.V(2).Infof("Refresh %d resources to canBorrow queue because of client's return", count)
 	}
 }

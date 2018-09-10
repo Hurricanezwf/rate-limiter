@@ -563,7 +563,7 @@ func (c *clusterV2) handleRegistQuota(args []byte) *APIRegistQuotaResp {
 		return &rp
 	}
 
-	if err = c.m.RegistQuota(r.RCType, r.Quota); err != nil {
+	if err = c.m.RegistQuota(r.RCType, r.Quota, r.ResetInterval); err != nil {
 		rp.Code = 403
 		rp.Msg = err.Error()
 		return &rp

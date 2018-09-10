@@ -16,8 +16,6 @@ import (
 var ctrl = newController(10000)
 
 func init() {
-	//http.HandleFunc("/v1/snapshot", snapshot) // for test only
-	//http.HandleFunc("/v1/restore", restore)   // for test only
 	http.HandleFunc("/v1/registQuota", registQuota)
 	http.HandleFunc("/v1/borrow", borrow)
 	http.HandleFunc("/v1/return", return_)
@@ -193,86 +191,6 @@ FINISH:
 
 	glog.V(1).Infof("%s [/v1/returnAll] RSP: statusCode:%d, msg:%s, elapse:%v", req.Method, code, msg, time.Since(start))
 }
-
-// snapshot 对元数据做快照
-//func snapshot(w http.ResponseWriter, req *http.Request) {
-//	if err := ctrl.in(); err != nil {
-//		w.WriteHeader(403)
-//		w.Write([]byte(err.Error()))
-//		return
-//	}
-//	defer ctrl.out()
-//
-//	start := time.Now()
-//	defer glog.Infof("%s [/v1/snapshot] -- %v", req.Method, time.Since(start))
-//
-//	// check leader
-//	if l.IsLeader() == false {
-//		addr := l.LeaderHTTPAddr()
-//		if len(addr) <= 0 {
-//			w.WriteHeader(503)
-//			w.Write([]byte(ErrLeaderNotFound.Error()))
-//			return
-//		}
-//		req.URL.Host = addr
-//		w.Header().Set("Location", req.URL.String())
-//		w.WriteHeader(307)
-//		return
-//	}
-//
-//	_, err := l.Snapshot()
-//	if err != nil {
-//		w.WriteHeader(500)
-//		w.Write([]byte(err.Error()))
-//	} else {
-//		w.WriteHeader(200)
-//		w.Write([]byte("Snapshot OK"))
-//	}
-//	return
-//}
-
-// restore 从元数据恢复数据
-//func restore(w http.ResponseWriter, req *http.Request) {
-//	if err := ctrl.in(); err != nil {
-//		w.WriteHeader(403)
-//		w.Write([]byte(err.Error()))
-//		return
-//	}
-//	defer ctrl.out()
-//
-//	start := time.Now()
-//	defer glog.Infof("%s [/v1/restore] -- %v", req.Method, time.Since(start))
-//
-//	// check leader
-//	if l.IsLeader() == false {
-//		addr := l.LeaderHTTPAddr()
-//		if len(addr) <= 0 {
-//			w.WriteHeader(503)
-//			w.Write([]byte(ErrLeaderNotFound.Error()))
-//			return
-//		}
-//		req.URL.Host = addr
-//		w.Header().Set("Location", req.URL.String())
-//		w.WriteHeader(307)
-//		return
-//	}
-//
-//	f, err := os.Open("./snapshot.limiter")
-//	if err != nil {
-//		w.WriteHeader(500)
-//		w.Write([]byte(err.Error()))
-//		return
-//	}
-//
-//	if err = l.Restore(f); err != nil {
-//		w.WriteHeader(500)
-//		w.Write([]byte(err.Error()))
-//	} else {
-//		w.WriteHeader(200)
-//		w.Write([]byte("Restore OK"))
-//	}
-//	return
-//}
 
 func resolveRequest(w http.ResponseWriter, req *http.Request, message proto.Message) (code int, msg string) {
 	// 访问控制检测
