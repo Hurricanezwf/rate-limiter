@@ -15,3 +15,9 @@ const (
 	ActionReturn       byte = 0x03 // 在所有结点进行归还资源的操作
 	ActionReturnAll    byte = 0x04 // 归还client申请的所有资源
 )
+
+// Raft数据存储介质
+const (
+	RaftStorageMemory = "memory"
+	RaftStorageBoltDB = "boltdb"
+)

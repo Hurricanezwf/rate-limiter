@@ -5,14 +5,10 @@ import (
 	"io/ioutil"
 	"net"
 
+	"github.com/Hurricanezwf/rate-limiter/proto"
 	"github.com/Hurricanezwf/toolbox/logging"
 	"github.com/Hurricanezwf/toolbox/logging/glog"
 	yaml "gopkg.in/yaml.v2"
-)
-
-const (
-	RaftStorageMemory = "memory"
-	RaftStorageBoltDB = "boltdb"
 )
 
 func DefaultConf() *Conf {
@@ -31,7 +27,7 @@ func DefaultConf() *Conf {
 		//
 		Raft: &RaftConf{
 			Enable:              true,
-			Storage:             RaftStorageBoltDB,
+			Storage:             proto.RaftStorageBoltDB,
 			TCPMaxPool:          3,
 			Timeout:             10000,
 			LeaderWatchInterval: 60,
@@ -161,7 +157,7 @@ func LoadConfig(path string) (*Conf, error) {
 
 func raftStorageOK(s string) bool {
 	switch s {
-	case RaftStorageBoltDB, RaftStorageMemory:
+	case proto.RaftStorageBoltDB, proto.RaftStorageMemory:
 		return true
 	}
 	return false
