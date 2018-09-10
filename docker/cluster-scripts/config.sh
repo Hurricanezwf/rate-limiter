@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 镜像名
-IMAGE="rate-limter:v0.1.1"
+IMAGE="rate-limiter:v0.1.1"
 
 # Docker网络名
 NETWORK="cmp"
