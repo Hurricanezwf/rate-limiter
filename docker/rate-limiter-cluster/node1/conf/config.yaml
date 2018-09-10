@@ -1,6 +1,6 @@
 # 【Httpd配置】
 Httpd:
-  Listen: rate-limiter-1:20001
+  Listen: rate-limiter-1:20000
 
 
 
@@ -19,7 +19,7 @@ Log:
 Raft:
   Enable: true
   ID: NODE-1
-  Bind: rate-limiter-1:17251
+  Bind: rate-limiter-1:17250
   ClusterConfJson: /rate-limiter/conf/raft-cluster.json
   Storage: memory
   RootDir: ./meta
