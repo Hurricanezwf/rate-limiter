@@ -8,11 +8,11 @@ func init() {
 type Interface interface {
 	// RegistQuota 注册资源配额
 	// resetInterval 表示重置资源配额的时间间隔，单位秒
-	RegistQuota(rcType []byte, quota uint32, resetInterval int64) error
+	RegistQuota(rcType []byte, quota uint32, resetInterval, timestamp int64) error
 
 	// Borrow 申请一次执行资格，如果成功返回nil
 	// expire 表示申请的资源的自动回收时间
-	Borrow(rcType, clientId []byte, expire int64) (string, error)
+	Borrow(rcType, clientId []byte, expire, timestamp int64) (string, error)
 
 	// Return 归还执行资格，如果成功返回nil
 	Return(clientId []byte, rcId string) error
@@ -22,7 +22,7 @@ type Interface interface {
 	ReturnAll(rcType, clientId []byte) (uint32, error)
 
 	// Recycle 清理到期未还的资源并且将recycled队列的资源投递到canBorrow队列
-	Recycle()
+	Recycle(timestamp int64)
 
 	// Encode 将元数据序列化
 	Encode() ([]byte, error)

@@ -19,9 +19,11 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type APIRegistQuotaReq struct {
-	RCType               []byte   `protobuf:"bytes,1,opt,name=RCType,proto3" json:"RCType,omitempty"`
-	Quota                uint32   `protobuf:"varint,2,opt,name=Quota,proto3" json:"Quota,omitempty"`
-	ResetInterval        int64    `protobuf:"varint,3,opt,name=ResetInterval,proto3" json:"ResetInterval,omitempty"`
+	RCType        []byte `protobuf:"bytes,1,opt,name=RCType,proto3" json:"RCType,omitempty"`
+	Quota         uint32 `protobuf:"varint,2,opt,name=Quota,proto3" json:"Quota,omitempty"`
+	ResetInterval int64  `protobuf:"varint,3,opt,name=ResetInterval,proto3" json:"ResetInterval,omitempty"`
+	// 以下字段仅内部使用
+	Timestamp            int64    `protobuf:"varint,4,opt,name=Timestamp,proto3" json:"Timestamp,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -31,7 +33,7 @@ func (m *APIRegistQuotaReq) Reset()         { *m = APIRegistQuotaReq{} }
 func (m *APIRegistQuotaReq) String() string { return proto.CompactTextString(m) }
 func (*APIRegistQuotaReq) ProtoMessage()    {}
 func (*APIRegistQuotaReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_df100349603ed7cc, []int{0}
+	return fileDescriptor_api_1184d56440fa1e3b, []int{0}
 }
 func (m *APIRegistQuotaReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_APIRegistQuotaReq.Unmarshal(m, b)
@@ -72,6 +74,13 @@ func (m *APIRegistQuotaReq) GetResetInterval() int64 {
 	return 0
 }
 
+func (m *APIRegistQuotaReq) GetTimestamp() int64 {
+	if m != nil {
+		return m.Timestamp
+	}
+	return 0
+}
+
 type APIRegistQuotaResp struct {
 	Code                 uint32   `protobuf:"varint,1,opt,name=Code,proto3" json:"Code,omitempty"`
 	Msg                  string   `protobuf:"bytes,2,opt,name=Msg,proto3" json:"Msg,omitempty"`
@@ -84,7 +93,7 @@ func (m *APIRegistQuotaResp) Reset()         { *m = APIRegistQuotaResp{} }
 func (m *APIRegistQuotaResp) String() string { return proto.CompactTextString(m) }
 func (*APIRegistQuotaResp) ProtoMessage()    {}
 func (*APIRegistQuotaResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_df100349603ed7cc, []int{1}
+	return fileDescriptor_api_1184d56440fa1e3b, []int{1}
 }
 func (m *APIRegistQuotaResp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_APIRegistQuotaResp.Unmarshal(m, b)
@@ -119,9 +128,11 @@ func (m *APIRegistQuotaResp) GetMsg() string {
 }
 
 type APIBorrowReq struct {
-	RCType               []byte   `protobuf:"bytes,1,opt,name=RCType,proto3" json:"RCType,omitempty"`
-	ClientID             []byte   `protobuf:"bytes,2,opt,name=ClientID,proto3" json:"ClientID,omitempty"`
-	Expire               int64    `protobuf:"varint,3,opt,name=Expire,proto3" json:"Expire,omitempty"`
+	RCType   []byte `protobuf:"bytes,1,opt,name=RCType,proto3" json:"RCType,omitempty"`
+	ClientID []byte `protobuf:"bytes,2,opt,name=ClientID,proto3" json:"ClientID,omitempty"`
+	Expire   int64  `protobuf:"varint,3,opt,name=Expire,proto3" json:"Expire,omitempty"`
+	// 以下字段仅内部使用
+	Timestamp            int64    `protobuf:"varint,4,opt,name=Timestamp,proto3" json:"Timestamp,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -131,7 +142,7 @@ func (m *APIBorrowReq) Reset()         { *m = APIBorrowReq{} }
 func (m *APIBorrowReq) String() string { return proto.CompactTextString(m) }
 func (*APIBorrowReq) ProtoMessage()    {}
 func (*APIBorrowReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_df100349603ed7cc, []int{2}
+	return fileDescriptor_api_1184d56440fa1e3b, []int{2}
 }
 func (m *APIBorrowReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_APIBorrowReq.Unmarshal(m, b)
@@ -172,6 +183,13 @@ func (m *APIBorrowReq) GetExpire() int64 {
 	return 0
 }
 
+func (m *APIBorrowReq) GetTimestamp() int64 {
+	if m != nil {
+		return m.Timestamp
+	}
+	return 0
+}
+
 type APIBorrowResp struct {
 	Code                 uint32   `protobuf:"varint,1,opt,name=Code,proto3" json:"Code,omitempty"`
 	Msg                  string   `protobuf:"bytes,2,opt,name=Msg,proto3" json:"Msg,omitempty"`
@@ -185,7 +203,7 @@ func (m *APIBorrowResp) Reset()         { *m = APIBorrowResp{} }
 func (m *APIBorrowResp) String() string { return proto.CompactTextString(m) }
 func (*APIBorrowResp) ProtoMessage()    {}
 func (*APIBorrowResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_df100349603ed7cc, []int{3}
+	return fileDescriptor_api_1184d56440fa1e3b, []int{3}
 }
 func (m *APIBorrowResp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_APIBorrowResp.Unmarshal(m, b)
@@ -238,7 +256,7 @@ func (m *APIReturnReq) Reset()         { *m = APIReturnReq{} }
 func (m *APIReturnReq) String() string { return proto.CompactTextString(m) }
 func (*APIReturnReq) ProtoMessage()    {}
 func (*APIReturnReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_df100349603ed7cc, []int{4}
+	return fileDescriptor_api_1184d56440fa1e3b, []int{4}
 }
 func (m *APIReturnReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_APIReturnReq.Unmarshal(m, b)
@@ -284,7 +302,7 @@ func (m *APIReturnResp) Reset()         { *m = APIReturnResp{} }
 func (m *APIReturnResp) String() string { return proto.CompactTextString(m) }
 func (*APIReturnResp) ProtoMessage()    {}
 func (*APIReturnResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_df100349603ed7cc, []int{5}
+	return fileDescriptor_api_1184d56440fa1e3b, []int{5}
 }
 func (m *APIReturnResp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_APIReturnResp.Unmarshal(m, b)
@@ -330,7 +348,7 @@ func (m *APIReturnAllReq) Reset()         { *m = APIReturnAllReq{} }
 func (m *APIReturnAllReq) String() string { return proto.CompactTextString(m) }
 func (*APIReturnAllReq) ProtoMessage()    {}
 func (*APIReturnAllReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_df100349603ed7cc, []int{6}
+	return fileDescriptor_api_1184d56440fa1e3b, []int{6}
 }
 func (m *APIReturnAllReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_APIReturnAllReq.Unmarshal(m, b)
@@ -376,7 +394,7 @@ func (m *APIReturnAllResp) Reset()         { *m = APIReturnAllResp{} }
 func (m *APIReturnAllResp) String() string { return proto.CompactTextString(m) }
 func (*APIReturnAllResp) ProtoMessage()    {}
 func (*APIReturnAllResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_df100349603ed7cc, []int{7}
+	return fileDescriptor_api_1184d56440fa1e3b, []int{7}
 }
 func (m *APIReturnAllResp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_APIReturnAllResp.Unmarshal(m, b)
@@ -422,7 +440,7 @@ func (m *CMDLeaderNotify) Reset()         { *m = CMDLeaderNotify{} }
 func (m *CMDLeaderNotify) String() string { return proto.CompactTextString(m) }
 func (*CMDLeaderNotify) ProtoMessage()    {}
 func (*CMDLeaderNotify) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_df100349603ed7cc, []int{8}
+	return fileDescriptor_api_1184d56440fa1e3b, []int{8}
 }
 func (m *CMDLeaderNotify) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CMDLeaderNotify.Unmarshal(m, b)
@@ -456,6 +474,44 @@ func (m *CMDLeaderNotify) GetHttpAddr() string {
 	return ""
 }
 
+type CMDRecycle struct {
+	Timestamp            int64    `protobuf:"varint,1,opt,name=Timestamp,proto3" json:"Timestamp,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *CMDRecycle) Reset()         { *m = CMDRecycle{} }
+func (m *CMDRecycle) String() string { return proto.CompactTextString(m) }
+func (*CMDRecycle) ProtoMessage()    {}
+func (*CMDRecycle) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_1184d56440fa1e3b, []int{9}
+}
+func (m *CMDRecycle) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CMDRecycle.Unmarshal(m, b)
+}
+func (m *CMDRecycle) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CMDRecycle.Marshal(b, m, deterministic)
+}
+func (dst *CMDRecycle) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CMDRecycle.Merge(dst, src)
+}
+func (m *CMDRecycle) XXX_Size() int {
+	return xxx_messageInfo_CMDRecycle.Size(m)
+}
+func (m *CMDRecycle) XXX_DiscardUnknown() {
+	xxx_messageInfo_CMDRecycle.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CMDRecycle proto.InternalMessageInfo
+
+func (m *CMDRecycle) GetTimestamp() int64 {
+	if m != nil {
+		return m.Timestamp
+	}
+	return 0
+}
+
 func init() {
 	proto.RegisterType((*APIRegistQuotaReq)(nil), "proto.APIRegistQuotaReq")
 	proto.RegisterType((*APIRegistQuotaResp)(nil), "proto.APIRegistQuotaResp")
@@ -466,30 +522,33 @@ func init() {
 	proto.RegisterType((*APIReturnAllReq)(nil), "proto.APIReturnAllReq")
 	proto.RegisterType((*APIReturnAllResp)(nil), "proto.APIReturnAllResp")
 	proto.RegisterType((*CMDLeaderNotify)(nil), "proto.CMDLeaderNotify")
+	proto.RegisterType((*CMDRecycle)(nil), "proto.CMDRecycle")
 }
 
-func init() { proto.RegisterFile("api.proto", fileDescriptor_api_df100349603ed7cc) }
+func init() { proto.RegisterFile("api.proto", fileDescriptor_api_1184d56440fa1e3b) }
 
-var fileDescriptor_api_df100349603ed7cc = []byte{
-	// 312 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x92, 0xc1, 0x4b, 0xf3, 0x40,
-	0x10, 0xc5, 0x49, 0xfb, 0xb5, 0x7c, 0x19, 0x1a, 0x5a, 0x17, 0x91, 0xe2, 0xa9, 0x2c, 0x1e, 0x7a,
-	0xf2, 0x22, 0x82, 0x78, 0x10, 0x62, 0x5a, 0x70, 0xc1, 0x4a, 0x1d, 0x3c, 0x79, 0x8b, 0x64, 0x1b,
-	0x02, 0x21, 0xbb, 0x6e, 0xb6, 0x6a, 0xff, 0x7b, 0xd9, 0x49, 0x1a, 0xd3, 0x1e, 0x34, 0xa7, 0xcc,
-	0xcb, 0xee, 0x7b, 0xef, 0xc7, 0xb0, 0xe0, 0xc7, 0x3a, 0xbb, 0xd4, 0x46, 0x59, 0xc5, 0x06, 0xf4,
-	0xe1, 0x29, 0x9c, 0x84, 0x6b, 0x81, 0x32, 0xcd, 0x4a, 0xfb, 0xbc, 0x55, 0x36, 0x46, 0xf9, 0xce,
-	0xce, 0x60, 0x88, 0xd1, 0xcb, 0x4e, 0xcb, 0xa9, 0x37, 0xf3, 0xe6, 0x23, 0xac, 0x15, 0x3b, 0x85,
-	0x01, 0xdd, 0x99, 0xf6, 0x66, 0xde, 0x3c, 0xc0, 0x4a, 0xb0, 0x0b, 0x08, 0x50, 0x96, 0xd2, 0x8a,
-	0xc2, 0x4a, 0xf3, 0x11, 0xe7, 0xd3, 0xfe, 0xcc, 0x9b, 0xf7, 0xf1, 0xf0, 0x27, 0xbf, 0x05, 0x76,
-	0x5c, 0x54, 0x6a, 0xc6, 0xe0, 0x5f, 0xa4, 0x92, 0xaa, 0x27, 0x40, 0x9a, 0xd9, 0x04, 0xfa, 0xab,
-	0x32, 0xa5, 0x0e, 0x1f, 0xdd, 0xc8, 0x5f, 0x61, 0x14, 0xae, 0xc5, 0xbd, 0x32, 0x46, 0x7d, 0xfe,
-	0xc6, 0x77, 0x0e, 0xff, 0xa3, 0x3c, 0x93, 0x85, 0x15, 0x0b, 0xb2, 0x8f, 0xb0, 0xd1, 0xce, 0xb3,
-	0xfc, 0xd2, 0x99, 0x91, 0x35, 0x5e, 0xad, 0xb8, 0x80, 0xa0, 0x95, 0xdd, 0x15, 0xc9, 0xdd, 0xc2,
-	0x48, 0x2c, 0x28, 0xcc, 0x47, 0x9a, 0xf9, 0x1d, 0x61, 0xa2, 0xb4, 0x5b, 0x53, 0x38, 0xcc, 0x36,
-	0x8e, 0x77, 0x84, 0xb3, 0xf7, 0xf7, 0x5a, 0xfe, 0x6b, 0x42, 0xd9, 0xfb, 0x3b, 0x6f, 0x67, 0x09,
-	0xe3, 0xc6, 0x16, 0xe6, 0xf9, 0x5f, 0xcd, 0x3f, 0xcb, 0xeb, 0xb5, 0x97, 0xc7, 0x6f, 0x60, 0x72,
-	0x18, 0xd3, 0x19, 0x40, 0xc0, 0x38, 0x5a, 0x2d, 0x1e, 0x65, 0x9c, 0x48, 0xf3, 0xa4, 0x6c, 0xb6,
-	0xd9, 0x39, 0x00, 0x8c, 0x37, 0x36, 0x4c, 0x12, 0x43, 0x66, 0x1f, 0x1b, 0xed, 0xce, 0x1e, 0xac,
-	0xd5, 0x74, 0x56, 0xa5, 0x34, 0xfa, 0x6d, 0x48, 0xaf, 0xf2, 0xea, 0x3b, 0x00, 0x00, 0xff, 0xff,
-	0xa7, 0xf5, 0x45, 0xfb, 0xa9, 0x02, 0x00, 0x00,
+var fileDescriptor_api_1184d56440fa1e3b = []byte{
+	// 348 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x92, 0xcf, 0x4a, 0xc3, 0x40,
+	0x10, 0xc6, 0x49, 0xff, 0x61, 0x86, 0x86, 0xd6, 0x45, 0x24, 0x88, 0x87, 0x12, 0x3c, 0x14, 0x0f,
+	0x5e, 0x44, 0x10, 0x0f, 0x42, 0x4c, 0x0a, 0x2e, 0x58, 0xa9, 0x43, 0x5f, 0x20, 0x36, 0xdb, 0x12,
+	0x48, 0xbb, 0xeb, 0x66, 0xab, 0xed, 0x03, 0xf8, 0xde, 0x92, 0x69, 0x9b, 0xa6, 0x39, 0xd8, 0x9e,
+	0x32, 0xdf, 0xee, 0x7c, 0x3b, 0xbf, 0x99, 0x09, 0xd8, 0x91, 0x4a, 0xee, 0x94, 0x96, 0x46, 0xb2,
+	0x26, 0x7d, 0xbc, 0x5f, 0x0b, 0xce, 0xfd, 0x11, 0x47, 0x31, 0x4b, 0x32, 0xf3, 0xb1, 0x94, 0x26,
+	0x42, 0xf1, 0xc5, 0x2e, 0xa1, 0x85, 0xc1, 0x78, 0xad, 0x84, 0x6b, 0xf5, 0xac, 0x7e, 0x1b, 0xb7,
+	0x8a, 0x5d, 0x40, 0x93, 0x72, 0xdc, 0x5a, 0xcf, 0xea, 0x3b, 0xb8, 0x11, 0xec, 0x06, 0x1c, 0x14,
+	0x99, 0x30, 0x7c, 0x61, 0x84, 0xfe, 0x8e, 0x52, 0xb7, 0xde, 0xb3, 0xfa, 0x75, 0x3c, 0x3c, 0x64,
+	0xd7, 0x60, 0x8f, 0x93, 0xb9, 0xc8, 0x4c, 0x34, 0x57, 0x6e, 0x83, 0x32, 0xf6, 0x07, 0xde, 0x13,
+	0xb0, 0x2a, 0x46, 0xa6, 0x18, 0x83, 0x46, 0x20, 0xe3, 0x0d, 0x85, 0x83, 0x14, 0xb3, 0x2e, 0xd4,
+	0x87, 0xd9, 0x8c, 0x08, 0x6c, 0xcc, 0x43, 0x6f, 0x05, 0x6d, 0x7f, 0xc4, 0x5f, 0xa4, 0xd6, 0xf2,
+	0xe7, 0x3f, 0xfa, 0x2b, 0x38, 0x0b, 0xd2, 0x44, 0x2c, 0x0c, 0x0f, 0xc9, 0xde, 0xc6, 0x42, 0xe7,
+	0x9e, 0xc1, 0x4a, 0x25, 0x5a, 0x6c, 0xe1, 0xb7, 0xea, 0x08, 0x35, 0x07, 0xa7, 0x54, 0xf9, 0x54,
+	0xe0, 0x3c, 0x0b, 0x03, 0x1e, 0x52, 0x29, 0x1b, 0x29, 0xf6, 0x9e, 0xa9, 0x09, 0x14, 0x66, 0xa9,
+	0x17, 0x79, 0x13, 0x65, 0x58, 0xab, 0x02, 0xbb, 0xf3, 0xd7, 0x4a, 0xfe, 0x07, 0x42, 0xd9, 0xf9,
+	0x4f, 0x9e, 0xdd, 0x00, 0x3a, 0x85, 0xcd, 0x4f, 0xd3, 0x63, 0x95, 0xf7, 0xa3, 0xad, 0x95, 0x47,
+	0xeb, 0x3d, 0x42, 0xf7, 0xf0, 0x99, 0x93, 0x01, 0x38, 0x74, 0x82, 0x61, 0xf8, 0x26, 0xa2, 0x58,
+	0xe8, 0x77, 0x69, 0x92, 0xe9, 0x3a, 0x07, 0xc0, 0x68, 0x6a, 0xfc, 0x38, 0xd6, 0x64, 0xb6, 0xb1,
+	0xd0, 0xf9, 0xdd, 0xab, 0x31, 0x8a, 0xee, 0x36, 0xaf, 0x14, 0xda, 0xbb, 0x05, 0x08, 0x86, 0x21,
+	0x8a, 0xc9, 0x7a, 0x92, 0x56, 0x36, 0x67, 0x55, 0x36, 0xf7, 0xd9, 0xa2, 0xdf, 0xff, 0xfe, 0x2f,
+	0x00, 0x00, 0xff, 0xff, 0x0b, 0x3d, 0xd4, 0x22, 0x12, 0x03, 0x00, 0x00,
 }

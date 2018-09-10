@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/Hurricanezwf/rate-limiter/encoding"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
@@ -35,7 +34,7 @@ func (m *metaV2) safeFindManager(rcTypeStr string) *rcManager {
 	return m.mgr[rcTypeStr]
 }
 
-func (m *metaV2) RegistQuota(rcType []byte, quota uint32, resetInterval int64) error {
+func (m *metaV2) RegistQuota(rcType []byte, quota uint32, resetInterval, timestamp int64) error {
 	m.gLock.Lock()
 	defer m.gLock.Unlock()
 
@@ -51,20 +50,20 @@ func (m *metaV2) RegistQuota(rcType []byte, quota uint32, resetInterval int64) e
 	for i := uint32(0); i < quota; i++ {
 		rcMgr.canBorrow.PushBack(MakeResourceID(rcType, i))
 	}
-	rcMgr.lastReset = time.Now().Unix()
+	rcMgr.lastReset = timestamp
 
 	m.mgr[rcTypeStr] = rcMgr
 
 	return nil
 }
 
-func (m *metaV2) Borrow(rcType, clientId []byte, expire int64) (string, error) {
+func (m *metaV2) Borrow(rcType, clientId []byte, expire, timestamp int64) (string, error) {
 	rcTypeStr := encoding.BytesToString(rcType)
 	rcMgr := m.safeFindManager(rcTypeStr)
 	if rcMgr == nil {
 		return "", ErrResourceNotRegisted
 	}
-	return rcMgr.safeBorrow(rcType, clientId, expire)
+	return rcMgr.safeBorrow(rcType, clientId, expire, timestamp)
 }
 
 func (m *metaV2) Return(clientId []byte, rcId string) error {
@@ -90,11 +89,11 @@ func (m *metaV2) ReturnAll(rcType, clientId []byte) (uint32, error) {
 	return rcMgr.safeReturnAll(clientId)
 }
 
-func (m *metaV2) Recycle() {
+func (m *metaV2) Recycle(timestamp int64) {
 	m.gLock.RLock()
 	defer m.gLock.RUnlock()
 	for _, rcMgr := range m.mgr {
-		rcMgr.safeRecycle()
+		rcMgr.safeRecycle(timestamp)
 	}
 }
 
@@ -247,7 +246,7 @@ func newRCManager(rcType []byte, quota uint32, resetInterval int64) *rcManager {
 	}
 }
 
-func (mgr *rcManager) safeBorrow(rcType, clientId []byte, expire int64) (string, error) {
+func (mgr *rcManager) safeBorrow(rcType, clientId []byte, expire, timestamp int64) (string, error) {
 	clientIdStr := encoding.BytesToString(clientId)
 
 	mgr.gLock.Lock()
@@ -261,10 +260,9 @@ func (mgr *rcManager) safeBorrow(rcType, clientId []byte, expire int64) (string,
 
 	// 构造出借记录
 	rcId := e.Value.(string)
-	nowTs := time.Now().Unix()
 	rd := &borrowRecord{
-		borrowAt: nowTs,
-		expireAt: nowTs + expire,
+		borrowAt: timestamp,
+		expireAt: timestamp + expire,
 	}
 
 	// 执行借出
@@ -337,12 +335,12 @@ func (mgr *rcManager) safeReturnAll(clientId []byte) (uint32, error) {
 	return count, nil
 }
 
-func (mgr *rcManager) safeRecycle() {
+func (mgr *rcManager) safeRecycle(timestamp int64) {
 	mgr.gLock.Lock()
 	defer mgr.gLock.Unlock()
 
 	// 过期资源清理
-	nowTs := time.Now().Unix()
+	nowTs := timestamp
 	for clientIdStr, rdTable := range mgr.used {
 		for rcId, rd := range rdTable {
 			if rd.expireAt > nowTs {
@@ -350,7 +348,8 @@ func (mgr *rcManager) safeRecycle() {
 			}
 			glog.V(2).Infof("'%s' borrowed by client '%s' is expired, force to recycle", rcId, clientIdStr)
 			if err := mgr.safePutRecycle(rcId); err != nil {
-				glog.Warningf("%v when merge expired record into recycled queue, canBorrow:%d, recycled:%d, quota:%d", err, mgr.canBorrow.Len(), mgr.recycled.Len(), mgr.quota)
+				glog.Warningf("%v when merge expired record into recycled queue, canBorrow:%d, recycled:%d, quota:%d, rcType:'%s'",
+					err, mgr.canBorrow.Len(), mgr.recycled.Len(), mgr.quota, encoding.BytesToString(mgr.rcType))
 				continue
 			}
 			delete(rdTable, rcId)
@@ -368,11 +367,12 @@ func (mgr *rcManager) safeRecycle() {
 			return
 		}
 		if err := mgr.safePutCanBorrowWith(mgr.recycled); err != nil {
-			glog.Warningf("%v when merge recycled into canBorrow, canBorrow:%d, recycled:%d, quota:%d", err, mgr.canBorrow.Len(), mgr.recycled.Len(), mgr.quota)
+			glog.Warningf("%v when merge recycled into canBorrow, canBorrow:%d, recycled:%d, quota:%d, rcType:'%s'",
+				err, mgr.canBorrow.Len(), mgr.recycled.Len(), mgr.quota, encoding.BytesToString(mgr.rcType))
 		}
 		mgr.recycled.Init()
 		mgr.lastReset = nowTs
-		glog.V(2).Infof("Refresh %d resources to canBorrow queue because of client's return", count)
+		glog.V(2).Infof("Refresh %d resources to canBorrow queue because of client's return, rcType='%s'", count, encoding.BytesToString(mgr.rcType))
 	}
 }
 

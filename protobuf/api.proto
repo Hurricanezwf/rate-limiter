@@ -5,6 +5,9 @@ message APIRegistQuotaReq {
     bytes   RCType                          = 1; // 资源类型
     uint32  Quota                           = 2; // 资源配额
     int64   ResetInterval                   = 3; // 资源重置配额时间间隔，单位秒
+
+    // 以下字段仅内部使用
+    int64   Timestamp                       = 4;
 }
 
 message APIRegistQuotaResp {
@@ -16,6 +19,9 @@ message APIBorrowReq {
     bytes   RCType                          = 1;
     bytes   ClientID                        = 2;
     int64   Expire                          = 3;
+
+    // 以下字段仅内部使用
+    int64   Timestamp                       = 4;
 }
 
 message APIBorrowResp {
@@ -47,4 +53,8 @@ message APIReturnAllResp {
 message CMDLeaderNotify {
     string RaftAddr                         = 1;
     string HttpAddr                         = 2;
+}
+
+message CMDRecycle {
+    int64  Timestamp                        = 1;
 }

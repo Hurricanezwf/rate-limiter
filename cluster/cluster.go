@@ -128,7 +128,7 @@ func (c *clusterV2) Open() error {
 
 		case STMStartCleaner:
 			// 定时回收&重用资源
-			go c.initMetaCleaner()
+			go c.initMetaCleaner(g.Config.Raft.Enable)
 			st = STMExit
 		}
 	}
@@ -286,14 +286,40 @@ func (c *clusterV2) initRaftLeaderWatcher() {
 }
 
 // initMetaCleaner 周期性清理过期资源和重用已回收的资源
-func (c *clusterV2) initMetaCleaner() {
+func (c *clusterV2) initMetaCleaner(clusterEnabled bool) {
 	ticker := time.NewTicker(time.Second)
 	for {
 		select {
 		case <-c.stopC:
 			return
 		case <-ticker.C:
-			c.m.Recycle()
+			{
+				// 未启用集群，直接进行清理
+				if clusterEnabled == false {
+					c.m.Recycle(time.Now().Unix())
+					continue
+				}
+
+				// 如果启用了集群，由Leader下发命令
+				if c.IsLeader() {
+					cmd, err := encodeCMD(ActionRecycle, &CMDRecycle{
+						Timestamp: time.Now().Unix(),
+					})
+					if err != nil {
+						glog.Warningf("Marshal ActionRecycle failed, %v", err)
+						continue
+					}
+					future := c.raft.Apply(cmd, c.raftTimeout)
+					if err := future.Error(); err != nil {
+						glog.Warningf("Raft apply CMDRecycle failed, %v", err)
+						continue
+					}
+					if future.Response() != nil {
+						glog.Warningf("Raft Apply CMDBRecycle failed, %v", future.Response())
+						continue
+					}
+				}
+			}
 		}
 	}
 }
@@ -320,9 +346,9 @@ func (c *clusterV2) Apply(log *raftlib.Log) interface{} {
 		{
 			cmd, args := resolveCMD(log.Data)
 			start := time.Now()
-			glog.V(3).Infof("Apply CMD: %#v", cmd)
+			glog.V(4).Infof("Apply CMD: %#v", cmd)
 			rt := c.switchDo(cmd, args)
-			glog.V(3).Infof("Response : %+v, elapse:%v", rt, time.Since(start))
+			glog.V(4).Infof("Response : %+v, elapse:%v", rt, time.Since(start))
 			return rt
 		}
 	default:
@@ -448,6 +474,10 @@ func (c *clusterV2) Restore(rc io.ReadCloser) error {
 // RegistQuota 注册资源配额
 func (c *clusterV2) RegistQuota(r *APIRegistQuotaReq) *APIRegistQuotaResp {
 	rp := &APIRegistQuotaResp{Code: 500}
+
+	if r.Timestamp <= 0 {
+		r.Timestamp = time.Now().Unix()
+	}
 	cmd, err := encodeCMD(ActionRegistQuota, r)
 	if err != nil {
 		rp.Msg = fmt.Sprintf("Encode cmd failed, %v", err)
@@ -470,6 +500,10 @@ func (c *clusterV2) RegistQuota(r *APIRegistQuotaReq) *APIRegistQuotaResp {
 // Borrow 申请一次执行资格，如果成功返回nil
 func (c *clusterV2) Borrow(r *APIBorrowReq) *APIBorrowResp {
 	rp := &APIBorrowResp{Code: 500}
+
+	if r.Timestamp <= 0 {
+		r.Timestamp = time.Now().Unix()
+	}
 	cmd, err := encodeCMD(ActionBorrow, r)
 	if err != nil {
 		rp.Msg = fmt.Sprintf("Encode cmd failed, %v", err)
@@ -546,6 +580,8 @@ func (c *clusterV2) switchDo(cmd byte, args []byte) interface{} {
 		return c.handleReturnAll(args)
 	case ActionLeaderNotify:
 		return c.handleLeaderNotify(args)
+	case ActionRecycle:
+		return c.handleRecycle(args)
 	}
 	glog.Warningf("Unknown cmd '%#v'", cmd)
 	return fmt.Errorf("Unknown cmd '%#v'", cmd)
@@ -563,7 +599,7 @@ func (c *clusterV2) handleRegistQuota(args []byte) *APIRegistQuotaResp {
 		return &rp
 	}
 
-	if err = c.m.RegistQuota(r.RCType, r.Quota, r.ResetInterval); err != nil {
+	if err = c.m.RegistQuota(r.RCType, r.Quota, r.ResetInterval, r.Timestamp); err != nil {
 		rp.Code = 403
 		rp.Msg = err.Error()
 		return &rp
@@ -585,7 +621,7 @@ func (c *clusterV2) handleBorrow(args []byte) *APIBorrowResp {
 		return &rp
 	}
 
-	if rcId, err = c.m.Borrow(r.RCType, r.ClientID, r.Expire); err != nil {
+	if rcId, err = c.m.Borrow(r.RCType, r.ClientID, r.Expire, r.Timestamp); err != nil {
 		rp.Code = 403
 		rp.Msg = err.Error()
 		return &rp
@@ -651,6 +687,18 @@ func (c *clusterV2) handleLeaderNotify(args []byte) error {
 	c.gLock.Unlock()
 
 	return err
+}
+
+// handleRecycle 处理Leader结点下发的资源清理和回收命令
+func (c *clusterV2) handleRecycle(args []byte) error {
+	var err error
+	var r CMDRecycle
+
+	if err = resolveArgs(args, &r); err != nil {
+		return err
+	}
+	c.m.Recycle(r.Timestamp)
+	return nil
 }
 
 // storageEngineFactory 根据存储引擎名字构造存储实例

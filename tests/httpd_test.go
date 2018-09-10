@@ -33,7 +33,7 @@ func TestRegist(t *testing.T) {
 	json.NewEncoder(buf).Encode(APIRegistQuotaReq{
 		RCType:        tId,
 		Quota:         10,
-		ResetInterval: 300,
+		ResetInterval: 60,
 	})
 
 	for {
