@@ -7,12 +7,12 @@ commit=$(shell git log | grep commit | head -n 1 | awk '{print $$2}')
 
 
 debug:
-	@go build -race -gcflags="-N -l" -ldflags="-X main.GoVersion=$(version) -X main.Branch=$(branch) -X main.Commit=$(commit) -X main.CompileTime=$(compile_time)"
+	@go build -race -gcflags="-N -l" -ldflags="-X github.com/Hurricanezwf/rate-limiter/version.GoVersion=$(version) -X github.com/Hurricanezwf/rate-limiter/version.Branch=$(branch) -X github.com/Hurricanezwf/rate-limiter/version.Commit=$(commit) -X github.com/Hurricanezwf/rate-limiter/version.CompileTime=$(compile_time)"
 
 
 
 release:
-	@export CGO_ENABLED=0 && go build -ldflags="-w -s -X main.GoVersion=$(version) -X main.Branch=$(branch) -X main.Commit=$(commit) -X main.CompileTime=$(compile_time)"
+	@export CGO_ENABLED=0 && go build -ldflags="-w -s -X github.com/Hurricanezwf/rate-limiter/version.GoVersion=$(version) -X github.com/Hurricanezwf/rate-limiter/version.Branch=$(branch) -X github.com/Hurricanezwf/rate-limiter/version.Commit=$(commit) -X github.com/Hurricanezwf/rate-limiter/version.CompileTime=$(compile_time)"
 
 
 

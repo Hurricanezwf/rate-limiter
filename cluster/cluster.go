@@ -93,10 +93,21 @@ type clusterV2 struct {
 }
 
 func newClusterV2() Interface {
+	var raftTimeout time.Duration
+	if g.Config == nil {
+		panic("Config is nil")
+	}
+	if g.Config.Raft == nil {
+		panic("Raft is nil")
+	}
+	if g.Config.Raft.Enable {
+		raftTimeout = time.Duration(g.Config.Raft.Timeout) * time.Millisecond
+	}
+
 	return &clusterV2{
 		gLock:       &sync.RWMutex{},
 		m:           meta.Default(),
-		raftTimeout: time.Duration(g.Config.Raft.Timeout) * time.Millisecond,
+		raftTimeout: raftTimeout,
 		stopC:       make(chan struct{}),
 	}
 }

@@ -2,10 +2,10 @@ package g
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	"github.com/Hurricanezwf/toolbox/logging"
-	"github.com/Hurricanezwf/toolbox/logging/glog"
 )
 
 var (
@@ -17,18 +17,17 @@ var (
 
 func init() {
 	flag.StringVar(&ConfPath, "c", "./conf/config.yaml", "path of the config")
+}
 
-	var err error
-
+func Init() (err error) {
 	if Config, err = LoadConfig(ConfPath); err != nil {
-		glog.Fatalf("Load config failed, %v", err)
+		return fmt.Errorf("Load config failed, %v", err)
 	}
-
-	if err := initialize(); err != nil {
-		glog.Fatalf("Initialize failed, %v", err)
+	if err = initialize(); err != nil {
+		return fmt.Errorf("Initialize failed, %v", err)
 	}
-
 	Config.Debug()
+	return nil
 }
 
 func initialize() error {
