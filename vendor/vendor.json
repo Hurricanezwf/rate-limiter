@@ -105,6 +105,18 @@
 			"revisionTime": "2018-01-03T17:44:51Z"
 		},
 		{
+			"checksumSHA1": "YMGD3aMJlxhrWBzLlTqPhTLyxG4=",
+			"path": "github.com/spf13/cobra",
+			"revision": "99dc123558852f67743bd0b2caf8383cb3c6d720",
+			"revisionTime": "2018-08-29T16:07:45Z"
+		},
+		{
+			"checksumSHA1": "WVKhLVXQFxXwmuRX+IRzebUmxjE=",
+			"path": "github.com/spf13/pflag",
+			"revision": "298182f68c66c05229eb03ac171abe6e309ee79a",
+			"revisionTime": "2018-08-31T15:14:32Z"
+		},
+		{
 			"checksumSHA1": "9gwZHdu7sMojYYoGl5Ax6NSFaeU=",
 			"path": "golang.org/x/sys/unix",
 			"revision": ""
