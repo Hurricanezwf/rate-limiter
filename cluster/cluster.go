@@ -168,7 +168,7 @@ func (c *clusterV2) initRaftCluster() error {
 
 	// 检测集群是否需要bootstrap
 	switch storage {
-	case g.RaftStorageMemory:
+	case RaftStorageMemory:
 		bootstrap = true
 	default:
 		dbPath = filepath.Join(rootDir, "raft.db")
@@ -217,13 +217,13 @@ func (c *clusterV2) initRaftCluster() error {
 	// 本地落地存储效率比较低，单个请求响应时间在50ms以上；如果换成内存存储的话，单个请求响应时间在2ms左右。
 	logStore, stableStore, err := c.storageEngineFactory(storage, dbPath)
 	if err != nil {
-		return fmt.Errorf("Create storage instance failed, %v", err)
+		return fmt.Errorf("Create log and stable storage instance failed, %v", err)
 	}
 
 	// 创建持久化快照存储引擎
-	snapshotStore, err := raftlib.NewFileSnapshotStore(rootDir, 3, raftConf.LogOutput)
+	snapshotStore, err := c.snapshotEngineFactory(storage, rootDir)
 	if err != nil {
-		return fmt.Errorf("Create file snapshot store failed, %v", err)
+		return fmt.Errorf("Create snapshot store failed, %v", err)
 	}
 
 	// 创建Raft实例
@@ -721,7 +721,7 @@ func (c *clusterV2) storageEngineFactory(name string, dbPath ...string) (raftlib
 	)
 
 	switch name {
-	case g.RaftStorageBoltDB:
+	case RaftStorageBoltDB:
 		{
 			if len(dbPath) < 1 {
 				err = fmt.Errorf("Missing dbPath for storage '%s'", name)
@@ -734,7 +734,7 @@ func (c *clusterV2) storageEngineFactory(name string, dbPath ...string) (raftlib
 				stableStore = storage
 			}
 		}
-	case g.RaftStorageMemory:
+	case RaftStorageMemory:
 		{
 			storage := raftlib.NewInmemStore()
 			logStore = storage
@@ -745,6 +745,33 @@ func (c *clusterV2) storageEngineFactory(name string, dbPath ...string) (raftlib
 	}
 
 	return logStore, stableStore, err
+}
+
+// snapshotEngineFactory 根据存储引擎名字构造快照存储实例
+func (c *clusterV2) snapshotEngineFactory(name string, snapshotDir ...string) (raftlib.SnapshotStore, error) {
+	var (
+		err           error
+		snapshotStore raftlib.SnapshotStore
+	)
+
+	switch name {
+	case RaftStorageBoltDB:
+		{
+			if len(snapshotDir) < 1 {
+				err = fmt.Errorf("Missing snapshotDir for storage '%s'", name)
+				break
+			}
+			snapshotStore, err = raftlib.NewFileSnapshotStore(snapshotDir[0], 3, nil)
+		}
+	case RaftStorageMemory:
+		{
+			snapshotStore = raftlib.NewInmemSnapshotStore()
+		}
+	default:
+		err = fmt.Errorf("No snapshot engine found for %s", name)
+	}
+
+	return snapshotStore, err
 }
 
 // metaBytes 并发安全地将元数据序列化
