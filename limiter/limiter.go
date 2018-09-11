@@ -18,6 +18,9 @@ type Interface interface {
 	// RegistQuota 注册资源配额
 	RegistQuota(r *APIRegistQuotaReq) *APIRegistQuotaResp
 
+	// DeleteQuota 删除资源配额
+	DeleteQuota(r *APIDeleteQuotaReq) *APIDeleteQuotaResp
+
 	// Borrow 借资源
 	Borrow(r *APIBorrowReq) *APIBorrowResp
 
@@ -87,6 +90,23 @@ func (l *limiterV2) RegistQuota(r *APIRegistQuotaReq) *APIRegistQuotaResp {
 	}
 
 	return l.c.RegistQuota(r)
+}
+
+func (l *limiterV2) DeleteQuota(r *APIDeleteQuotaReq) *APIDeleteQuotaResp {
+	var rp APIDeleteQuotaResp
+
+	if l.c.IsLeader() == false {
+		rp.Code = 307
+		rp.Msg = l.c.LeaderHTTPAddr()
+		return &rp
+	}
+	if len(r.RCType) <= 0 {
+		rp.Code = 403
+		rp.Msg = "Missing 'RCType' field"
+		return &rp
+	}
+
+	return l.c.DeleteQuota(r)
 }
 
 func (l *limiterV2) Borrow(r *APIBorrowReq) *APIBorrowResp {

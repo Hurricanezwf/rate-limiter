@@ -26,7 +26,7 @@ func TestRegist(t *testing.T) {
 	tId = tIdMd5[:]
 	cId = cIdMd5[:]
 
-	url := fmt.Sprintf("http://%s/v1/registQuota", hostAddr)
+	url := fmt.Sprintf("http://%s%s", hostAddr, RegistQuotaURI)
 	buf := bytes.NewBuffer(nil)
 
 	json.NewEncoder(buf).Encode(APIRegistQuotaReq{
@@ -55,13 +55,44 @@ func TestRegist(t *testing.T) {
 	}
 }
 
+func TestDelete(t *testing.T) {
+	tIdMd5 := md5.Sum([]byte("create_host"))
+	tId = tIdMd5[:]
+
+	url := fmt.Sprintf("http://%s%s", hostAddr, DeleteQuotaURI)
+	buf := bytes.NewBuffer(nil)
+
+	json.NewEncoder(buf).Encode(APIDeleteQuotaReq{
+		RCType: tId,
+	})
+
+	for {
+		rp, err := http.Post(url, "application/json", buf)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		buf.Reset()
+		buf.ReadFrom(rp.Body)
+		rp.Body.Close()
+
+		if rp.StatusCode == 307 {
+			url = rp.Header.Get("Location")
+			continue
+		}
+		if rp.StatusCode != 200 {
+			t.Fatalf("StatusCode(%d) != 200, %s", rp.StatusCode, buf.String())
+		}
+		break
+	}
+}
+
 func TestBorrow(t *testing.T) {
 	tIdMd5 := md5.Sum([]byte("create_host"))
 	cIdMd5 := md5.Sum([]byte("zwf"))
 	tId = tIdMd5[:]
 	cId = cIdMd5[:]
 
-	url := fmt.Sprintf("http://%s/v1/borrow", hostAddr)
+	url := fmt.Sprintf("http://%s%s", hostAddr, BorrowURI)
 	buf := bytes.NewBuffer(nil)
 
 	json.NewEncoder(buf).Encode(APIBorrowReq{
@@ -96,7 +127,7 @@ func TestReturnOne(t *testing.T) {
 	tId = tIdMd5[:]
 	cId = cIdMd5[:]
 
-	url := fmt.Sprintf("http://%s/v1/return", hostAddr)
+	url := fmt.Sprintf("http://%s%s", hostAddr, ReturnURI)
 	buf := bytes.NewBuffer(nil)
 
 	json.NewEncoder(buf).Encode(APIReturnReq{
@@ -130,7 +161,7 @@ func TestReturnAll(t *testing.T) {
 	tId = tIdMd5[:]
 	cId = cIdMd5[:]
 
-	url := fmt.Sprintf("http://%s/v1/returnAll", hostAddr)
+	url := fmt.Sprintf("http://%s%s", hostAddr, ReturnAllURI)
 	buf := bytes.NewBuffer(nil)
 
 	json.NewEncoder(buf).Encode(APIReturnAllReq{
@@ -159,7 +190,7 @@ func TestReturnAll(t *testing.T) {
 }
 
 func TestResourceList(t *testing.T) {
-	url := fmt.Sprintf("http://%s/v1/rc", hostAddr)
+	url := fmt.Sprintf("http://%s%s", hostAddr, ResourceListURI)
 	buf := bytes.NewBuffer(nil)
 
 	json.NewEncoder(buf).Encode(APIResourceListReq{

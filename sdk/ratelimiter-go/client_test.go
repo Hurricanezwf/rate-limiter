@@ -10,7 +10,7 @@ import (
 var (
 	rcTypeId        = []byte("zwf-test")
 	quota    uint32 = uint32(10)
-	expire   int64  = int64(100)
+	expire   int64  = int64(1000)
 	cluster         = []string{
 		"127.0.0.1:20000",
 		"127.0.0.1:20001",
@@ -31,6 +31,22 @@ func TestRegistQuota(t *testing.T) {
 		t.Fatal(err.Error())
 	} else {
 		t.Logf("Regist quota OK")
+	}
+}
+
+func TestDeleteQuota(t *testing.T) {
+	l, err := New(&ClientConfig{
+		Cluster: cluster,
+	})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer l.Close()
+
+	if err := l.DeleteQuota(rcTypeId); err != nil {
+		t.Fatal(err.Error())
+	} else {
+		t.Logf("Delete quota OK")
 	}
 }
 
@@ -72,11 +88,11 @@ func TestBorrowWithTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	defer l.Close()
+	//defer l.Close()
 
 	// 借用资源
 	start := time.Now()
-	rcId, err := l.BorrowWithTimeout(rcTypeId, expire, 5*time.Second)
+	rcId, err := l.BorrowWithTimeout(rcTypeId, expire, 10*time.Second)
 	if err != nil {
 		t.Fatal(err.Error())
 	} else {

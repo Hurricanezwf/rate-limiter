@@ -58,6 +58,19 @@ func (m *metaV2) RegistQuota(rcType []byte, quota uint32, resetInterval, timesta
 	return nil
 }
 
+func (m *metaV2) DeleteQuota(rcType []byte) error {
+	m.gLock.Lock()
+	defer m.gLock.Unlock()
+
+	rcTypeStr := encoding.BytesToString(rcType)
+	rcMgr := m.mgr[rcTypeStr]
+	if rcMgr == nil {
+		return ErrResourceNotRegisted
+	}
+	delete(m.mgr, rcTypeStr)
+	return nil
+}
+
 func (m *metaV2) Borrow(rcType, clientId []byte, expire, timestamp int64) (string, error) {
 	rcTypeStr := encoding.BytesToString(rcType)
 	rcMgr := m.safeFindManager(rcTypeStr)

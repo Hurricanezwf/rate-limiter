@@ -11,6 +11,9 @@ type Interface interface {
 	// timestamp    : 注册时的时间戳
 	RegistQuota(rcType []byte, quota uint32, resetInterval, timestamp int64) error
 
+	// DeleteQuota 删除资源配额
+	DeleteQuota(rcType []byte) error
+
 	// Borrow 申请一次执行资格，如果成功返回nil
 	// expire   : 表示申请的资源的自动回收时间
 	// timestamp: 申请资源时的时间戳

@@ -43,6 +43,9 @@ type Interface interface {
 	// RegistQuota 注册资源配额
 	RegistQuota(r *APIRegistQuotaReq) *APIRegistQuotaResp
 
+	// DeleteQuota 删除资源配额
+	DeleteQuota(r *APIDeleteQuotaReq) *APIDeleteQuotaResp
+
 	// Borrow 申请一次执行资格，如果成功返回nil
 	// expire 表示申请的资源的自动回收时间
 	Borrow(r *APIBorrowReq) *APIBorrowResp
@@ -511,6 +514,28 @@ func (c *clusterV2) RegistQuota(r *APIRegistQuotaReq) *APIRegistQuotaResp {
 	return future.Response().(*APIRegistQuotaResp)
 }
 
+// DeleteQuota 删除资源配额
+func (c *clusterV2) DeleteQuota(r *APIDeleteQuotaReq) *APIDeleteQuotaResp {
+	rp := &APIDeleteQuotaResp{Code: 500}
+	cmd, err := encodeCMD(ActionDeleteQuota, r)
+	if err != nil {
+		rp.Msg = fmt.Sprintf("Encode cmd failed, %v", err)
+		return rp
+	}
+
+	if g.Config.Raft.Enable == false {
+		_, args := resolveCMD(cmd)
+		return c.handleDeleteQuota(args)
+	}
+
+	future := c.raft.Apply(cmd, c.raftTimeout)
+	if err = future.Error(); err != nil {
+		rp.Msg = err.Error()
+		return rp
+	}
+	return future.Response().(*APIDeleteQuotaResp)
+}
+
 // Borrow 申请一次执行资格，如果成功返回nil
 func (c *clusterV2) Borrow(r *APIBorrowReq) *APIBorrowResp {
 	rp := &APIBorrowResp{Code: 500}
@@ -612,14 +637,16 @@ func (c *clusterV2) ResourceList(r *APIResourceListReq) *APIResourceListResp {
 // switchDo 根据命令类型选择执行
 func (c *clusterV2) switchDo(cmd byte, args []byte) interface{} {
 	switch cmd {
-	case ActionRegistQuota:
-		return c.handleRegistQuota(args)
 	case ActionBorrow:
 		return c.handleBorrow(args)
 	case ActionReturn:
 		return c.handleReturn(args)
 	case ActionReturnAll:
 		return c.handleReturnAll(args)
+	case ActionRegistQuota:
+		return c.handleRegistQuota(args)
+	case ActionDeleteQuota:
+		return c.handleDeleteQuota(args)
 	case ActionLeaderNotify:
 		return c.handleLeaderNotify(args)
 	case ActionRecycle:
@@ -642,6 +669,27 @@ func (c *clusterV2) handleRegistQuota(args []byte) *APIRegistQuotaResp {
 	}
 
 	if err = c.m.RegistQuota(r.RCType, r.Quota, r.ResetInterval, r.Timestamp); err != nil {
+		rp.Code = 403
+		rp.Msg = err.Error()
+		return &rp
+	}
+
+	return &rp
+}
+
+// handleDeleteQuota 处理删除资源配额的逻辑
+func (c *clusterV2) handleDeleteQuota(args []byte) *APIDeleteQuotaResp {
+	var err error
+	var r APIDeleteQuotaReq
+	var rp APIDeleteQuotaResp
+
+	if err = resolveArgs(args, &r); err != nil {
+		rp.Code = 500
+		rp.Msg = fmt.Sprintf("Resolve request failed, %v", err)
+		return &rp
+	}
+
+	if err = c.m.DeleteQuota(r.RCType); err != nil {
 		rp.Code = 403
 		rp.Msg = err.Error()
 		return &rp

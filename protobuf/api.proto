@@ -80,6 +80,17 @@ message APIResourceDetail {
     uint32  UsedCount                       = 6;
 }
 
+// APIDeleteQuotaReq 删除资源配额请求格式
+message APIDeleteQuotaReq {
+    bytes   RCType                          = 1;
+}
+
+// APIDeleteQuotaResp 删除资源配额响应格式
+message APIDeleteQuotaResp {
+    uint32  Code                            = 1;
+    string  Msg                             = 2;
+}
+
 // CMDLeaderNotify 下发通知所有结点Leader结点的HTTP服务地址的命令
 message CMDLeaderNotify {
     string RaftAddr                         = 1;

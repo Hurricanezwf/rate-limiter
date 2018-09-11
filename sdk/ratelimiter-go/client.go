@@ -111,7 +111,7 @@ func (c *RateLimiterClient) Close() error {
 			continue
 		}
 
-		if _, err = c.sendPost("/v1/returnAll", buf); err != nil {
+		if _, err = c.sendPost(proto.ReturnAllURI, buf); err != nil {
 			lastErr = err
 			continue
 		}
@@ -120,7 +120,7 @@ func (c *RateLimiterClient) Close() error {
 	return lastErr
 }
 
-// Regist 注册资源配额
+// RegistQuota 注册资源配额
 // resourceTypei : 用户自定义资源类型
 // quota         : 资源配额，例如quota为10表示限流10次/s
 // resetInterval : 资源配额重置周期，单位秒
@@ -134,7 +134,23 @@ func (c *RateLimiterClient) RegistQuota(resourceType []byte, quota uint32, reset
 	})
 
 	if err == nil {
-		_, err = c.sendPost("/v1/registQuota", buf)
+		_, err = c.sendPost(proto.RegistQuotaURI, buf)
+	}
+
+	return err
+}
+
+// DeleteQuota 删除资源配额
+// resourceTypei : 用户自定义资源类型
+func (c *RateLimiterClient) DeleteQuota(resourceType []byte) error {
+	var encoder jsonpb.Marshaler
+	var buf = bytes.NewBuffer(nil)
+	var err = encoder.Marshal(buf, &proto.APIDeleteQuotaReq{
+		RCType: resourceType,
+	})
+
+	if err == nil {
+		_, err = c.sendPost(proto.DeleteQuotaURI, buf)
 	}
 
 	return err
@@ -155,7 +171,7 @@ func (c *RateLimiterClient) Borrow(resourceType []byte, expire int64) (resourceI
 		return resourceId, err
 	}
 
-	rcId, err := c.sendPost("/v1/borrow", buf)
+	rcId, err := c.sendPost(proto.BorrowURI, buf)
 	if err != nil {
 		return resourceId, err
 	}
@@ -189,7 +205,7 @@ func (c *RateLimiterClient) BorrowWithTimeout(resourceType []byte, expire int64,
 
 	for {
 		tmpBuf := bytes.NewBuffer(buf.Bytes())
-		rcId, err := c.sendPost("/v1/borrow", tmpBuf)
+		rcId, err := c.sendPost(proto.BorrowURI, tmpBuf)
 
 		// 请求成功
 		if err == nil {
@@ -230,7 +246,7 @@ func (c *RateLimiterClient) Return(resourceId string) error {
 	})
 
 	if err == nil {
-		_, err = c.sendPost("/v1/return", buf)
+		_, err = c.sendPost(proto.ReturnURI, buf)
 	}
 
 	return err
@@ -248,7 +264,7 @@ func (c *RateLimiterClient) ResourceList(rcType []byte) ([]*proto.APIResourceDet
 		return nil, err
 	}
 
-	if body, err := c.sendPost("/v1/rc", buf); err != nil {
+	if body, err := c.sendPost(proto.ResourceListURI, buf); err != nil {
 		return nil, err
 	} else {
 		buf.Reset()

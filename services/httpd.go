@@ -17,11 +17,12 @@ import (
 var ctrl = newController(10000)
 
 func init() {
-	http.HandleFunc("/v1/registQuota", registQuota)
-	http.HandleFunc("/v1/borrow", borrow)
-	http.HandleFunc("/v1/return", return_)
-	http.HandleFunc("/v1/returnAll", returnAll)
-	http.HandleFunc("/v1/rc", resourceList)
+	http.HandleFunc(RegistQuotaURI, registQuota)
+	http.HandleFunc(DeleteQuotaURI, deleteQuota)
+	http.HandleFunc(BorrowURI, borrow)
+	http.HandleFunc(ReturnURI, return_)
+	http.HandleFunc(ReturnAllURI, returnAll)
+	http.HandleFunc(ResourceListURI, resourceList)
 }
 
 // runHttpd 启动HTTP服务
@@ -77,6 +78,44 @@ FINISH:
 	w.Write([]byte(msg))
 
 	glog.V(1).Infof("%s [/v1/registQuota] RSP: statusCode:%d, msg:%s, elapse:%v", req.Method, code, msg, time.Since(start))
+}
+
+// deleteQuota 删除资源配额
+func deleteQuota(w http.ResponseWriter, req *http.Request) {
+	var start = time.Now()
+	var r APIDeleteQuotaReq
+	var rp *APIDeleteQuotaResp
+
+	// 解析请求
+	code, msg := resolveRequest(w, req, &r, http.MethodPost)
+	if code != -1 {
+		defer ctrl.out()
+	}
+	if code != 0 {
+		goto FINISH
+	}
+
+	// 执行请求
+	rp = l.DeleteQuota(&r)
+	switch rp.Code {
+	case 0:
+		code = http.StatusOK
+		glog.V(2).Infof("Delete resource '%s' SUCCESS", encoding.BytesToString(r.RCType))
+	case 307:
+		req.URL.Host = rp.Msg
+		w.Header().Set("Location", req.URL.String())
+		code = http.StatusTemporaryRedirect
+	default:
+		code = int(rp.Code)
+		msg = rp.Msg
+		glog.Warningf("Delete resource '%s' FAILED, %s", encoding.BytesToString(r.RCType), msg)
+	}
+
+FINISH:
+	w.WriteHeader(code)
+	w.Write([]byte(msg))
+
+	glog.V(1).Infof("%s [/v1/deleteQuota] RSP: statusCode:%d, msg:%s, elapse:%v", req.Method, code, msg, time.Since(start))
 }
 
 // borrow 获取一次执行权限
