@@ -1,0 +1,14 @@
+[
+    {
+        "ID": "NODE-0",
+        "Address": "rate-limiter-0:17250"
+    },
+    {
+        "ID": "NODE-1",
+        "Address": "rate-limiter-1:17250"
+    },
+    {
+        "ID": "NODE-2",
+        "Address": "rate-limiter-2:17250"
+    }
+]

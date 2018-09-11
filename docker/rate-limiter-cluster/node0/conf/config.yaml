@@ -1,0 +1,27 @@
+# 【Httpd配置】
+Httpd:
+  Listen: rate-limiter-0:20000
+
+
+
+# 【日志配置】
+Log:
+  # 日志冗余度，取值[0,10]
+  Verbose: 3
+  # 日志记录方式，"console" | "file"
+  Way: file
+  # 日志记录到目标目录
+  Dir: /rate-limiter/logs/
+
+
+
+# 【Raft配置】
+Raft:
+  Enable: true
+  ID: NODE-0
+  Bind: rate-limiter-0:17250
+  ClusterConfJson: /rate-limiter/conf/raft-cluster.json
+  Storage: memory
+  RootDir: ./meta
+  TCPMaxPool: 3
+  Timeout: 10000

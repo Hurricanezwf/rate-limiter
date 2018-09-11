@@ -1,0 +1,26 @@
+syntax = "proto3";
+package meta;
+
+
+message PB_Meta {
+    map<string, PB_Manager> Value                 = 1;
+}
+
+
+message PB_Manager {
+    bytes                       RCType            = 1;
+    uint32                      Quota             = 2;
+    repeated string             CanBorrow         = 3;
+    repeated string             Recycled          = 4;
+    repeated PB_BorrowRecord    Used              = 5;
+    uint32                      UsedCount         = 6;
+    int64                       ResetInterval     = 7;
+    int64                       LastReset         = 8;
+}
+
+message PB_BorrowRecord {
+    bytes  ClientID                               = 1;
+    string RCID                                   = 2;
+    int64  BorrowAt                               = 3;
+    int64  ExpireAt                               = 4;
+}

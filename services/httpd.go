@@ -1,26 +1,28 @@
 package services
 
 import (
-	"encoding/json"
+	"bytes"
 	"errors"
-	"io/ioutil"
+	"fmt"
 	"net/http"
-	"os"
 	"time"
 
+	"github.com/Hurricanezwf/rate-limiter/encoding"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
 	"github.com/Hurricanezwf/toolbox/logging/glog"
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 )
 
 var ctrl = newController(10000)
 
 func init() {
-	//http.HandleFunc("/v1/snapshot", snapshot) // for test only
-	//http.HandleFunc("/v1/restore", restore)   // for test only
-	http.HandleFunc("/v1/registQuota", registQuota)
-	http.HandleFunc("/v1/borrow", borrow)
-	http.HandleFunc("/v1/return", return_)
-	http.HandleFunc("/v1/returnAll", returnAll)
+	http.HandleFunc(RegistQuotaURI, registQuota)
+	http.HandleFunc(DeleteQuotaURI, deleteQuota)
+	http.HandleFunc(BorrowURI, borrow)
+	http.HandleFunc(ReturnURI, return_)
+	http.HandleFunc(ReturnAllURI, returnAll)
+	http.HandleFunc(ResourceListURI, resourceList)
 }
 
 // runHttpd 启动HTTP服务
@@ -42,233 +44,260 @@ func runHttpd(addr string) error {
 
 // registQuota 注册资源配额
 func registQuota(w http.ResponseWriter, req *http.Request) {
-	if err := ctrl.in(); err != nil {
-		w.WriteHeader(403)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	defer ctrl.out()
-
 	var start = time.Now()
-	var r = &Request{
-		Action:      ActionRegistQuota,
-		RegistQuota: &APIRegistQuotaReq{},
+	var r APIRegistQuotaReq
+	var rp *APIRegistQuotaResp
+
+	// 解析请求
+	code, msg := resolveRequest(w, req, &r, http.MethodPost)
+	if code != -1 {
+		defer ctrl.out()
+	}
+	if code != 0 {
+		goto FINISH
 	}
 
-	statusCode, msg := resolveRequest(w, req, r.RegistQuota)
-	if statusCode == 200 {
-		if rp := l.Do(r); rp.Err != nil {
-			statusCode = 403
-			msg = rp.Err.Error()
-		}
+	// 执行请求
+	rp = l.RegistQuota(&r)
+	switch rp.Code {
+	case 0:
+		code = http.StatusOK
+		glog.V(2).Infof("Regist '%d' quotas for resource '%s' SUCCESS", r.Quota, encoding.BytesToString(r.RCType))
+	case 307:
+		req.URL.Host = rp.Msg
+		w.Header().Set("Location", req.URL.String())
+		code = http.StatusTemporaryRedirect
+	default:
+		code = int(rp.Code)
+		msg = rp.Msg
+		glog.Warningf("Regist '%d' quotas for resource '%s' FAILED, %s", r.Quota, encoding.BytesToString(r.RCType), msg)
 	}
 
-	w.WriteHeader(statusCode)
+FINISH:
+	w.WriteHeader(code)
 	w.Write([]byte(msg))
 
-	glog.V(1).Infof("%s [/v1/registQuota]  statusCode:%d, msg:%s, elapse:%v", req.Method, statusCode, msg, time.Since(start))
+	glog.V(1).Infof("%s [/v1/registQuota] RSP: statusCode:%d, msg:%s, elapse:%v", req.Method, code, msg, time.Since(start))
+}
+
+// deleteQuota 删除资源配额
+func deleteQuota(w http.ResponseWriter, req *http.Request) {
+	var start = time.Now()
+	var r APIDeleteQuotaReq
+	var rp *APIDeleteQuotaResp
+
+	// 解析请求
+	code, msg := resolveRequest(w, req, &r, http.MethodPost)
+	if code != -1 {
+		defer ctrl.out()
+	}
+	if code != 0 {
+		goto FINISH
+	}
+
+	// 执行请求
+	rp = l.DeleteQuota(&r)
+	switch rp.Code {
+	case 0:
+		code = http.StatusOK
+		glog.V(2).Infof("Delete resource '%s' SUCCESS", encoding.BytesToString(r.RCType))
+	case 307:
+		req.URL.Host = rp.Msg
+		w.Header().Set("Location", req.URL.String())
+		code = http.StatusTemporaryRedirect
+	default:
+		code = int(rp.Code)
+		msg = rp.Msg
+		glog.Warningf("Delete resource '%s' FAILED, %s", encoding.BytesToString(r.RCType), msg)
+	}
+
+FINISH:
+	w.WriteHeader(code)
+	w.Write([]byte(msg))
+
+	glog.V(1).Infof("%s [/v1/deleteQuota] RSP: statusCode:%d, msg:%s, elapse:%v", req.Method, code, msg, time.Since(start))
 }
 
 // borrow 获取一次执行权限
 func borrow(w http.ResponseWriter, req *http.Request) {
-	if err := ctrl.in(); err != nil {
-		w.WriteHeader(403)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	defer ctrl.out()
-
 	var start = time.Now()
-	var r = &Request{
-		Action: ActionBorrow,
-		Borrow: &APIBorrowReq{},
+	var r APIBorrowReq
+	var rp *APIBorrowResp
+
+	// 解析请求
+	code, msg := resolveRequest(w, req, &r, http.MethodPost)
+	if code != -1 {
+		defer ctrl.out()
+	}
+	if code != 0 {
+		goto FINISH
 	}
 
-	statusCode, msg := resolveRequest(w, req, r.Borrow)
-	if statusCode == 200 {
-		if rp := l.Do(r); rp.Err != nil {
-			statusCode = 403
-			msg = rp.Err.Error()
-		} else {
-			statusCode = 200
-			msg = rp.Borrow.RCID
-		}
+	// 执行请求
+	rp = l.Borrow(&r)
+	switch rp.Code {
+	case 0:
+		code = http.StatusOK
+		msg = rp.RCID
+		glog.V(2).Infof("Client '%s' borrow '%s' SUCCESS", encoding.BytesToString(r.ClientID), rp.RCID)
+	case 307:
+		req.URL.Host = rp.Msg
+		w.Header().Set("Location", req.URL.String())
+		code = http.StatusTemporaryRedirect
+	default:
+		code = int(rp.Code)
+		msg = rp.Msg
+		glog.Warningf("Client '%s' borrow '%s' FAILED, %s", encoding.BytesToString(r.ClientID), encoding.BytesToString(r.RCType), msg)
 	}
 
-	w.WriteHeader(statusCode)
+FINISH:
+	w.WriteHeader(code)
 	w.Write([]byte(msg))
 
-	glog.V(1).Infof("%s [/v1/borrow]  statusCode:%d, msg:%s, elapse:%v", req.Method, statusCode, msg, time.Since(start))
+	glog.V(1).Infof("%s [/v1/borrow] RSP: statusCode:%d, msg:%s, elapse:%v", req.Method, code, msg, time.Since(start))
 }
 
 // return_ 释放一次执行权限
 func return_(w http.ResponseWriter, req *http.Request) {
-	if err := ctrl.in(); err != nil {
-		w.WriteHeader(403)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	defer ctrl.out()
-
 	var start = time.Now()
-	var r = &Request{
-		Action: ActionReturn,
-		Return: &APIReturnReq{},
+	var r APIReturnReq
+	var rp *APIReturnResp
+
+	// 解析请求
+	code, msg := resolveRequest(w, req, &r, http.MethodPost)
+	if code != -1 {
+		defer ctrl.out()
+	}
+	if code != 0 {
+		goto FINISH
 	}
 
-	statusCode, msg := resolveRequest(w, req, r.Return)
-	if statusCode == 200 {
-		if rp := l.Do(r); rp.Err != nil {
-			statusCode = 403
-			msg = rp.Err.Error()
-		}
+	// 执行请求
+	rp = l.Return(&r)
+	switch rp.Code {
+	case 0:
+		code = http.StatusOK
+		glog.V(2).Infof("Client '%s' return '%s' SUCCESS", encoding.BytesToString(r.ClientID), r.RCID)
+	case 307:
+		req.URL.Host = rp.Msg
+		w.Header().Set("Location", req.URL.String())
+		code = http.StatusTemporaryRedirect
+	default:
+		code = int(rp.Code)
+		msg = rp.Msg
+		glog.Warningf("Client '%s' return '%s' FAILED, %s", encoding.BytesToString(r.ClientID), r.RCID, msg)
 	}
 
-	w.WriteHeader(statusCode)
+FINISH:
+	w.WriteHeader(code)
 	w.Write([]byte(msg))
 
-	glog.V(1).Infof("%s [/v1/return]  statusCode:%d, msg:%s, elapse:%v", req.Method, statusCode, msg, time.Since(start))
+	glog.V(1).Infof("%s [/v1/return] RSP: statusCode:%d, msg:%s, elapse:%v", req.Method, code, msg, time.Since(start))
 }
 
 // returnAll 释放用户的所有占用的权限
 func returnAll(w http.ResponseWriter, req *http.Request) {
-	if err := ctrl.in(); err != nil {
-		w.WriteHeader(403)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	defer ctrl.out()
-
 	var start = time.Now()
-	var r = &Request{
-		Action:    ActionReturnAll,
-		ReturnAll: &APIReturnAllReq{},
+	var r APIReturnAllReq
+	var rp *APIReturnAllResp
+
+	// 解析请求
+	code, msg := resolveRequest(w, req, &r, http.MethodPost)
+	if code != -1 {
+		defer ctrl.out()
+	}
+	if code != 0 {
+		goto FINISH
 	}
 
-	statusCode, msg := resolveRequest(w, req, r.ReturnAll)
-	if statusCode == 200 {
-		if rp := l.Do(r); rp.Err != nil {
-			statusCode = 403
-			msg = rp.Err.Error()
-		}
+	// 执行请求
+	rp = l.ReturnAll(&r)
+	switch rp.Code {
+	case 0:
+		code = http.StatusOK
+		glog.V(2).Infof("Client '%s' return all resources of type '%s' SUCCESS", encoding.BytesToString(r.ClientID), encoding.BytesToString(r.RCType))
+	case 307:
+		req.URL.Host = rp.Msg
+		w.Header().Set("Location", req.URL.String())
+		code = http.StatusTemporaryRedirect
+	default:
+		code = int(rp.Code)
+		msg = rp.Msg
+		glog.Warningf("Client '%s' return all resources of type '%s' FAILED, %s", encoding.BytesToString(r.ClientID), encoding.BytesToString(r.RCType), msg)
 	}
 
-	w.WriteHeader(statusCode)
+FINISH:
+	w.WriteHeader(code)
 	w.Write([]byte(msg))
 
-	glog.V(1).Infof("%s [/v1/returnAll]  statusCode:%d, msg:%s, elapse:%v", req.Method, statusCode, msg, time.Since(start))
+	glog.V(1).Infof("%s [/v1/returnAll] RSP: statusCode:%d, msg:%s, elapse:%v", req.Method, code, msg, time.Since(start))
 }
 
-// snapshot 对元数据做快照
-func snapshot(w http.ResponseWriter, req *http.Request) {
+// resourceList 查询资源详情列表
+func resourceList(w http.ResponseWriter, req *http.Request) {
+	var start = time.Now()
+	var buf = bytes.NewBuffer(nil)
+	var r APIResourceListReq
+	var rp *APIResourceListResp
+
+	// 解析请求
+	code, msg := resolveRequest(w, req, &r, http.MethodPost)
+	if code != -1 {
+		defer ctrl.out()
+	}
+	if code != 0 {
+		buf.WriteString(msg)
+		goto FINISH
+	}
+
+	// 执行请求
+	rp = l.ResourceList(&r)
+	switch rp.Code {
+	case 0:
+		encoder := jsonpb.Marshaler{}
+		encoder.Marshal(buf, rp)
+		code = http.StatusOK
+		glog.V(2).Info("List resources SUCCESS")
+	case 307:
+		req.URL.Host = rp.Msg
+		w.Header().Set("Location", req.URL.String())
+		code = http.StatusTemporaryRedirect
+	default:
+		code = int(rp.Code)
+		buf.WriteString(rp.Msg)
+		glog.Warningf("List resources FAILED, %s", buf.String())
+	}
+
+FINISH:
+	w.WriteHeader(code)
+	w.Write(buf.Bytes())
+
+	glog.V(1).Infof("%s [/v1/rc] RSP: statusCode:%d, elapse:%v", req.Method, code, time.Since(start))
+}
+
+func resolveRequest(w http.ResponseWriter, req *http.Request, message proto.Message, requiredMethod string) (code int, msg string) {
+	// 访问控制检测
 	if err := ctrl.in(); err != nil {
-		w.WriteHeader(403)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	defer ctrl.out()
-
-	start := time.Now()
-	defer glog.Infof("%s [/v1/snapshot] -- %v", req.Method, time.Since(start))
-
-	// check leader
-	if l.IsLeader() == false {
-		addr := l.LeaderHTTPAddr()
-		if len(addr) <= 0 {
-			w.WriteHeader(503)
-			w.Write([]byte(ErrLeaderNotFound.Error()))
-			return
-		}
-		req.URL.Host = addr
-		w.Header().Set("Location", req.URL.String())
-		w.WriteHeader(307)
-		return
+		return -1, err.Error()
 	}
 
-	_, err := l.Snapshot()
-	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte(err.Error()))
-	} else {
-		w.WriteHeader(200)
-		w.Write([]byte("Snapshot OK"))
-	}
-	return
-}
-
-// restore 从元数据恢复数据
-func restore(w http.ResponseWriter, req *http.Request) {
-	if err := ctrl.in(); err != nil {
-		w.WriteHeader(403)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	defer ctrl.out()
-
-	start := time.Now()
-	defer glog.Infof("%s [/v1/restore] -- %v", req.Method, time.Since(start))
-
-	// check leader
-	if l.IsLeader() == false {
-		addr := l.LeaderHTTPAddr()
-		if len(addr) <= 0 {
-			w.WriteHeader(503)
-			w.Write([]byte(ErrLeaderNotFound.Error()))
-			return
-		}
-		req.URL.Host = addr
-		w.Header().Set("Location", req.URL.String())
-		w.WriteHeader(307)
-		return
+	// 验证请求方法
+	if req.Method != requiredMethod {
+		return http.StatusMethodNotAllowed, fmt.Sprintf("Method `%s` is needed", requiredMethod)
 	}
 
-	f, err := os.Open("./snapshot.limiter")
-	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte(err.Error()))
-		return
+	// 解析请求
+	buf := bytes.NewBuffer(nil)
+	buf.ReadFrom(req.Body)
+	req.Body.Close()
+
+	glog.V(1).Infof("%s [%s] REQ: %s", req.Method, req.RequestURI, buf.String())
+
+	if err := jsonpb.Unmarshal(buf, message); err != nil {
+		return http.StatusBadRequest, err.Error()
 	}
 
-	if err = l.Restore(f); err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte(err.Error()))
-	} else {
-		w.WriteHeader(200)
-		w.Write([]byte("Restore OK"))
-	}
-	return
-}
-
-func resolveRequest(w http.ResponseWriter, req *http.Request, argToResolve interface{}) (statusCode int, msg string) {
-	if req.Method != http.MethodPost {
-		return 405, "Method `POST` is needed"
-	}
-
-	// check leader
-	if l.IsLeader() == false {
-		addr := l.LeaderHTTPAddr()
-		if len(addr) <= 0 {
-			return 503, ErrLeaderNotFound.Error()
-		}
-		req.URL.Host = addr
-		w.Header().Set("Location", req.URL.String())
-		return 307, ""
-	}
-
-	// 读取body
-	b, err := ioutil.ReadAll(req.Body)
-	defer req.Body.Close()
-
-	if err != nil {
-		return 500, err.Error()
-	}
-
-	// 解析参数
-	if err := json.Unmarshal(b, argToResolve); err != nil {
-		return 500, err.Error()
-	}
-
-	return 200, ""
+	return 0, ""
 }
 
 // controller 访问控制器

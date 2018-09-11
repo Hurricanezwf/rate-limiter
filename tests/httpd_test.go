@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
-	"time"
 
+	"github.com/Hurricanezwf/rate-limiter/meta"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
 )
 
@@ -26,12 +26,44 @@ func TestRegist(t *testing.T) {
 	tId = tIdMd5[:]
 	cId = cIdMd5[:]
 
-	url := fmt.Sprintf("http://%s/v1/registQuota", hostAddr)
+	url := fmt.Sprintf("http://%s%s", hostAddr, RegistQuotaURI)
 	buf := bytes.NewBuffer(nil)
 
 	json.NewEncoder(buf).Encode(APIRegistQuotaReq{
-		RCTypeID: tId,
-		Quota:    10,
+		RCType:        tId,
+		Quota:         10,
+		ResetInterval: 60,
+	})
+
+	for {
+		rp, err := http.Post(url, "application/json", buf)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		buf.Reset()
+		buf.ReadFrom(rp.Body)
+		rp.Body.Close()
+
+		if rp.StatusCode == 307 {
+			url = rp.Header.Get("Location")
+			continue
+		}
+		if rp.StatusCode != 200 {
+			t.Fatalf("StatusCode(%d) != 200, %s", rp.StatusCode, buf.String())
+		}
+		break
+	}
+}
+
+func TestDelete(t *testing.T) {
+	tIdMd5 := md5.Sum([]byte("create_host"))
+	tId = tIdMd5[:]
+
+	url := fmt.Sprintf("http://%s%s", hostAddr, DeleteQuotaURI)
+	buf := bytes.NewBuffer(nil)
+
+	json.NewEncoder(buf).Encode(APIDeleteQuotaReq{
+		RCType: tId,
 	})
 
 	for {
@@ -60,11 +92,11 @@ func TestBorrow(t *testing.T) {
 	tId = tIdMd5[:]
 	cId = cIdMd5[:]
 
-	url := fmt.Sprintf("http://%s/v1/borrow", hostAddr)
+	url := fmt.Sprintf("http://%s%s", hostAddr, BorrowURI)
 	buf := bytes.NewBuffer(nil)
 
 	json.NewEncoder(buf).Encode(APIBorrowReq{
-		RCTypeID: tId,
+		RCType:   tId,
 		ClientID: cId,
 		Expire:   1000,
 	})
@@ -95,11 +127,11 @@ func TestReturnOne(t *testing.T) {
 	tId = tIdMd5[:]
 	cId = cIdMd5[:]
 
-	url := fmt.Sprintf("http://%s/v1/return", hostAddr)
+	url := fmt.Sprintf("http://%s%s", hostAddr, ReturnURI)
 	buf := bytes.NewBuffer(nil)
 
 	json.NewEncoder(buf).Encode(APIReturnReq{
-		RCID:     "462ec3705249fd4358a1bcd02ce5e43f_rc#0",
+		RCID:     meta.MakeResourceID(tId, 0),
 		ClientID: cId,
 	})
 
@@ -124,14 +156,17 @@ func TestReturnOne(t *testing.T) {
 }
 
 func TestReturnAll(t *testing.T) {
+	tIdMd5 := md5.Sum([]byte("create_host"))
 	cIdMd5 := md5.Sum([]byte("zwf"))
+	tId = tIdMd5[:]
 	cId = cIdMd5[:]
 
-	url := fmt.Sprintf("http://%s/v1/returnAll", hostAddr)
+	url := fmt.Sprintf("http://%s%s", hostAddr, ReturnAllURI)
 	buf := bytes.NewBuffer(nil)
 
 	json.NewEncoder(buf).Encode(APIReturnAllReq{
 		ClientID: cId,
+		RCType:   tId,
 	})
 
 	for {
@@ -154,16 +189,16 @@ func TestReturnAll(t *testing.T) {
 	}
 }
 
-func TestSnapshot(t *testing.T) {
-	TestRegist(t)
-	TestBorrow(t)
-	TestBorrow(t)
-
-	url := fmt.Sprintf("http://%s/v1/snapshot", hostAddr)
+func TestResourceList(t *testing.T) {
+	url := fmt.Sprintf("http://%s%s", hostAddr, ResourceListURI)
 	buf := bytes.NewBuffer(nil)
 
+	json.NewEncoder(buf).Encode(APIResourceListReq{
+		RCType: nil,
+	})
+
 	for {
-		rp, err := http.Get(url)
+		rp, err := http.Post(url, "application/json", buf)
 		if err != nil {
 			t.Fatal(err.Error())
 		}
@@ -180,34 +215,64 @@ func TestSnapshot(t *testing.T) {
 		}
 		break
 	}
+	t.Logf("ResourceList Response: %s", buf.String())
 }
 
-func TestRestore(t *testing.T) {
-	url := fmt.Sprintf("http://%s/v1/restore", hostAddr)
-	buf := bytes.NewBuffer(nil)
-
-	for {
-		rp, err := http.Get(url)
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-		buf.Reset()
-		buf.ReadFrom(rp.Body)
-		rp.Body.Close()
-
-		if rp.StatusCode == 307 {
-			url = rp.Header.Get("Location")
-			continue
-		}
-		if rp.StatusCode != 200 {
-			t.Fatalf("StatusCode(%d) != 200, %s", rp.StatusCode, buf.String())
-		}
-		break
-	}
-
-	//TestRegist(t)
-	for i := 0; i < 10; i++ {
-		TestBorrow(t)
-		time.Sleep(time.Second)
-	}
-}
+//func TestSnapshot(t *testing.T) {
+//	TestRegist(t)
+//	TestBorrow(t)
+//	TestBorrow(t)
+//
+//	url := fmt.Sprintf("http://%s/v1/snapshot", hostAddr)
+//	buf := bytes.NewBuffer(nil)
+//
+//	for {
+//		rp, err := http.Get(url)
+//		if err != nil {
+//			t.Fatal(err.Error())
+//		}
+//		buf.Reset()
+//		buf.ReadFrom(rp.Body)
+//		rp.Body.Close()
+//
+//		if rp.StatusCode == 307 {
+//			url = rp.Header.Get("Location")
+//			continue
+//		}
+//		if rp.StatusCode != 200 {
+//			t.Fatalf("StatusCode(%d) != 200, %s", rp.StatusCode, buf.String())
+//		}
+//		break
+//	}
+//}
+//
+//func TestRestore(t *testing.T) {
+//
+//	url := fmt.Sprintf("http://%s/v1/restore", hostAddr)
+//	buf := bytes.NewBuffer(nil)
+//
+//	for {
+//		rp, err := http.Get(url)
+//		if err != nil {
+//			t.Fatal(err.Error())
+//		}
+//		buf.Reset()
+//		buf.ReadFrom(rp.Body)
+//		rp.Body.Close()
+//
+//		if rp.StatusCode == 307 {
+//			url = rp.Header.Get("Location")
+//			continue
+//		}
+//		if rp.StatusCode != 200 {
+//			t.Fatalf("StatusCode(%d) != 200, %s", rp.StatusCode, buf.String())
+//		}
+//		break
+//	}
+//
+//	//TestRegist(t)
+//	for i := 0; i < 10; i++ {
+//		TestBorrow(t)
+//		time.Sleep(time.Second)
+//	}
+//}
