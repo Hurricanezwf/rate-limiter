@@ -18,6 +18,7 @@ type metaV2 struct {
 	gLock *sync.RWMutex
 
 	// 资源元数据容器
+	// rcType ==> *rcManager
 	mgr map[string]*rcManager
 }
 
@@ -95,6 +96,36 @@ func (m *metaV2) Recycle(timestamp int64) {
 	for _, rcMgr := range m.mgr {
 		rcMgr.safeRecycle(timestamp)
 	}
+}
+
+func (m *metaV2) ResourceList(rcType []byte) ([]*ResourceDetail, error) {
+	var err error
+	var details []*ResourceDetail
+
+	switch len(rcType) {
+	case 0:
+		// 查询全量资源的详情
+		{
+			m.gLock.RLock()
+			defer m.gLock.RUnlock()
+
+			for _, rcMgr := range m.mgr {
+				details = append(details, rcMgr.safeGetDetail())
+			}
+		}
+	default:
+		// 查询指定的资源详情
+		{
+			rcTypeStr := encoding.BytesToString(rcType)
+			rcMgr := m.safeFindManager(rcTypeStr)
+			if rcMgr == nil {
+				return nil, ErrResourceNotRegisted
+			}
+			details = append(details, rcMgr.safeGetDetail())
+		}
+	}
+
+	return details, err
 }
 
 func (m *metaV2) Encode() ([]byte, error) {
@@ -390,4 +421,18 @@ func (mgr *rcManager) safePutRecycle(rcId string) error {
 		return nil
 	}
 	return ErrQuotaOverflow
+}
+
+func (mgr *rcManager) safeGetDetail() *ResourceDetail {
+	mgr.gLock.RLock()
+	defer mgr.gLock.RUnlock()
+
+	return &ResourceDetail{
+		RCType:         mgr.rcType,
+		Quota:          mgr.quota,
+		ResetInterval:  mgr.resetInterval,
+		CanBorrowCount: uint32(mgr.canBorrow.Len()),
+		RecycledCount:  uint32(mgr.recycled.Len()),
+		UsedCount:      mgr.usedCount,
+	}
 }

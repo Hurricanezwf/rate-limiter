@@ -18,6 +18,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
+// APIRegistQuotaReq 注册资源请求格式
 type APIRegistQuotaReq struct {
 	RCType        []byte `protobuf:"bytes,1,opt,name=RCType,proto3" json:"RCType,omitempty"`
 	Quota         uint32 `protobuf:"varint,2,opt,name=Quota,proto3" json:"Quota,omitempty"`
@@ -33,7 +34,7 @@ func (m *APIRegistQuotaReq) Reset()         { *m = APIRegistQuotaReq{} }
 func (m *APIRegistQuotaReq) String() string { return proto.CompactTextString(m) }
 func (*APIRegistQuotaReq) ProtoMessage()    {}
 func (*APIRegistQuotaReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_1184d56440fa1e3b, []int{0}
+	return fileDescriptor_api_f2ca13e58efc64d7, []int{0}
 }
 func (m *APIRegistQuotaReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_APIRegistQuotaReq.Unmarshal(m, b)
@@ -81,6 +82,7 @@ func (m *APIRegistQuotaReq) GetTimestamp() int64 {
 	return 0
 }
 
+// APIRegistQuotaResp 注册资源响应格式
 type APIRegistQuotaResp struct {
 	Code                 uint32   `protobuf:"varint,1,opt,name=Code,proto3" json:"Code,omitempty"`
 	Msg                  string   `protobuf:"bytes,2,opt,name=Msg,proto3" json:"Msg,omitempty"`
@@ -93,7 +95,7 @@ func (m *APIRegistQuotaResp) Reset()         { *m = APIRegistQuotaResp{} }
 func (m *APIRegistQuotaResp) String() string { return proto.CompactTextString(m) }
 func (*APIRegistQuotaResp) ProtoMessage()    {}
 func (*APIRegistQuotaResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_1184d56440fa1e3b, []int{1}
+	return fileDescriptor_api_f2ca13e58efc64d7, []int{1}
 }
 func (m *APIRegistQuotaResp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_APIRegistQuotaResp.Unmarshal(m, b)
@@ -127,6 +129,7 @@ func (m *APIRegistQuotaResp) GetMsg() string {
 	return ""
 }
 
+// APIBorrowReq 借用资源请求格式
 type APIBorrowReq struct {
 	RCType   []byte `protobuf:"bytes,1,opt,name=RCType,proto3" json:"RCType,omitempty"`
 	ClientID []byte `protobuf:"bytes,2,opt,name=ClientID,proto3" json:"ClientID,omitempty"`
@@ -142,7 +145,7 @@ func (m *APIBorrowReq) Reset()         { *m = APIBorrowReq{} }
 func (m *APIBorrowReq) String() string { return proto.CompactTextString(m) }
 func (*APIBorrowReq) ProtoMessage()    {}
 func (*APIBorrowReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_1184d56440fa1e3b, []int{2}
+	return fileDescriptor_api_f2ca13e58efc64d7, []int{2}
 }
 func (m *APIBorrowReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_APIBorrowReq.Unmarshal(m, b)
@@ -190,6 +193,7 @@ func (m *APIBorrowReq) GetTimestamp() int64 {
 	return 0
 }
 
+// APIBorrowResp 借用资源响应格式
 type APIBorrowResp struct {
 	Code                 uint32   `protobuf:"varint,1,opt,name=Code,proto3" json:"Code,omitempty"`
 	Msg                  string   `protobuf:"bytes,2,opt,name=Msg,proto3" json:"Msg,omitempty"`
@@ -203,7 +207,7 @@ func (m *APIBorrowResp) Reset()         { *m = APIBorrowResp{} }
 func (m *APIBorrowResp) String() string { return proto.CompactTextString(m) }
 func (*APIBorrowResp) ProtoMessage()    {}
 func (*APIBorrowResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_1184d56440fa1e3b, []int{3}
+	return fileDescriptor_api_f2ca13e58efc64d7, []int{3}
 }
 func (m *APIBorrowResp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_APIBorrowResp.Unmarshal(m, b)
@@ -244,6 +248,7 @@ func (m *APIBorrowResp) GetRCID() string {
 	return ""
 }
 
+// APIReturnReq 客户端归还单个资源请求格式
 type APIReturnReq struct {
 	ClientID             []byte   `protobuf:"bytes,1,opt,name=ClientID,proto3" json:"ClientID,omitempty"`
 	RCID                 string   `protobuf:"bytes,2,opt,name=RCID,proto3" json:"RCID,omitempty"`
@@ -256,7 +261,7 @@ func (m *APIReturnReq) Reset()         { *m = APIReturnReq{} }
 func (m *APIReturnReq) String() string { return proto.CompactTextString(m) }
 func (*APIReturnReq) ProtoMessage()    {}
 func (*APIReturnReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_1184d56440fa1e3b, []int{4}
+	return fileDescriptor_api_f2ca13e58efc64d7, []int{4}
 }
 func (m *APIReturnReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_APIReturnReq.Unmarshal(m, b)
@@ -290,6 +295,7 @@ func (m *APIReturnReq) GetRCID() string {
 	return ""
 }
 
+// APIReturnResp 客户端归还单个资源响应格式
 type APIReturnResp struct {
 	Code                 uint32   `protobuf:"varint,1,opt,name=Code,proto3" json:"Code,omitempty"`
 	Msg                  string   `protobuf:"bytes,2,opt,name=Msg,proto3" json:"Msg,omitempty"`
@@ -302,7 +308,7 @@ func (m *APIReturnResp) Reset()         { *m = APIReturnResp{} }
 func (m *APIReturnResp) String() string { return proto.CompactTextString(m) }
 func (*APIReturnResp) ProtoMessage()    {}
 func (*APIReturnResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_1184d56440fa1e3b, []int{5}
+	return fileDescriptor_api_f2ca13e58efc64d7, []int{5}
 }
 func (m *APIReturnResp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_APIReturnResp.Unmarshal(m, b)
@@ -336,6 +342,7 @@ func (m *APIReturnResp) GetMsg() string {
 	return ""
 }
 
+// APIReturnAllReq 客户端释放对某资源占用的请求格式
 type APIReturnAllReq struct {
 	ClientID             []byte   `protobuf:"bytes,1,opt,name=ClientID,proto3" json:"ClientID,omitempty"`
 	RCType               []byte   `protobuf:"bytes,2,opt,name=RCType,proto3" json:"RCType,omitempty"`
@@ -348,7 +355,7 @@ func (m *APIReturnAllReq) Reset()         { *m = APIReturnAllReq{} }
 func (m *APIReturnAllReq) String() string { return proto.CompactTextString(m) }
 func (*APIReturnAllReq) ProtoMessage()    {}
 func (*APIReturnAllReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_1184d56440fa1e3b, []int{6}
+	return fileDescriptor_api_f2ca13e58efc64d7, []int{6}
 }
 func (m *APIReturnAllReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_APIReturnAllReq.Unmarshal(m, b)
@@ -382,6 +389,7 @@ func (m *APIReturnAllReq) GetRCType() []byte {
 	return nil
 }
 
+// APIReturnAllResp 客户端释放对某资源占用的响应格式
 type APIReturnAllResp struct {
 	Code                 uint32   `protobuf:"varint,1,opt,name=Code,proto3" json:"Code,omitempty"`
 	Msg                  string   `protobuf:"bytes,2,opt,name=Msg,proto3" json:"Msg,omitempty"`
@@ -394,7 +402,7 @@ func (m *APIReturnAllResp) Reset()         { *m = APIReturnAllResp{} }
 func (m *APIReturnAllResp) String() string { return proto.CompactTextString(m) }
 func (*APIReturnAllResp) ProtoMessage()    {}
 func (*APIReturnAllResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_1184d56440fa1e3b, []int{7}
+	return fileDescriptor_api_f2ca13e58efc64d7, []int{7}
 }
 func (m *APIReturnAllResp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_APIReturnAllResp.Unmarshal(m, b)
@@ -428,6 +436,180 @@ func (m *APIReturnAllResp) GetMsg() string {
 	return ""
 }
 
+// APIResourceListReq 查询资源列表的请求格式
+type APIResourceListReq struct {
+	RCType               []byte   `protobuf:"bytes,1,opt,name=RCType,proto3" json:"RCType,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *APIResourceListReq) Reset()         { *m = APIResourceListReq{} }
+func (m *APIResourceListReq) String() string { return proto.CompactTextString(m) }
+func (*APIResourceListReq) ProtoMessage()    {}
+func (*APIResourceListReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_f2ca13e58efc64d7, []int{8}
+}
+func (m *APIResourceListReq) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_APIResourceListReq.Unmarshal(m, b)
+}
+func (m *APIResourceListReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_APIResourceListReq.Marshal(b, m, deterministic)
+}
+func (dst *APIResourceListReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_APIResourceListReq.Merge(dst, src)
+}
+func (m *APIResourceListReq) XXX_Size() int {
+	return xxx_messageInfo_APIResourceListReq.Size(m)
+}
+func (m *APIResourceListReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_APIResourceListReq.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_APIResourceListReq proto.InternalMessageInfo
+
+func (m *APIResourceListReq) GetRCType() []byte {
+	if m != nil {
+		return m.RCType
+	}
+	return nil
+}
+
+// APIResourceListResp 查询资源列表的响应格式
+type APIResourceListResp struct {
+	Code                 uint32               `protobuf:"varint,1,opt,name=Code,proto3" json:"Code,omitempty"`
+	Msg                  string               `protobuf:"bytes,2,opt,name=Msg,proto3" json:"Msg,omitempty"`
+	RCList               []*APIResourceDetail `protobuf:"bytes,3,rep,name=RCList,proto3" json:"RCList,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
+	XXX_unrecognized     []byte               `json:"-"`
+	XXX_sizecache        int32                `json:"-"`
+}
+
+func (m *APIResourceListResp) Reset()         { *m = APIResourceListResp{} }
+func (m *APIResourceListResp) String() string { return proto.CompactTextString(m) }
+func (*APIResourceListResp) ProtoMessage()    {}
+func (*APIResourceListResp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_f2ca13e58efc64d7, []int{9}
+}
+func (m *APIResourceListResp) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_APIResourceListResp.Unmarshal(m, b)
+}
+func (m *APIResourceListResp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_APIResourceListResp.Marshal(b, m, deterministic)
+}
+func (dst *APIResourceListResp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_APIResourceListResp.Merge(dst, src)
+}
+func (m *APIResourceListResp) XXX_Size() int {
+	return xxx_messageInfo_APIResourceListResp.Size(m)
+}
+func (m *APIResourceListResp) XXX_DiscardUnknown() {
+	xxx_messageInfo_APIResourceListResp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_APIResourceListResp proto.InternalMessageInfo
+
+func (m *APIResourceListResp) GetCode() uint32 {
+	if m != nil {
+		return m.Code
+	}
+	return 0
+}
+
+func (m *APIResourceListResp) GetMsg() string {
+	if m != nil {
+		return m.Msg
+	}
+	return ""
+}
+
+func (m *APIResourceListResp) GetRCList() []*APIResourceDetail {
+	if m != nil {
+		return m.RCList
+	}
+	return nil
+}
+
+// APIResourceDetail 某资源详情信息
+type APIResourceDetail struct {
+	RCType               []byte   `protobuf:"bytes,1,opt,name=RCType,proto3" json:"RCType,omitempty"`
+	Quota                uint32   `protobuf:"varint,2,opt,name=Quota,proto3" json:"Quota,omitempty"`
+	ResetInterval        int64    `protobuf:"varint,3,opt,name=ResetInterval,proto3" json:"ResetInterval,omitempty"`
+	CanBorrowCount       uint32   `protobuf:"varint,4,opt,name=CanBorrowCount,proto3" json:"CanBorrowCount,omitempty"`
+	RecycledCount        uint32   `protobuf:"varint,5,opt,name=RecycledCount,proto3" json:"RecycledCount,omitempty"`
+	UsedCount            uint32   `protobuf:"varint,6,opt,name=UsedCount,proto3" json:"UsedCount,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *APIResourceDetail) Reset()         { *m = APIResourceDetail{} }
+func (m *APIResourceDetail) String() string { return proto.CompactTextString(m) }
+func (*APIResourceDetail) ProtoMessage()    {}
+func (*APIResourceDetail) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_f2ca13e58efc64d7, []int{10}
+}
+func (m *APIResourceDetail) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_APIResourceDetail.Unmarshal(m, b)
+}
+func (m *APIResourceDetail) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_APIResourceDetail.Marshal(b, m, deterministic)
+}
+func (dst *APIResourceDetail) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_APIResourceDetail.Merge(dst, src)
+}
+func (m *APIResourceDetail) XXX_Size() int {
+	return xxx_messageInfo_APIResourceDetail.Size(m)
+}
+func (m *APIResourceDetail) XXX_DiscardUnknown() {
+	xxx_messageInfo_APIResourceDetail.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_APIResourceDetail proto.InternalMessageInfo
+
+func (m *APIResourceDetail) GetRCType() []byte {
+	if m != nil {
+		return m.RCType
+	}
+	return nil
+}
+
+func (m *APIResourceDetail) GetQuota() uint32 {
+	if m != nil {
+		return m.Quota
+	}
+	return 0
+}
+
+func (m *APIResourceDetail) GetResetInterval() int64 {
+	if m != nil {
+		return m.ResetInterval
+	}
+	return 0
+}
+
+func (m *APIResourceDetail) GetCanBorrowCount() uint32 {
+	if m != nil {
+		return m.CanBorrowCount
+	}
+	return 0
+}
+
+func (m *APIResourceDetail) GetRecycledCount() uint32 {
+	if m != nil {
+		return m.RecycledCount
+	}
+	return 0
+}
+
+func (m *APIResourceDetail) GetUsedCount() uint32 {
+	if m != nil {
+		return m.UsedCount
+	}
+	return 0
+}
+
+// CMDLeaderNotify 下发通知所有结点Leader结点的HTTP服务地址的命令
 type CMDLeaderNotify struct {
 	RaftAddr             string   `protobuf:"bytes,1,opt,name=RaftAddr,proto3" json:"RaftAddr,omitempty"`
 	HttpAddr             string   `protobuf:"bytes,2,opt,name=HttpAddr,proto3" json:"HttpAddr,omitempty"`
@@ -440,7 +622,7 @@ func (m *CMDLeaderNotify) Reset()         { *m = CMDLeaderNotify{} }
 func (m *CMDLeaderNotify) String() string { return proto.CompactTextString(m) }
 func (*CMDLeaderNotify) ProtoMessage()    {}
 func (*CMDLeaderNotify) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_1184d56440fa1e3b, []int{8}
+	return fileDescriptor_api_f2ca13e58efc64d7, []int{11}
 }
 func (m *CMDLeaderNotify) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CMDLeaderNotify.Unmarshal(m, b)
@@ -474,6 +656,7 @@ func (m *CMDLeaderNotify) GetHttpAddr() string {
 	return ""
 }
 
+// CMDRecycle 下发通知所有结点进行资源清理与回收的命令
 type CMDRecycle struct {
 	Timestamp            int64    `protobuf:"varint,1,opt,name=Timestamp,proto3" json:"Timestamp,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -485,7 +668,7 @@ func (m *CMDRecycle) Reset()         { *m = CMDRecycle{} }
 func (m *CMDRecycle) String() string { return proto.CompactTextString(m) }
 func (*CMDRecycle) ProtoMessage()    {}
 func (*CMDRecycle) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_1184d56440fa1e3b, []int{9}
+	return fileDescriptor_api_f2ca13e58efc64d7, []int{12}
 }
 func (m *CMDRecycle) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CMDRecycle.Unmarshal(m, b)
@@ -521,34 +704,44 @@ func init() {
 	proto.RegisterType((*APIReturnResp)(nil), "proto.APIReturnResp")
 	proto.RegisterType((*APIReturnAllReq)(nil), "proto.APIReturnAllReq")
 	proto.RegisterType((*APIReturnAllResp)(nil), "proto.APIReturnAllResp")
+	proto.RegisterType((*APIResourceListReq)(nil), "proto.APIResourceListReq")
+	proto.RegisterType((*APIResourceListResp)(nil), "proto.APIResourceListResp")
+	proto.RegisterType((*APIResourceDetail)(nil), "proto.APIResourceDetail")
 	proto.RegisterType((*CMDLeaderNotify)(nil), "proto.CMDLeaderNotify")
 	proto.RegisterType((*CMDRecycle)(nil), "proto.CMDRecycle")
 }
 
-func init() { proto.RegisterFile("api.proto", fileDescriptor_api_1184d56440fa1e3b) }
+func init() { proto.RegisterFile("api.proto", fileDescriptor_api_f2ca13e58efc64d7) }
 
-var fileDescriptor_api_1184d56440fa1e3b = []byte{
-	// 348 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x92, 0xcf, 0x4a, 0xc3, 0x40,
-	0x10, 0xc6, 0x49, 0xff, 0x61, 0x86, 0x86, 0xd6, 0x45, 0x24, 0x88, 0x87, 0x12, 0x3c, 0x14, 0x0f,
-	0x5e, 0x44, 0x10, 0x0f, 0x42, 0x4c, 0x0a, 0x2e, 0x58, 0xa9, 0x43, 0x5f, 0x20, 0x36, 0xdb, 0x12,
-	0x48, 0xbb, 0xeb, 0x66, 0xab, 0xed, 0x03, 0xf8, 0xde, 0x92, 0x69, 0x9b, 0xa6, 0x39, 0xd8, 0x9e,
-	0x32, 0xdf, 0xee, 0x7c, 0x3b, 0xbf, 0x99, 0x09, 0xd8, 0x91, 0x4a, 0xee, 0x94, 0x96, 0x46, 0xb2,
-	0x26, 0x7d, 0xbc, 0x5f, 0x0b, 0xce, 0xfd, 0x11, 0x47, 0x31, 0x4b, 0x32, 0xf3, 0xb1, 0x94, 0x26,
-	0x42, 0xf1, 0xc5, 0x2e, 0xa1, 0x85, 0xc1, 0x78, 0xad, 0x84, 0x6b, 0xf5, 0xac, 0x7e, 0x1b, 0xb7,
-	0x8a, 0x5d, 0x40, 0x93, 0x72, 0xdc, 0x5a, 0xcf, 0xea, 0x3b, 0xb8, 0x11, 0xec, 0x06, 0x1c, 0x14,
-	0x99, 0x30, 0x7c, 0x61, 0x84, 0xfe, 0x8e, 0x52, 0xb7, 0xde, 0xb3, 0xfa, 0x75, 0x3c, 0x3c, 0x64,
-	0xd7, 0x60, 0x8f, 0x93, 0xb9, 0xc8, 0x4c, 0x34, 0x57, 0x6e, 0x83, 0x32, 0xf6, 0x07, 0xde, 0x13,
-	0xb0, 0x2a, 0x46, 0xa6, 0x18, 0x83, 0x46, 0x20, 0xe3, 0x0d, 0x85, 0x83, 0x14, 0xb3, 0x2e, 0xd4,
-	0x87, 0xd9, 0x8c, 0x08, 0x6c, 0xcc, 0x43, 0x6f, 0x05, 0x6d, 0x7f, 0xc4, 0x5f, 0xa4, 0xd6, 0xf2,
-	0xe7, 0x3f, 0xfa, 0x2b, 0x38, 0x0b, 0xd2, 0x44, 0x2c, 0x0c, 0x0f, 0xc9, 0xde, 0xc6, 0x42, 0xe7,
-	0x9e, 0xc1, 0x4a, 0x25, 0x5a, 0x6c, 0xe1, 0xb7, 0xea, 0x08, 0x35, 0x07, 0xa7, 0x54, 0xf9, 0x54,
-	0xe0, 0x3c, 0x0b, 0x03, 0x1e, 0x52, 0x29, 0x1b, 0x29, 0xf6, 0x9e, 0xa9, 0x09, 0x14, 0x66, 0xa9,
-	0x17, 0x79, 0x13, 0x65, 0x58, 0xab, 0x02, 0xbb, 0xf3, 0xd7, 0x4a, 0xfe, 0x07, 0x42, 0xd9, 0xf9,
-	0x4f, 0x9e, 0xdd, 0x00, 0x3a, 0x85, 0xcd, 0x4f, 0xd3, 0x63, 0x95, 0xf7, 0xa3, 0xad, 0x95, 0x47,
-	0xeb, 0x3d, 0x42, 0xf7, 0xf0, 0x99, 0x93, 0x01, 0x38, 0x74, 0x82, 0x61, 0xf8, 0x26, 0xa2, 0x58,
-	0xe8, 0x77, 0x69, 0x92, 0xe9, 0x3a, 0x07, 0xc0, 0x68, 0x6a, 0xfc, 0x38, 0xd6, 0x64, 0xb6, 0xb1,
-	0xd0, 0xf9, 0xdd, 0xab, 0x31, 0x8a, 0xee, 0x36, 0xaf, 0x14, 0xda, 0xbb, 0x05, 0x08, 0x86, 0x21,
-	0x8a, 0xc9, 0x7a, 0x92, 0x56, 0x36, 0x67, 0x55, 0x36, 0xf7, 0xd9, 0xa2, 0xdf, 0xff, 0xfe, 0x2f,
-	0x00, 0x00, 0xff, 0xff, 0x0b, 0x3d, 0xd4, 0x22, 0x12, 0x03, 0x00, 0x00,
+var fileDescriptor_api_f2ca13e58efc64d7 = []byte{
+	// 450 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x53, 0xe1, 0x8a, 0xd3, 0x40,
+	0x10, 0x26, 0xcd, 0xb5, 0x98, 0xb1, 0xf1, 0xce, 0x55, 0x24, 0x88, 0x3f, 0xca, 0x22, 0x52, 0x44,
+	0x0e, 0x51, 0x04, 0xf1, 0x87, 0x50, 0x93, 0x03, 0x03, 0x57, 0x39, 0x87, 0xf3, 0x01, 0xd6, 0x66,
+	0xef, 0x58, 0x48, 0xb3, 0x71, 0x77, 0xab, 0xd7, 0x07, 0xf0, 0x09, 0x7d, 0x21, 0xd9, 0x49, 0xda,
+	0xa6, 0x15, 0xee, 0xf2, 0xc7, 0x5f, 0xbb, 0x33, 0xfb, 0x7d, 0x33, 0xdf, 0x7e, 0xbb, 0x03, 0x91,
+	0xa8, 0xd5, 0x69, 0x6d, 0xb4, 0xd3, 0x6c, 0x48, 0x0b, 0xff, 0x1d, 0xc0, 0xc3, 0xd9, 0x45, 0x8e,
+	0xf2, 0x5a, 0x59, 0xf7, 0x75, 0xa5, 0x9d, 0x40, 0xf9, 0x83, 0x3d, 0x81, 0x11, 0xa6, 0x97, 0xeb,
+	0x5a, 0x26, 0xc1, 0x24, 0x98, 0x8e, 0xb1, 0x8d, 0xd8, 0x63, 0x18, 0x12, 0x26, 0x19, 0x4c, 0x82,
+	0x69, 0x8c, 0x4d, 0xc0, 0x9e, 0x43, 0x8c, 0xd2, 0x4a, 0x97, 0x57, 0x4e, 0x9a, 0x9f, 0xa2, 0x4c,
+	0xc2, 0x49, 0x30, 0x0d, 0x71, 0x3f, 0xc9, 0x9e, 0x41, 0x74, 0xa9, 0x96, 0xd2, 0x3a, 0xb1, 0xac,
+	0x93, 0x23, 0x42, 0xec, 0x12, 0xfc, 0x03, 0xb0, 0x43, 0x19, 0xb6, 0x66, 0x0c, 0x8e, 0x52, 0x5d,
+	0x34, 0x2a, 0x62, 0xa4, 0x3d, 0x3b, 0x81, 0x70, 0x6e, 0xaf, 0x49, 0x41, 0x84, 0x7e, 0xcb, 0x6f,
+	0x60, 0x3c, 0xbb, 0xc8, 0x3f, 0x69, 0x63, 0xf4, 0xaf, 0xdb, 0xd4, 0x3f, 0x85, 0x7b, 0x69, 0xa9,
+	0x64, 0xe5, 0xf2, 0x8c, 0xe8, 0x63, 0xdc, 0xc6, 0x9e, 0x73, 0x76, 0x53, 0x2b, 0x23, 0x5b, 0xf1,
+	0x6d, 0x74, 0x87, 0xea, 0x1c, 0xe2, 0x4e, 0xe7, 0xbe, 0x82, 0x3d, 0x0a, 0xd3, 0x3c, 0xa3, 0x56,
+	0x11, 0xd2, 0x9e, 0x7f, 0xa4, 0x4b, 0xa0, 0x74, 0x2b, 0x53, 0xf9, 0x4b, 0x74, 0xc5, 0x06, 0x07,
+	0x62, 0x37, 0xfc, 0x41, 0x87, 0xff, 0x8e, 0xa4, 0x6c, 0xf8, 0xbd, 0xbd, 0x3b, 0x83, 0xe3, 0x2d,
+	0x6d, 0x56, 0x96, 0x77, 0x75, 0xde, 0x59, 0x3b, 0xe8, 0x5a, 0xcb, 0xdf, 0xc3, 0xc9, 0x7e, 0x99,
+	0xde, 0x02, 0x5e, 0xb5, 0x0f, 0x6f, 0xf5, 0xca, 0x2c, 0xe4, 0xb9, 0xb2, 0xee, 0x96, 0x27, 0xe4,
+	0x4b, 0x78, 0xf4, 0x0f, 0xba, 0xb7, 0xed, 0xaf, 0x7d, 0x51, 0xcf, 0x49, 0xc2, 0x49, 0x38, 0xbd,
+	0xff, 0x26, 0x69, 0x46, 0xe1, 0xb4, 0x53, 0x31, 0x93, 0x4e, 0xa8, 0x12, 0x5b, 0x1c, 0xff, 0xb3,
+	0x99, 0x8e, 0xee, 0xe9, 0x7f, 0x99, 0x8e, 0x17, 0xf0, 0x20, 0x15, 0x55, 0xf3, 0x93, 0x52, 0xbd,
+	0xaa, 0x1c, 0x7d, 0xb6, 0x18, 0x0f, 0xb2, 0x4d, 0xb5, 0xc5, 0x7a, 0x51, 0xca, 0xa2, 0x81, 0x0d,
+	0x09, 0xb6, 0x9f, 0xf4, 0xbf, 0xf6, 0x9b, 0xdd, 0x20, 0x46, 0x84, 0xd8, 0x25, 0x78, 0x0e, 0xc7,
+	0xe9, 0x3c, 0x3b, 0x97, 0xa2, 0x90, 0xe6, 0x8b, 0x76, 0xea, 0x6a, 0xed, 0xdf, 0x1c, 0xc5, 0x95,
+	0x9b, 0x15, 0x85, 0xa1, 0x4b, 0x45, 0xb8, 0x8d, 0xfd, 0xd9, 0x67, 0xe7, 0x6a, 0x3a, 0x6b, 0xdc,
+	0xdc, 0xc6, 0xfc, 0x25, 0x40, 0x3a, 0xcf, 0xda, 0xe6, 0xfb, 0xc3, 0x12, 0x1c, 0x0c, 0xcb, 0xf7,
+	0x11, 0xb9, 0xfd, 0xf6, 0x6f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xe6, 0x75, 0x9d, 0xd7, 0x85, 0x04,
+	0x00, 0x00,
 }

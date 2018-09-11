@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/Hurricanezwf/rate-limiter/meta"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
@@ -159,16 +158,16 @@ func TestReturnAll(t *testing.T) {
 	}
 }
 
-func TestSnapshot(t *testing.T) {
-	TestRegist(t)
-	TestBorrow(t)
-	TestBorrow(t)
-
-	url := fmt.Sprintf("http://%s/v1/snapshot", hostAddr)
+func TestResourceList(t *testing.T) {
+	url := fmt.Sprintf("http://%s/v1/rc", hostAddr)
 	buf := bytes.NewBuffer(nil)
 
+	json.NewEncoder(buf).Encode(APIResourceListReq{
+		RCType: nil,
+	})
+
 	for {
-		rp, err := http.Get(url)
+		rp, err := http.Post(url, "application/json", buf)
 		if err != nil {
 			t.Fatal(err.Error())
 		}
@@ -185,35 +184,64 @@ func TestSnapshot(t *testing.T) {
 		}
 		break
 	}
+	t.Logf("ResourceList Response: %s", buf.String())
 }
 
-func TestRestore(t *testing.T) {
-
-	url := fmt.Sprintf("http://%s/v1/restore", hostAddr)
-	buf := bytes.NewBuffer(nil)
-
-	for {
-		rp, err := http.Get(url)
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-		buf.Reset()
-		buf.ReadFrom(rp.Body)
-		rp.Body.Close()
-
-		if rp.StatusCode == 307 {
-			url = rp.Header.Get("Location")
-			continue
-		}
-		if rp.StatusCode != 200 {
-			t.Fatalf("StatusCode(%d) != 200, %s", rp.StatusCode, buf.String())
-		}
-		break
-	}
-
-	//TestRegist(t)
-	for i := 0; i < 10; i++ {
-		TestBorrow(t)
-		time.Sleep(time.Second)
-	}
-}
+//func TestSnapshot(t *testing.T) {
+//	TestRegist(t)
+//	TestBorrow(t)
+//	TestBorrow(t)
+//
+//	url := fmt.Sprintf("http://%s/v1/snapshot", hostAddr)
+//	buf := bytes.NewBuffer(nil)
+//
+//	for {
+//		rp, err := http.Get(url)
+//		if err != nil {
+//			t.Fatal(err.Error())
+//		}
+//		buf.Reset()
+//		buf.ReadFrom(rp.Body)
+//		rp.Body.Close()
+//
+//		if rp.StatusCode == 307 {
+//			url = rp.Header.Get("Location")
+//			continue
+//		}
+//		if rp.StatusCode != 200 {
+//			t.Fatalf("StatusCode(%d) != 200, %s", rp.StatusCode, buf.String())
+//		}
+//		break
+//	}
+//}
+//
+//func TestRestore(t *testing.T) {
+//
+//	url := fmt.Sprintf("http://%s/v1/restore", hostAddr)
+//	buf := bytes.NewBuffer(nil)
+//
+//	for {
+//		rp, err := http.Get(url)
+//		if err != nil {
+//			t.Fatal(err.Error())
+//		}
+//		buf.Reset()
+//		buf.ReadFrom(rp.Body)
+//		rp.Body.Close()
+//
+//		if rp.StatusCode == 307 {
+//			url = rp.Header.Get("Location")
+//			continue
+//		}
+//		if rp.StatusCode != 200 {
+//			t.Fatalf("StatusCode(%d) != 200, %s", rp.StatusCode, buf.String())
+//		}
+//		break
+//	}
+//
+//	//TestRegist(t)
+//	for i := 0; i < 10; i++ {
+//		TestBorrow(t)
+//		time.Sleep(time.Second)
+//	}
+//}

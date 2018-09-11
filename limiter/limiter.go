@@ -26,6 +26,9 @@ type Interface interface {
 
 	// ReturnAll 归还用户借取的所有资源，通常用于客户端关闭时
 	ReturnAll(r *APIReturnAllReq) *APIReturnAllResp
+
+	// ResourceList 查询资源列表详情
+	ResourceList(r *APIResourceListReq) *APIResourceListResp
 }
 
 // Default 新建一个默认limiter实例
@@ -155,4 +158,16 @@ func (l *limiterV2) ReturnAll(r *APIReturnAllReq) *APIReturnAllResp {
 	}
 
 	return l.c.ReturnAll(r)
+}
+
+func (l *limiterV2) ResourceList(r *APIResourceListReq) *APIResourceListResp {
+	var rp APIResourceListResp
+
+	if l.c.IsLeader() == false {
+		rp.Code = 307
+		rp.Msg = l.c.LeaderHTTPAddr()
+		return &rp
+	}
+
+	return l.c.ResourceList(r)
 }

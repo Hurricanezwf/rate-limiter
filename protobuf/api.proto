@@ -1,6 +1,7 @@
 syntax = "proto3";
 package proto;
 
+// APIRegistQuotaReq 注册资源请求格式
 message APIRegistQuotaReq {
     bytes   RCType                          = 1; // 资源类型
     uint32  Quota                           = 2; // 资源配额
@@ -10,11 +11,13 @@ message APIRegistQuotaReq {
     int64   Timestamp                       = 4;
 }
 
+// APIRegistQuotaResp 注册资源响应格式
 message APIRegistQuotaResp {
     uint32  Code                            = 1;
     string  Msg                             = 2;
 }
 
+// APIBorrowReq 借用资源请求格式
 message APIBorrowReq {
     bytes   RCType                          = 1;
     bytes   ClientID                        = 2;
@@ -24,37 +27,66 @@ message APIBorrowReq {
     int64   Timestamp                       = 4;
 }
 
+// APIBorrowResp 借用资源响应格式
 message APIBorrowResp {
     uint32  Code                            = 1;
     string  Msg                             = 2;
     string  RCID                            = 3;
 }
 
+// APIReturnReq 客户端归还单个资源请求格式
 message APIReturnReq {
     bytes   ClientID                        = 1;
     string  RCID                            = 2;
 }
 
+// APIReturnResp 客户端归还单个资源响应格式
 message APIReturnResp {
     uint32  Code                            = 1;
     string  Msg                             = 2;
 }
 
+// APIReturnAllReq 客户端释放对某资源占用的请求格式
 message APIReturnAllReq {
     bytes   ClientID                        = 1;
     bytes   RCType                          = 2;
 }
 
+// APIReturnAllResp 客户端释放对某资源占用的响应格式
 message APIReturnAllResp {
     uint32  Code                            = 1;
     string  Msg                             = 2;
 }
 
+// APIResourceListReq 查询资源列表的请求格式
+message APIResourceListReq {
+    bytes   RCType                          = 1;   
+}
+
+// APIResourceListResp 查询资源列表的响应格式
+message APIResourceListResp {
+    uint32  Code                            = 1;
+    string  Msg                             = 2;
+    repeated APIResourceDetail RCList       = 3;
+}
+
+// APIResourceDetail 某资源详情信息
+message APIResourceDetail {
+    bytes   RCType                          = 1;
+    uint32  Quota                           = 2;
+    int64   ResetInterval                   = 3;
+    uint32  CanBorrowCount                  = 4;
+    uint32  RecycledCount                   = 5;
+    uint32  UsedCount                       = 6;
+}
+
+// CMDLeaderNotify 下发通知所有结点Leader结点的HTTP服务地址的命令
 message CMDLeaderNotify {
     string RaftAddr                         = 1;
     string HttpAddr                         = 2;
 }
 
+// CMDRecycle 下发通知所有结点进行资源清理与回收的命令
 message CMDRecycle {
     int64  Timestamp                        = 1;
 }

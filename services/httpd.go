@@ -2,7 +2,9 @@ package services
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -20,6 +22,7 @@ func init() {
 	http.HandleFunc("/v1/borrow", borrow)
 	http.HandleFunc("/v1/return", return_)
 	http.HandleFunc("/v1/returnAll", returnAll)
+	http.HandleFunc("/v1/rc", resourceList)
 }
 
 // runHttpd 启动HTTP服务
@@ -46,7 +49,7 @@ func registQuota(w http.ResponseWriter, req *http.Request) {
 	var rp *APIRegistQuotaResp
 
 	// 解析请求
-	code, msg := resolveRequest(w, req, &r)
+	code, msg := resolveRequest(w, req, &r, http.MethodPost)
 	if code != -1 {
 		defer ctrl.out()
 	}
@@ -84,7 +87,7 @@ func borrow(w http.ResponseWriter, req *http.Request) {
 	var rp *APIBorrowResp
 
 	// 解析请求
-	code, msg := resolveRequest(w, req, &r)
+	code, msg := resolveRequest(w, req, &r, http.MethodPost)
 	if code != -1 {
 		defer ctrl.out()
 	}
@@ -123,7 +126,7 @@ func return_(w http.ResponseWriter, req *http.Request) {
 	var rp *APIReturnResp
 
 	// 解析请求
-	code, msg := resolveRequest(w, req, &r)
+	code, msg := resolveRequest(w, req, &r, http.MethodPost)
 	if code != -1 {
 		defer ctrl.out()
 	}
@@ -161,7 +164,7 @@ func returnAll(w http.ResponseWriter, req *http.Request) {
 	var rp *APIReturnAllResp
 
 	// 解析请求
-	code, msg := resolveRequest(w, req, &r)
+	code, msg := resolveRequest(w, req, &r, http.MethodPost)
 	if code != -1 {
 		defer ctrl.out()
 	}
@@ -192,15 +195,59 @@ FINISH:
 	glog.V(1).Infof("%s [/v1/returnAll] RSP: statusCode:%d, msg:%s, elapse:%v", req.Method, code, msg, time.Since(start))
 }
 
-func resolveRequest(w http.ResponseWriter, req *http.Request, message proto.Message) (code int, msg string) {
+// resourceList 查询资源详情列表
+func resourceList(w http.ResponseWriter, req *http.Request) {
+	var (
+		body  []byte
+		r     APIResourceListReq
+		rp    *APIResourceListResp
+		start = time.Now()
+	)
+
+	// 解析请求
+	code, msg := resolveRequest(w, req, &r, http.MethodPost)
+	if code != -1 {
+		defer ctrl.out()
+	}
+	if code != 0 {
+		body = []byte(msg)
+		goto FINISH
+	}
+
+	// 执行请求
+	rp = l.ResourceList(&r)
+	switch rp.Code {
+	case 0:
+		b, _ := json.Marshal(rp)
+		code = http.StatusOK
+		body = b
+		glog.V(2).Info("List resources SUCCESS")
+	case 307:
+		req.URL.Host = rp.Msg
+		w.Header().Set("Location", req.URL.String())
+		code = http.StatusTemporaryRedirect
+	default:
+		code = int(rp.Code)
+		msg = rp.Msg
+		glog.Warningf("List resources FAILED, %s", msg)
+	}
+
+FINISH:
+	w.WriteHeader(code)
+	w.Write(body)
+
+	glog.V(1).Infof("%s [/v1/rc] RSP: statusCode:%d, elapse:%v", req.Method, code, time.Since(start))
+}
+
+func resolveRequest(w http.ResponseWriter, req *http.Request, message proto.Message, requiredMethod string) (code int, msg string) {
 	// 访问控制检测
 	if err := ctrl.in(); err != nil {
 		return -1, err.Error()
 	}
 
 	// 验证请求方法
-	if req.Method != http.MethodPost {
-		return http.StatusMethodNotAllowed, "Method `POST` is needed"
+	if req.Method != requiredMethod {
+		return http.StatusMethodNotAllowed, fmt.Sprintf("Method `%s` is needed", requiredMethod)
 	}
 
 	// 解析请求

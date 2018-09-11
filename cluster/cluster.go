@@ -53,6 +53,9 @@ type Interface interface {
 	// ReturnAll 归还某个用户所有的执行资格，通常在用户主动关闭的时候
 	// 返回回收的资源数量
 	ReturnAll(r *APIReturnAllReq) *APIReturnAllResp
+
+	// ResourceList 资源列表
+	ResourceList(r *APIResourceListReq) *APIResourceListResp
 }
 
 // Default 新建一个默认cluster实例
@@ -576,6 +579,34 @@ func (c *clusterV2) ReturnAll(r *APIReturnAllReq) *APIReturnAllResp {
 		return rp
 	}
 	return future.Response().(*APIReturnAllResp)
+}
+
+// ResourceList 查询资源列表
+// 单点执行即可
+func (c *clusterV2) ResourceList(r *APIResourceListReq) *APIResourceListResp {
+	var rp APIResourceListResp
+
+	c.gLock.RLock()
+	defer c.gLock.RUnlock()
+
+	details, err := c.m.ResourceList(r.RCType)
+	if err != nil {
+		rp.Code = 500
+		rp.Msg = err.Error()
+		return &rp
+	}
+
+	for _, dt := range details {
+		rp.RCList = append(rp.RCList, &APIResourceDetail{
+			RCType:         dt.RCType,
+			Quota:          dt.Quota,
+			ResetInterval:  dt.ResetInterval,
+			CanBorrowCount: dt.CanBorrowCount,
+			RecycledCount:  dt.RecycledCount,
+			UsedCount:      dt.UsedCount,
+		})
+	}
+	return &rp
 }
 
 // switchDo 根据命令类型选择执行
