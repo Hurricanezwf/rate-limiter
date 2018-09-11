@@ -2,7 +2,6 @@ package services
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -197,12 +196,10 @@ FINISH:
 
 // resourceList 查询资源详情列表
 func resourceList(w http.ResponseWriter, req *http.Request) {
-	var (
-		body  []byte
-		r     APIResourceListReq
-		rp    *APIResourceListResp
-		start = time.Now()
-	)
+	var start = time.Now()
+	var buf = bytes.NewBuffer(nil)
+	var r APIResourceListReq
+	var rp *APIResourceListResp
 
 	// 解析请求
 	code, msg := resolveRequest(w, req, &r, http.MethodPost)
@@ -210,7 +207,7 @@ func resourceList(w http.ResponseWriter, req *http.Request) {
 		defer ctrl.out()
 	}
 	if code != 0 {
-		body = []byte(msg)
+		buf.WriteString(msg)
 		goto FINISH
 	}
 
@@ -218,9 +215,9 @@ func resourceList(w http.ResponseWriter, req *http.Request) {
 	rp = l.ResourceList(&r)
 	switch rp.Code {
 	case 0:
-		b, _ := json.Marshal(rp)
+		encoder := jsonpb.Marshaler{}
+		encoder.Marshal(buf, rp)
 		code = http.StatusOK
-		body = b
 		glog.V(2).Info("List resources SUCCESS")
 	case 307:
 		req.URL.Host = rp.Msg
@@ -228,13 +225,13 @@ func resourceList(w http.ResponseWriter, req *http.Request) {
 		code = http.StatusTemporaryRedirect
 	default:
 		code = int(rp.Code)
-		msg = rp.Msg
-		glog.Warningf("List resources FAILED, %s", msg)
+		buf.WriteString(rp.Msg)
+		glog.Warningf("List resources FAILED, %s", buf.String())
 	}
 
 FINISH:
 	w.WriteHeader(code)
-	w.Write(body)
+	w.Write(buf.Bytes())
 
 	glog.V(1).Infof("%s [/v1/rc] RSP: statusCode:%d, elapse:%v", req.Method, code, time.Since(start))
 }

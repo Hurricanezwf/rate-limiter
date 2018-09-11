@@ -3,7 +3,6 @@ package ratelimiter
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/Hurricanezwf/rate-limiter/encoding"
 	"github.com/Hurricanezwf/rate-limiter/proto"
+	"github.com/golang/protobuf/jsonpb"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -89,8 +89,8 @@ func New(config *ClientConfig) (*RateLimiterClient, error) {
 func (c *RateLimiterClient) Close() error {
 	var err, lastErr error
 	var rcType []byte
+	var encoder jsonpb.Marshaler
 	var buf = bytes.NewBuffer(nil)
-	var encoder = json.NewEncoder(buf)
 
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -102,7 +102,7 @@ func (c *RateLimiterClient) Close() error {
 		}
 
 		buf.Reset()
-		err = encoder.Encode(proto.APIReturnAllReq{
+		err = encoder.Marshal(buf, &proto.APIReturnAllReq{
 			ClientID: c.clientId,
 			RCType:   rcType,
 		})
@@ -125,17 +125,17 @@ func (c *RateLimiterClient) Close() error {
 // quota         : 资源配额，例如quota为10表示限流10次/s
 // resetInterval : 资源配额重置周期，单位秒
 func (c *RateLimiterClient) RegistQuota(resourceType []byte, quota uint32, resetInterval int64) error {
-	buf := bytes.NewBuffer(nil)
-	err := json.NewEncoder(buf).Encode(proto.APIRegistQuotaReq{
+	var encoder jsonpb.Marshaler
+	var buf = bytes.NewBuffer(nil)
+	var err = encoder.Marshal(buf, &proto.APIRegistQuotaReq{
 		RCType:        resourceType,
 		Quota:         quota,
 		ResetInterval: resetInterval,
 	})
-	if err != nil {
-		return err
-	}
 
-	_, err = c.sendPost("/v1/registQuota", buf)
+	if err == nil {
+		_, err = c.sendPost("/v1/registQuota", buf)
+	}
 
 	return err
 }
@@ -144,8 +144,9 @@ func (c *RateLimiterClient) RegistQuota(resourceType []byte, quota uint32, reset
 // resourceType: 用户自定义资源类型
 // expire      : 过期自动回收时间，单位秒。该时间建议与请求超时时间一致
 func (c *RateLimiterClient) Borrow(resourceType []byte, expire int64) (resourceId string, err error) {
-	buf := bytes.NewBuffer(nil)
-	err = json.NewEncoder(buf).Encode(proto.APIBorrowReq{
+	var encoder jsonpb.Marshaler
+	var buf = bytes.NewBuffer(nil)
+	err = encoder.Marshal(buf, &proto.APIBorrowReq{
 		RCType:   resourceType,
 		ClientID: c.clientId,
 		Expire:   expire,
@@ -169,7 +170,9 @@ func (c *RateLimiterClient) Borrow(resourceType []byte, expire int64) (resourceI
 // @resourceType: 用户自定义资源类型
 // @expire      : 过期自动回收时间，单位秒。该时间建议与请求超时时间一致
 func (c *RateLimiterClient) BorrowWithTimeout(resourceType []byte, expire int64, timeout time.Duration) (resourceId string, err error) {
-	b, err := json.Marshal(proto.APIBorrowReq{
+	var encoder jsonpb.Marshaler
+	var buf = bytes.NewBuffer(nil)
+	err = encoder.Marshal(buf, &proto.APIBorrowReq{
 		RCType:   resourceType,
 		ClientID: c.clientId,
 		Expire:   expire,
@@ -184,11 +187,9 @@ func (c *RateLimiterClient) BorrowWithTimeout(resourceType []byte, expire int64,
 	randSleep := 0
 	rand.Seed(time.Now().UnixNano())
 
-	buf := bytes.NewBuffer(nil)
-
 	for {
-		buf.Write(b)
-		rcId, err := c.sendPost("/v1/borrow", buf)
+		tmpBuf := bytes.NewBuffer(buf.Bytes())
+		rcId, err := c.sendPost("/v1/borrow", tmpBuf)
 
 		// 请求成功
 		if err == nil {
@@ -221,18 +222,45 @@ func (c *RateLimiterClient) BorrowWithTimeout(resourceType []byte, expire int64,
 // resourceType: 用户自定义资源类型
 // resourceId  : 要归还的资源ID
 func (c *RateLimiterClient) Return(resourceId string) error {
-	buf := bytes.NewBuffer(nil)
-	err := json.NewEncoder(buf).Encode(proto.APIReturnReq{
+	var encoder jsonpb.Marshaler
+	var buf = bytes.NewBuffer(nil)
+	var err = encoder.Marshal(buf, &proto.APIReturnReq{
 		ClientID: c.clientId,
 		RCID:     resourceId,
 	})
-	if err != nil {
-		return err
+
+	if err == nil {
+		_, err = c.sendPost("/v1/return", buf)
 	}
 
-	_, err = c.sendPost("/v1/return", buf)
-
 	return err
+}
+
+// ResourceList 查询资源列表
+// rcType : 资源类型，如果不填则表示全量查询
+func (c *RateLimiterClient) ResourceList(rcType []byte) ([]*proto.APIResourceDetail, error) {
+	var encoder jsonpb.Marshaler
+	var buf = bytes.NewBuffer(nil)
+	err := encoder.Marshal(buf, &proto.APIResourceListReq{
+		RCType: rcType,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if body, err := c.sendPost("/v1/rc", buf); err != nil {
+		return nil, err
+	} else {
+		buf.Reset()
+		buf.Write(body)
+	}
+
+	var rp proto.APIResourceListResp
+	if err = jsonpb.Unmarshal(buf, &rp); err != nil {
+		return nil, err
+	}
+
+	return rp.RCList, err
 }
 
 func (c *RateLimiterClient) getCluster(idx int) string {
