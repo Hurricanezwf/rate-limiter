@@ -78,7 +78,6 @@ func stressRobot(
 ) {
 	max := Rate
 	ch := make(chan struct{}, max)
-	defer close(ch)
 
 	c, err := ratelimiter.New(&ratelimiter.ClientConfig{
 		Cluster: strings.Split(Cluster, ","),
@@ -117,7 +116,9 @@ func stressRobot(
 			// do nothing
 		case <-time.After(2 * time.Second):
 			log.Println("Robot ", seq, " send request timeout")
+			close(ch)
 		case <-quit:
+			close(ch)
 			summary <- atomic.LoadInt64(&accessCount)
 			break
 		}
