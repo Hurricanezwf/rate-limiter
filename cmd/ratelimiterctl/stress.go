@@ -119,7 +119,7 @@ func stressRobot(
 		case <-quit:
 			close(ch)
 			summary <- atomic.LoadInt64(&accessCount)
-			break
+			return
 		}
 	}
 }
