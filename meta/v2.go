@@ -51,7 +51,6 @@ func (m *metaV2) RegistQuota(rcType []byte, quota uint32, resetInterval, timesta
 	for i := uint32(0); i < quota; i++ {
 		rcMgr.canBorrow.PushBack(MakeResourceID(rcType, i))
 	}
-	rcMgr.lastReset = timestamp
 
 	m.mgr[rcTypeStr] = rcMgr
 
@@ -282,7 +281,7 @@ func newRCManager(rcType []byte, quota uint32, resetInterval int64) *rcManager {
 		rcType:        rcType,
 		quota:         quota,
 		resetInterval: resetInterval,
-		lastReset:     0,
+		lastReset:     -1,
 		canBorrow:     list.New(),
 		recycled:      list.New(),
 		used:          make(map[string]map[string]*borrowRecord),
@@ -318,6 +317,11 @@ func (mgr *rcManager) safeBorrow(rcType, clientId []byte, expire, timestamp int6
 	mgr.used[clientIdStr] = rdTable
 	mgr.canBorrow.Remove(e)
 	mgr.usedCount++
+
+	// 从成功借出第一个资源开始进行重置计时
+	if mgr.lastReset <= 0 {
+		mgr.lastReset = timestamp
+	}
 
 	return rcId, nil
 }
@@ -382,6 +386,11 @@ func (mgr *rcManager) safeReturnAll(clientId []byte) (uint32, error) {
 func (mgr *rcManager) safeRecycle(timestamp int64) {
 	mgr.gLock.Lock()
 	defer mgr.gLock.Unlock()
+
+	// 还没有资源借出，此时跳过此步骤
+	if mgr.lastReset <= 0 {
+		return
+	}
 
 	// 过期资源清理
 	nowTs := timestamp
