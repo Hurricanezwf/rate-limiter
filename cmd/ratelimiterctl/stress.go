@@ -20,8 +20,8 @@ func stressFunc(cmd *cobra.Command, args []string) {
 		log.Println("Missing `robot` flag")
 		return
 	}
-	if Rate <= 0 {
-		log.Println("Missing `rate` flag")
+	if Worker <= 0 {
+		log.Println("Missing `worker` flag")
 		return
 	}
 	if Duration <= 0 {
@@ -76,7 +76,7 @@ func stressRobot(
 	rcType []byte,
 	summary chan<- int64,
 ) {
-	max := Rate
+	max := Worker
 	ch := make(chan struct{}, max)
 
 	c, err := ratelimiter.New(&ratelimiter.ClientConfig{

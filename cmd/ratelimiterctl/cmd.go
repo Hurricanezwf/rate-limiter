@@ -18,7 +18,7 @@ var (
 	Expire        int64
 	ResetInterval int64
 	Robot         int
-	Rate          int
+	Worker        int
 	Duration      int
 )
 
@@ -165,7 +165,7 @@ func stressCmd() *cobra.Command {
 
 	stressCmd.PersistentFlags().StringVar(&RCType, "rctype", "", "[Optional] Type of resource with base64 encoding")
 	stressCmd.PersistentFlags().IntVar(&Robot, "robot", 0, "[Optional] Robot count for testing")
-	stressCmd.PersistentFlags().IntVar(&Rate, "rate", 0, "[Optional] The concurrency at which eath robot sends a request.")
+	stressCmd.PersistentFlags().IntVar(&Worker, "worker", 0, "[Optional] The worker number which eath robot had.")
 	stressCmd.PersistentFlags().IntVar(&Duration, "duration", 0, "[Optional] Duration of stress test, unit is second")
 
 	return stressCmd
