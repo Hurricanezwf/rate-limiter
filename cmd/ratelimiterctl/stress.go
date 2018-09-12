@@ -116,7 +116,6 @@ func stressRobot(
 			// do nothing
 		case <-time.After(2 * time.Second):
 			log.Println("Robot ", seq, " send request timeout")
-			close(ch)
 		case <-quit:
 			close(ch)
 			summary <- atomic.LoadInt64(&accessCount)
