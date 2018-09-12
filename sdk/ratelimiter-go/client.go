@@ -331,7 +331,6 @@ func (c *RateLimiterClient) sendPost(uri string, body io.Reader) ([]byte, error)
 			if url = rp.Header.Get("Location"); len(url) <= 0 {
 				return nil, errors.New("Empty Location found in header")
 			}
-			c.highlightLeader(host)
 			continue
 		}
 
