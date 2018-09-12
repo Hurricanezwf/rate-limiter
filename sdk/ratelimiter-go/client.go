@@ -46,6 +46,9 @@ type RateLimiterClient struct {
 
 	// 使用过的资源类型, 这里使用base64存储
 	usedRCType map[string]struct{}
+
+	// HTTP Client
+	httpClient *http.Client
 }
 
 func New(config *ClientConfig) (*RateLimiterClient, error) {
@@ -79,6 +82,7 @@ func New(config *ClientConfig) (*RateLimiterClient, error) {
 		cluster:     config.Cluster,
 		clusterSize: len(config.Cluster),
 		usedRCType:  make(map[string]struct{}),
+		httpClient:  &http.Client{},
 	}
 
 	return &c, nil
@@ -309,7 +313,7 @@ func (c *RateLimiterClient) sendPost(uri string, body io.Reader) ([]byte, error)
 			url = fmt.Sprintf("http://%s%s", host, uri)
 		}
 
-		rp, err := http.Post(url, "application/json", body)
+		rp, err := c.httpClient.Post(url, "application/json", body)
 		if err != nil {
 			if i >= c.clusterSize-1 {
 				// 集群所有结点均失败

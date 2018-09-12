@@ -17,6 +17,9 @@ var (
 	Quota         uint32
 	Expire        int64
 	ResetInterval int64
+	Robot         int
+	Rate          int
+	Duration      int
 )
 
 func init() {
@@ -149,6 +152,23 @@ func rcListCmd() *cobra.Command {
 	rcListCmd.PersistentFlags().StringVar(&RCType, "rctype", "", "[Optional] Type of resource with base64 encoding")
 
 	return rcListCmd
+}
+
+func stressCmd() *cobra.Command {
+	stressCmd := &cobra.Command{
+		Use:       "stress",
+		Short:     "压力测试",
+		ValidArgs: []string{"rctype", "robot", "rate", "duration"},
+		Args:      cobra.OnlyValidArgs,
+		Run:       stressFunc,
+	}
+
+	stressCmd.PersistentFlags().StringVar(&RCType, "rctype", "", "[Optional] Type of resource with base64 encoding")
+	stressCmd.PersistentFlags().IntVar(&Robot, "robot", 10, "[Optional] Robot count for testing")
+	stressCmd.PersistentFlags().IntVar(&Rate, "rate", 8, "[Optional] The concurrency at which eath robot sends a request.")
+	stressCmd.PersistentFlags().IntVar(&Duration, "duration", 60, "[Optional] Duration of stress test, unit is second")
+
+	return stressCmd
 }
 
 //func borrowCmd() *cobra.Command {
