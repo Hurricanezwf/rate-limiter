@@ -16,6 +16,17 @@ func stressFunc(cmd *cobra.Command, args []string) {
 		log.Println("Missing `rctype` flag")
 		return
 	}
+	if Robot <= 0 {
+		log.Println("Missing `robot` flag")
+		return
+	}
+	if Rate <= 0 {
+		log.Println("Missing `rate` flag")
+		return
+	}
+	if Duration <= 0 {
+		log.Println("Missing `duration` flag")
+	}
 	rcType, err := base64.StdEncoding.DecodeString(RCType)
 	if err != nil {
 		log.Printf("Resolve resource type failed, %v\n", err)
