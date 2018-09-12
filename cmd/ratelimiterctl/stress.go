@@ -65,7 +65,7 @@ func stressFunc(cmd *cobra.Command, args []string) {
 	}
 	close(summary)
 
-	log.Printf("%d reuests in %d seconds, rate=%d次/s\n", accessCount, Duration, accessCount/int64(Duration))
+	log.Printf("%d requests in %d seconds, avg=%d次/s\n", accessCount, Duration, accessCount/int64(Duration))
 }
 
 func stressRobot(
