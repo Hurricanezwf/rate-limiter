@@ -46,15 +46,10 @@ func registCmd() *cobra.Command {
 		ValidArgs: []string{"rctype", "quota", "resetInterval"},
 		Args:      cobra.OnlyValidArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			var err error
-			var rcType []byte
-			if EnableBase64 {
-				if rcType, err = base64.StdEncoding.DecodeString(RCType); err != nil {
-					log.Printf("Resolve resource type failed, %v\n", err)
-					return
-				}
-			} else {
-				rcType = []byte(RCType)
+			rcType, err := base64.StdEncoding.DecodeString(RCType)
+			if err != nil {
+				log.Printf("Resolve resource type failed, %v\n", err)
+				return
 			}
 
 			c, err := ratelimiter.New(&ratelimiter.ClientConfig{
@@ -75,7 +70,6 @@ func registCmd() *cobra.Command {
 	registCmd.PersistentFlags().StringVar(&RCType, "rctype", "", "[Required] Type of resource with base64 encoding")
 	registCmd.PersistentFlags().Uint32Var(&Quota, "quota", 0, "[Required] Quota of resource")
 	registCmd.PersistentFlags().Int64Var(&ResetInterval, "resetInterval", 0, "[Required] Time interval seconds of being recycled to reuse")
-	registCmd.PersistentFlags().BoolVar(&EnableBase64, "base64", false, "[Optional] If your resource type is bytes, you should set this flag to be true")
 
 	return registCmd
 }
@@ -87,16 +81,12 @@ func deleteCmd() *cobra.Command {
 		ValidArgs: []string{"rctype"},
 		Args:      cobra.OnlyValidArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			var err error
-			var rcType []byte
-			if EnableBase64 {
-				if rcType, err = base64.StdEncoding.DecodeString(RCType); err != nil {
-					log.Printf("Resolve resource type failed, %v\n", err)
-					return
-				}
-			} else {
-				rcType = []byte(RCType)
+			rcType, err := base64.StdEncoding.DecodeString(RCType)
+			if err != nil {
+				log.Printf("Resolve resource type failed, %v\n", err)
+				return
 			}
+
 			c, err := ratelimiter.New(&ratelimiter.ClientConfig{
 				Cluster: strings.Split(Cluster, ","),
 			})
@@ -113,7 +103,6 @@ func deleteCmd() *cobra.Command {
 	}
 
 	deleteCmd.PersistentFlags().StringVar(&RCType, "rctype", "", "[Required] Type of resource with base64 encoding")
-	deleteCmd.PersistentFlags().BoolVar(&EnableBase64, "base64", false, "[Optional] If your resource type is bytes, you should set this flag to be true")
 
 	return deleteCmd
 }
@@ -127,13 +116,12 @@ func rcListCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			var rcType []byte
-			if EnableBase64 {
-				if rcType, err = base64.StdEncoding.DecodeString(RCType); err != nil {
+			if len(RCType) > 0 {
+				rcType, err = base64.StdEncoding.DecodeString(RCType)
+				if err != nil {
 					log.Printf("Resolve resource type failed, %v\n", err)
 					return
 				}
-			} else {
-				rcType = []byte(RCType)
 			}
 
 			c, err := ratelimiter.New(&ratelimiter.ClientConfig{
@@ -159,7 +147,6 @@ func rcListCmd() *cobra.Command {
 	}
 
 	rcListCmd.PersistentFlags().StringVar(&RCType, "rctype", "", "[Optional] Type of resource with base64 encoding")
-	rcListCmd.PersistentFlags().BoolVar(&EnableBase64, "base64", false, "[Optional] If your resource type is bytes, you should set this flag to be true")
 
 	return rcListCmd
 }
