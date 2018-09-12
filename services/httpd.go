@@ -12,6 +12,8 @@ import (
 	"github.com/Hurricanezwf/toolbox/logging/glog"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
+
+	_ "net/http/pprof"
 )
 
 var ctrl = newController(10000)
