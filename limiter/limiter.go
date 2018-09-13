@@ -32,6 +32,9 @@ type Interface interface {
 
 	// ResourceList 查询资源列表详情
 	ResourceList(r *APIResourceListReq) *APIResourceListResp
+
+	// IsOpen 是否已经开启
+	IsOpen() bool
 }
 
 // Default 新建一个默认limiter实例
@@ -52,17 +55,22 @@ func New(name string) Interface {
 
 // limiterV2 limiter的具体实现
 type limiterV2 struct {
+	isOpen bool
+
 	c cluster.Interface
 }
 
 func newLimiterV2() Interface {
 	return &limiterV2{
-		c: cluster.Default(),
+		isOpen: false,
+		c:      cluster.Default(),
 	}
 }
 
 func (l *limiterV2) Open() error {
-	return l.c.Open()
+	err := l.c.Open()
+	l.isOpen = (err == nil)
+	return err
 }
 
 func (l *limiterV2) RegistQuota(r *APIRegistQuotaReq) *APIRegistQuotaResp {
@@ -190,4 +198,8 @@ func (l *limiterV2) ResourceList(r *APIResourceListReq) *APIResourceListResp {
 	}
 
 	return l.c.ResourceList(r)
+}
+
+func (l *limiterV2) IsOpen() bool {
+	return l.isOpen
 }
