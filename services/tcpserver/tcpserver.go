@@ -10,11 +10,14 @@ type Config struct {
 	// TCP服务器监听地址, 非0.0.0.0
 	Listen string
 
+	// 最大连接数
+	MaxConn int
+
 	// 心跳间隔, 单位毫秒
 	KeepAliveInterval int64
 
 	// 多久收不到心跳则关闭连接，单位毫秒
-	Deadline int64
+	KeepAliveTimeout int64
 }
 
 type Interface interface {

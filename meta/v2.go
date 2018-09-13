@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/Hurricanezwf/rate-limiter/encoding"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
+	"github.com/Hurricanezwf/rate-limiter/tools"
 	"github.com/Hurricanezwf/toolbox/logging/glog"
 	pb "github.com/golang/protobuf/proto"
 )
@@ -40,7 +40,7 @@ func (m *metaV2) RegistQuota(rcType []byte, quota uint32, resetInterval, timesta
 	defer m.gLock.Unlock()
 
 	// 验证是否已经注册
-	rcTypeStr := encoding.BytesToString(rcType)
+	rcTypeStr := tools.BytesToString(rcType)
 	rcMgr := m.mgr[rcTypeStr]
 	if rcMgr != nil {
 		return ErrExisted
@@ -61,7 +61,7 @@ func (m *metaV2) DeleteQuota(rcType []byte) error {
 	m.gLock.Lock()
 	defer m.gLock.Unlock()
 
-	rcTypeStr := encoding.BytesToString(rcType)
+	rcTypeStr := tools.BytesToString(rcType)
 	rcMgr := m.mgr[rcTypeStr]
 	if rcMgr == nil {
 		return ErrResourceNotRegisted
@@ -71,7 +71,7 @@ func (m *metaV2) DeleteQuota(rcType []byte) error {
 }
 
 func (m *metaV2) Borrow(rcType, clientId []byte, expire, timestamp int64) (string, error) {
-	rcTypeStr := encoding.BytesToString(rcType)
+	rcTypeStr := tools.BytesToString(rcType)
 	rcMgr := m.safeFindManager(rcTypeStr)
 	if rcMgr == nil {
 		return "", ErrResourceNotRegisted
@@ -85,7 +85,7 @@ func (m *metaV2) Return(clientId []byte, rcId string) error {
 		return fmt.Errorf("Resolve resource id failed, %v", err)
 	}
 
-	rcTypeStr := encoding.BytesToString(rcType)
+	rcTypeStr := tools.BytesToString(rcType)
 	rcMgr := m.safeFindManager(rcTypeStr)
 	if rcMgr == nil {
 		return ErrResourceNotRegisted
@@ -94,7 +94,7 @@ func (m *metaV2) Return(clientId []byte, rcId string) error {
 }
 
 func (m *metaV2) ReturnAll(rcType, clientId []byte) (uint32, error) {
-	rcTypeStr := encoding.BytesToString(rcType)
+	rcTypeStr := tools.BytesToString(rcType)
 	rcMgr := m.safeFindManager(rcTypeStr)
 	if rcMgr == nil {
 		return 0, ErrResourceNotRegisted
@@ -128,7 +128,7 @@ func (m *metaV2) ResourceList(rcType []byte) ([]*ResourceDetail, error) {
 	default:
 		// 查询指定的资源详情
 		{
-			rcTypeStr := encoding.BytesToString(rcType)
+			rcTypeStr := tools.BytesToString(rcType)
 			rcMgr := m.safeFindManager(rcTypeStr)
 			if rcMgr == nil {
 				return nil, ErrResourceNotRegisted
@@ -189,7 +189,7 @@ func (m *metaV2) copyToProtobuf() *PB_Meta {
 			pbMgr.Recycled = append(pbMgr.Recycled, rcId)
 		}
 		for clientIdStr, rdTable := range rcMgr.used {
-			clientId, err := encoding.StringToBytes(clientIdStr)
+			clientId, err := tools.StringToBytes(clientIdStr)
 			if err != nil {
 				glog.Warningf("Convert clientIdStr '%s' to bytes failed, %v", clientIdStr, err)
 				continue
@@ -226,7 +226,7 @@ func (m *metaV2) copyFromProtobuf(pb *PB_Meta) {
 			rcMgr.recycled.PushBack(rcId)
 		}
 		for _, pbRd := range pbMgr.Used {
-			clientIdStr := encoding.BytesToString(pbRd.ClientID)
+			clientIdStr := tools.BytesToString(pbRd.ClientID)
 			rdTable := rcMgr.used[clientIdStr]
 			if rdTable == nil {
 				rdTable = make(map[string]*borrowRecord)
@@ -290,7 +290,7 @@ func newRCManager(rcType []byte, quota uint32, resetInterval int64) *rcManager {
 }
 
 func (mgr *rcManager) safeBorrow(rcType, clientId []byte, expire, timestamp int64) (string, error) {
-	clientIdStr := encoding.BytesToString(clientId)
+	clientIdStr := tools.BytesToString(clientId)
 
 	mgr.gLock.Lock()
 	defer mgr.gLock.Unlock()
@@ -327,7 +327,7 @@ func (mgr *rcManager) safeBorrow(rcType, clientId []byte, expire, timestamp int6
 }
 
 func (mgr *rcManager) safeReturn(clientId []byte, rcId string) error {
-	clientIdStr := encoding.BytesToString(clientId)
+	clientIdStr := tools.BytesToString(clientId)
 
 	mgr.gLock.Lock()
 	defer mgr.gLock.Unlock()
@@ -362,7 +362,7 @@ func (mgr *rcManager) safeReturn(clientId []byte, rcId string) error {
 }
 
 func (mgr *rcManager) safeReturnAll(clientId []byte) (uint32, error) {
-	clientIdStr := encoding.BytesToString(clientId)
+	clientIdStr := tools.BytesToString(clientId)
 
 	mgr.gLock.Lock()
 	defer mgr.gLock.Unlock()
@@ -402,7 +402,7 @@ func (mgr *rcManager) safeRecycle(timestamp int64) {
 			glog.V(2).Infof("'%s' borrowed by client '%s' is expired, force to recycle", rcId, clientIdStr)
 			if err := mgr.safePutRecycle(rcId); err != nil {
 				glog.Warningf("%v when merge expired record into recycled queue, canBorrow:%d, recycled:%d, quota:%d, rcType:'%s'",
-					err, mgr.canBorrow.Len(), mgr.recycled.Len(), mgr.quota, encoding.BytesToString(mgr.rcType))
+					err, mgr.canBorrow.Len(), mgr.recycled.Len(), mgr.quota, tools.BytesToString(mgr.rcType))
 				continue
 			}
 			delete(rdTable, rcId)
@@ -421,11 +421,11 @@ func (mgr *rcManager) safeRecycle(timestamp int64) {
 		}
 		if err := mgr.safePutCanBorrowWith(mgr.recycled); err != nil {
 			glog.Warningf("%v when merge recycled into canBorrow, canBorrow:%d, recycled:%d, quota:%d, rcType:'%s'",
-				err, mgr.canBorrow.Len(), mgr.recycled.Len(), mgr.quota, encoding.BytesToString(mgr.rcType))
+				err, mgr.canBorrow.Len(), mgr.recycled.Len(), mgr.quota, tools.BytesToString(mgr.rcType))
 		}
 		mgr.recycled.Init()
 		mgr.lastReset = nowTs
-		glog.V(2).Infof("Refresh %d resources to canBorrow queue because of client's return, rcType='%s'", count, encoding.BytesToString(mgr.rcType))
+		glog.V(2).Infof("Refresh %d resources to canBorrow queue because of client's return, rcType='%s'", count, tools.BytesToString(mgr.rcType))
 	}
 }
 
