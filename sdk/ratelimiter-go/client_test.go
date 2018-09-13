@@ -9,7 +9,7 @@ import (
 
 var (
 	rcTypeId        = []byte("zwf-test")
-	quota    uint32 = uint32(10)
+	quota    uint32 = uint32(100000)
 	expire   int64  = int64(1000)
 	cluster         = []string{
 		"127.0.0.1:20000",
@@ -118,6 +118,26 @@ func TestResourceList(t *testing.T) {
 		for i, dt := range rcList {
 			str, _ := encoder.MarshalToString(dt)
 			t.Logf("(%d) %s\n", i, str)
+		}
+	}
+}
+
+func BenchmarkBorrow(b *testing.B) {
+	l, err := New(&ClientConfig{
+		Cluster: cluster,
+	})
+	if err != nil {
+		b.Fatal(err.Error())
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		rcId, err := l.BorrowWithTimeout(rcTypeId, expire, 10*time.Second)
+		if err != nil {
+			b.Fatal(err.Error())
+		}
+		if err = l.Return(rcId); err != nil {
+			b.Fatal(err.Error())
 		}
 	}
 }

@@ -7,6 +7,8 @@ import (
 	"syscall"
 	"time"
 
+	_ "net/http/pprof"
+
 	"github.com/Hurricanezwf/rate-limiter/g"
 	"github.com/Hurricanezwf/rate-limiter/services"
 	"github.com/Hurricanezwf/rate-limiter/version"
@@ -48,12 +50,6 @@ func Run() {
 		f()
 	}
 }
-
-//func initHTTPServer() error {
-//	go beego.Run(fmt.Sprintf(":%d", g.HTTPort()))
-//	glog.V(1).Infof("Init %16s ................................ [OK]", "HTTPServer")
-//	return nil
-//}
 
 func forceExitWhenTimeout(timeout time.Duration) {
 	<-time.After(timeout)
