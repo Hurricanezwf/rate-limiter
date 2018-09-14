@@ -1,6 +1,8 @@
 package tcpserver
 
 import (
+	"errors"
+	"fmt"
 	"net"
 
 	"github.com/Hurricanezwf/rate-limiter/limiter"
@@ -16,10 +18,6 @@ type tcpserverv1 struct {
 	// TCP监听器
 	listener *net.TCPListener
 
-	// 连接管理器
-	//mgrLock *sync.RWMutex
-	//mgr     map[net.Conn]struct{}
-
 	// Limiter实例
 	limiter limiter.Interface
 
@@ -27,9 +25,10 @@ type tcpserverv1 struct {
 	dispatcher *EventDispatcher
 
 	// 连接数控制
-	connCtrl chan struct{}
+	maxConnCtrl chan struct{}
 
 	// 控制服务器关闭
+	stopC chan struct{}
 }
 
 func newTCPServerV1() Interface {
@@ -37,19 +36,44 @@ func newTCPServerV1() Interface {
 }
 
 // Open 打开TCP服务器
-// 注意：limiter必须是处于打开状态
-func (s *tcpserverv1) Open(conf *Config, l limiter.Interface) error {
-	// TODO:
-	return nil
-}
+func (s *tcpserverv1) Open(conf *Config, limiter limiter.Interface) error {
+	// 校验配置
+	if err := s.ValidateConfig(conf); err != nil {
+		return fmt.Errorf("Config error: %v", err)
+	}
 
-func (s *tcpserverv1) Close() error {
-	// TODO:
-	return nil
-}
+	// 校验Limiter实例
+	if limiter.IsOpen() == false {
+		return errors.New("Limiter was not opened")
+	}
 
-func (s *tcpserverv1) ValidateConfig(conf *Config) error {
-	// TODO
+	// 开启事件分发
+	dispatcher := &EventDispatcher{}
+	if err := dispatcher.Open(conf.DispatcherConfig); err != nil {
+		return err
+	}
+
+	// 启动监听
+	addr, err := net.ResolveTCPAddr("tcp", conf.Listen)
+	if err != nil {
+		return err
+	}
+	listener, err := net.ListenTCP(conf.Listen, addr)
+	if err != nil {
+		return err
+	}
+
+	// 变量初始化
+	s.conf = conf
+	s.listener = listener
+	s.limiter = limiter
+	s.dispatcher = dispatcher
+	s.maxConnCtrl = make(chan struct{}, conf.MaxConnection)
+	s.stopC = make(chan struct{})
+
+	// 启动服务
+	go s.serveLoop()
+
 	return nil
 }
 
@@ -62,15 +86,17 @@ func (s *tcpserverv1) serveLoop() {
 		}
 
 		// 连接数控制
-		s.connCtrl <- struct{}{}
+		s.maxConnCtrl <- struct{}{}
 
-		// TODO: set config
-		go s.handle(newConnection(conn, nil))
+		go s.handle(newConnection(conn, s.conf.ConnectionConfig))
 	}
 }
 
 func (s *tcpserverv1) handle(c *Connection) {
 	for {
+		// 检测服务器关闭
+
+		// 读取请求
 		action, _, seq, msgBody, err := encoding.DecodeMsg(c.Reader())
 		if err != nil {
 			c.Write(action, proto.TCPCodeBadRequest, seq, nil)
@@ -95,5 +121,59 @@ func (s *tcpserverv1) handle(c *Connection) {
 	}
 FINISH:
 	c.Close()
-	<-s.connCtrl
+	<-s.maxConnCtrl
+}
+
+func (s *tcpserverv1) IsOpen() bool {
+	select {
+	case <-s.stopC:
+		return false
+	default:
+		return true
+	}
+}
+
+func (s *tcpserverv1) ValidateConfig(conf *Config) error {
+	if conf == nil {
+		return errors.New("Config is nil")
+	}
+
+	//
+	addr, err := net.ResolveTCPAddr("tcp", conf.Listen)
+	if err != nil {
+		return fmt.Errorf("Invalid `Listen` field value, %v", err)
+	}
+	if addr.IP.IsUnspecified() {
+		return errors.New("Invalid `Listen` field value, it is not advertisable")
+	}
+
+	//
+	if conf.MaxConnection <= 0 {
+		return fmt.Errorf("Invalid `MaxConnection` field value")
+	}
+
+	//
+	if err = ValidateConnectionConf(conf.ConnectionConfig); err != nil {
+		return err
+	}
+
+	//
+	if err = ValidateDispatcherConf(conf.DispatcherConfig); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *tcpserverv1) Close() error {
+	select {
+	case <-s.stopC:
+		return nil
+	default:
+		s.listener.Close()
+		s.dispatcher.Close()
+		s.limiter.Close()
+		close(s.stopC)
+		close(s.maxConnCtrl)
+	}
+	return nil
 }

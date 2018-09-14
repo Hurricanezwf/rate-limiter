@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Hurricanezwf/rate-limiter/encoding"
+	"github.com/Hurricanezwf/rate-limiter/pkg/encoding"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
 	"github.com/Hurricanezwf/toolbox/logging/glog"
 	"github.com/golang/protobuf/jsonpb"

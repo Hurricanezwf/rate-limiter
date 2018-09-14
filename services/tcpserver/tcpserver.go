@@ -1,6 +1,8 @@
 package tcpserver
 
-import "github.com/Hurricanezwf/rate-limiter/limiter"
+import (
+	"github.com/Hurricanezwf/rate-limiter/limiter"
+)
 
 func init() {
 	RegistBuilder("v1", newTCPServerV1)
@@ -10,11 +12,14 @@ type Config struct {
 	// TCP服务器监听地址, 非0.0.0.0
 	Listen string
 
-	// 心跳间隔, 单位毫秒
-	KeepAliveInterval int64
+	// 最大连接数
+	MaxConnection int
 
-	// 多久收不到心跳则关闭连接，单位毫秒
-	Deadline int64
+	// 连接配置
+	*ConnectionConfig
+
+	// 转发器配置
+	*DispatcherConfig
 }
 
 type Interface interface {

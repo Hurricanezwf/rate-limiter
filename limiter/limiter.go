@@ -2,6 +2,7 @@ package limiter
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/Hurricanezwf/rate-limiter/cluster"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
@@ -17,6 +18,9 @@ func init() {
 type Interface interface {
 	// Open 启用limiter
 	Open() error
+
+	// Close 关闭limiter
+	Close() error
 
 	// RegistQuota 注册资源配额
 	RegistQuota(r *APIRegistQuotaReq) *APIRegistQuotaResp
@@ -64,6 +68,8 @@ func New(name string) Interface {
 
 // limiterV2 limiter的具体实现
 type limiterV2 struct {
+	gLock *sync.RWMutex
+
 	isOpen bool
 
 	c cluster.Interface
@@ -71,6 +77,7 @@ type limiterV2 struct {
 
 func newLimiterV2() Interface {
 	return &limiterV2{
+		gLock:  &sync.RWMutex{},
 		isOpen: false,
 		c:      cluster.Default(),
 	}
@@ -78,8 +85,17 @@ func newLimiterV2() Interface {
 
 func (l *limiterV2) Open() error {
 	err := l.c.Open()
+	l.gLock.Lock()
 	l.isOpen = (err == nil)
+	l.gLock.Unlock()
 	return err
+}
+
+func (l *limiterV2) Close() error {
+	l.gLock.Lock()
+	l.isOpen = false
+	l.gLock.Unlock()
+	return l.c.Close()
 }
 
 func (l *limiterV2) RegistQuota(r *APIRegistQuotaReq) *APIRegistQuotaResp {
@@ -276,5 +292,7 @@ func (l *limiterV2) ResourceListWith(msg []byte) *APIResourceListResp {
 }
 
 func (l *limiterV2) IsOpen() bool {
+	l.gLock.RLock()
+	defer l.gLock.RUnlock()
 	return l.isOpen
 }

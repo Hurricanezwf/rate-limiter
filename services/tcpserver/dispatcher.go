@@ -1,18 +1,18 @@
 package tcpserver
 
 import (
-	"cmp/public-cloud/proxy-layer/logging/glog"
 	"errors"
 	"sync"
 
 	"github.com/Hurricanezwf/rate-limiter/limiter"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
+	"github.com/Hurricanezwf/toolbox/logging/glog"
 	"github.com/golang/protobuf/proto"
 )
 
 type DispatcherConfig struct {
 	QueueSize int
-	Worker    int
+	WorkerNum int
 }
 
 type Event struct {
@@ -47,8 +47,8 @@ func (mgr *EventDispatcher) Open(conf *DispatcherConfig) (err error) {
 	mgr.wg = &sync.WaitGroup{}
 	mgr.stopC = make(chan struct{})
 
-	mgr.wg.Add(conf.Worker)
-	for i := 0; i < conf.Worker; i++ {
+	mgr.wg.Add(conf.WorkerNum)
+	for i := 0; i < conf.WorkerNum; i++ {
 		go mgr.handleEventsLoop()
 	}
 
@@ -107,11 +107,14 @@ func (mgr *EventDispatcher) handle(e *Event) {
 }
 
 func ValidateDispatcherConf(conf *DispatcherConfig) error {
-	if conf.QueueSize <= 0 {
-		return errors.New("QueueSize too small")
+	if conf == nil {
+		return errors.New("Missing `DispatcherConfig`")
 	}
-	if conf.Worker <= 0 {
-		return errors.New("Worker count too little")
+	if conf.QueueSize <= 0 {
+		return errors.New("DispatcherConfig.QueueSize too small")
+	}
+	if conf.WorkerNum <= 0 {
+		return errors.New("DispatcherConfig.WorkerNum too little")
 	}
 	return nil
 }

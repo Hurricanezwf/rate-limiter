@@ -2,14 +2,18 @@ package services
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/Hurricanezwf/rate-limiter/g"
 	"github.com/Hurricanezwf/rate-limiter/limiter"
+	"github.com/Hurricanezwf/rate-limiter/services/tcpserver"
 	"github.com/Hurricanezwf/toolbox/logging/glog"
 )
 
 // Rate limiter实例
 var l limiter.Interface
+
+var tcpserv tcpserver.Interface
 
 func Run() (err error) {
 	glog.Infof("Be starting, wait a while...")
@@ -27,6 +31,29 @@ func Run() (err error) {
 		return fmt.Errorf("Open limiter failed, %v", err)
 	}
 	glog.Info("Open limiter OK.")
+
+	// 启动TCP服务
+	tcpserv = tcpserver.Default()
+	err = tcpserv.Open(
+		&tcpserver.Config{
+			Listen:        "192.168.2.100:19999",
+			MaxConnection: 100,
+			ConnectionConfig: &tcpserver.ConnectionConfig{
+				KeepAliveInterval: time.Second,
+				KeepAliveTimeout:  3 * time.Second,
+				RWTimeout:         30 * time.Second,
+			},
+			DispatcherConfig: &tcpserver.DispatcherConfig{
+				QueueSize: 100,
+				WorkerNum: 8,
+			},
+		},
+		l,
+	)
+	if err != nil {
+		return fmt.Errorf("Open tcp sever failed, %v", err)
+	}
+	glog.Info("Open tcp server OK.")
 
 	return nil
 }

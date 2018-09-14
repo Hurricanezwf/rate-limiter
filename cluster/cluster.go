@@ -31,6 +31,9 @@ type Interface interface {
 	// Open 启用集群
 	Open() error
 
+	// Close 关闭集群
+	Close() error
+
 	// Raft's FSM
 	raftlib.FSM
 
@@ -339,6 +342,16 @@ func (c *clusterV2) initMetaCleaner(clusterEnabled bool) {
 			}
 		}
 	}
+}
+
+// Close 关闭集群
+func (c *clusterV2) Close() error {
+	select {
+	case <-c.stopC:
+	default:
+		close(c.stopC)
+	}
+	return nil
 }
 
 // IsLeader 该结点在集群中是否是Leader

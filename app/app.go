@@ -49,12 +49,6 @@ func Run() {
 	}
 }
 
-//func initHTTPServer() error {
-//	go beego.Run(fmt.Sprintf(":%d", g.HTTPort()))
-//	glog.V(1).Infof("Init %16s ................................ [OK]", "HTTPServer")
-//	return nil
-//}
-
 func forceExitWhenTimeout(timeout time.Duration) {
 	<-time.After(timeout)
 	os.Exit(-1)

@@ -2,6 +2,7 @@ package tcpserver
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -107,5 +108,18 @@ func (c *Connection) keepalive() {
 }
 
 func (c *Connection) Close() {
-	close(c.stopC)
+	select {
+	case <-c.stopC:
+		return
+	default:
+		close(c.stopC)
+	}
+}
+
+func ValidateConnectionConf(conf *ConnectionConfig) error {
+	if conf == nil {
+		return errors.New("Missing `ConnectionConfig`")
+	}
+	// TODO:
+	return nil
 }
