@@ -6,7 +6,8 @@ import (
 	"sync"
 
 	"github.com/Hurricanezwf/rate-limiter/limiter"
-	"github.com/Hurricanezwf/rate-limiter/proto"
+	. "github.com/Hurricanezwf/rate-limiter/proto"
+	"github.com/golang/protobuf/proto"
 )
 
 type DispatcherConfig struct {
@@ -19,12 +20,12 @@ type Event struct {
 	Seq     uint32
 	Action  byte
 	Msg     []byte
-	Limiter *limiter.Interface
+	Limiter limiter.Interface
 }
 
 type EventDispatcher struct {
 	//
-	conf *Config
+	conf *DispatcherConfig
 
 	//
 	queue chan *Event
@@ -37,18 +38,18 @@ type EventDispatcher struct {
 }
 
 func (mgr *EventDispatcher) Open(conf *DispatcherConfig) (err error) {
-	if err = ValidateConf(conf); err != nil {
+	if err = ValidateDispatcherConf(conf); err != nil {
 		return err
 	}
 
-	conf = conf
-	queue = make(chan *Event, conf.QueueSize)
-	wg = &sync.WaitGroup{}
-	stopC = make(chan struct{})
+	mgr.conf = conf
+	mgr.queue = make(chan *Event, conf.QueueSize)
+	mgr.wg = &sync.WaitGroup{}
+	mgr.stopC = make(chan struct{})
 
-	wg.Add(conf.Worker)
+	mgr.wg.Add(conf.Worker)
 	for i := 0; i < conf.Worker; i++ {
-		go handleEventsLoop()
+		go mgr.handleEventsLoop()
 	}
 
 	return nil
@@ -57,6 +58,7 @@ func (mgr *EventDispatcher) Open(conf *DispatcherConfig) (err error) {
 func (mgr *EventDispatcher) Close() error {
 	close(mgr.stopC)
 	mgr.wg.Wait()
+	return nil
 }
 
 func (mgr *EventDispatcher) PushBack(e *Event) error {
@@ -73,7 +75,7 @@ func (mgr *EventDispatcher) handleEventsLoop() {
 		case <-mgr.stopC:
 			return
 		case e := <-mgr.queue:
-			mgr.hanle(e)
+			mgr.handle(e)
 		}
 	}
 }
@@ -82,24 +84,24 @@ func (mgr *EventDispatcher) handle(e *Event) {
 	var rp proto.Message
 
 	switch e.Action {
-	case proto.ActionBorrow:
+	case ActionBorrow:
 		rp = e.Limiter.BorrowWith(e.Msg)
-	case proto.ActionReturn:
+	case ActionReturn:
 		rp = e.Limiter.ReturnWith(e.Msg)
-	case proto.ActionReturnAll:
+	case ActionReturnAll:
 		rp = e.Limiter.ReturnAllWith(e.Msg)
-	case proto.ActionRegistQuota:
+	case ActionRegistQuota:
 		rp = e.Limiter.RegistQuotaWith(e.Msg)
-	case proto.ActionDeleteQuota:
+	case ActionDeleteQuota:
 		rp = e.Limiter.DeleteQuotaWith(e.Msg)
-	case proto.ActionResourceList:
+	case ActionResourceList:
 		rp = e.Limiter.ResourceListWith(e.Msg)
 	default:
 		glog.Warningf("Unknown action '%#v'", e.Action)
 		return
 	}
 
-	if err := e.Conn.Write(e.Action, proto.TCPCodeOK, e.Seq, rp); err != nil {
+	if err := e.Conn.Write(e.Action, TCPCodeOK, e.Seq, rp); err != nil {
 		glog.Warningf("Write error: %v", err)
 	}
 }

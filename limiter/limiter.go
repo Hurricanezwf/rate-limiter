@@ -40,7 +40,7 @@ type Interface interface {
 
 	// ResourceList 查询资源列表详情
 	ResourceList(r *APIResourceListReq) *APIResourceListResp
-	ResourceListWith(msg []byte) *APIReturnAllResp
+	ResourceListWith(msg []byte) *APIResourceListResp
 
 	// IsOpen 是否已经开启
 	IsOpen() bool

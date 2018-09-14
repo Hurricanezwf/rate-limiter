@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Hurricanezwf/rate-limiter/pkg/encoding"
+	"github.com/Hurricanezwf/toolbox/logging/glog"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -76,7 +77,7 @@ func (c *Connection) Write(action, resultCode byte, seq uint32, msg proto.Messag
 	return err
 }
 
-func (c *Connection) reader() *bufio.Reader {
+func (c *Connection) Reader() *bufio.Reader {
 	return c.reader
 }
 
@@ -87,11 +88,11 @@ func (c *Connection) keepalive() {
 	for {
 		select {
 		case <-c.stopC:
-			glog.V(3).Info("Disconnect with '%s'", c.RemoteAddr())
+			glog.V(3).Infof("Disconnect with '%s'", c.RemoteAddr())
 			conn.Close()
 			return
 		case <-timer.C:
-			glog.Warninf("Disconnect with '%s' because keepalived timeout.", c.RemoteAddr())
+			glog.Warningf("Disconnect with '%s' because keepalived timeout.", c.RemoteAddr())
 			conn.Close()
 			return
 		case <-ticker.C:
@@ -100,7 +101,7 @@ func (c *Connection) keepalive() {
 			if !timer.Stop() {
 				<-timer.C
 			}
-			timer.Reset(c.KeepAliveTimeout)
+			timer.Reset(c.conf.KeepAliveTimeout)
 		}
 	}
 }

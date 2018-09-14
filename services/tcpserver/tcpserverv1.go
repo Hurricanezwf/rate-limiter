@@ -1,12 +1,12 @@
 package tcpserver
 
 import (
-	"cmp/public-cloud/proxy-layer/logging/glog"
 	"net"
 
 	"github.com/Hurricanezwf/rate-limiter/limiter"
 	"github.com/Hurricanezwf/rate-limiter/pkg/encoding"
 	"github.com/Hurricanezwf/rate-limiter/proto"
+	"github.com/Hurricanezwf/toolbox/logging/glog"
 )
 
 type tcpserverv1 struct {
@@ -64,13 +64,14 @@ func (s *tcpserverv1) serveLoop() {
 		// 连接数控制
 		s.connCtrl <- struct{}{}
 
-		go s.handle(newConnection(conn, s.conf.KeepAliveInterval, s.conf.KeepAliveTimeout))
+		// TODO: set config
+		go s.handle(newConnection(conn, nil))
 	}
 }
 
 func (s *tcpserverv1) handle(c *Connection) {
 	for {
-		action, _, seq, msgBody, err := encoding.DecodeMsg(c.reader())
+		action, _, seq, msgBody, err := encoding.DecodeMsg(c.Reader())
 		if err != nil {
 			c.Write(action, proto.TCPCodeBadRequest, seq, nil)
 			goto FINISH
@@ -82,7 +83,7 @@ func (s *tcpserverv1) handle(c *Connection) {
 			Seq:     seq,
 			Action:  action,
 			Msg:     msgBody,
-			Limiter: s.l,
+			Limiter: s.limiter,
 		})
 		if err == nil {
 			continue
