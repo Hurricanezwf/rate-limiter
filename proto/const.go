@@ -1,6 +1,6 @@
 package proto
 
-// 魔数
+// 快照魔数
 var MagicNumber byte = 0x66
 
 // 快照协议版本
