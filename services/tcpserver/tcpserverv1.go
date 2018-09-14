@@ -58,7 +58,7 @@ func (s *tcpserverv1) Open(conf *Config, limiter limiter.Interface) error {
 	if err != nil {
 		return err
 	}
-	listener, err := net.ListenTCP(conf.Listen, addr)
+	listener, err := net.ListenTCP("tcp", addr)
 	if err != nil {
 		return err
 	}
