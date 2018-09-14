@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Hurricanezwf/rate-limiter/tools"
+	"github.com/Hurricanezwf/rate-limiter/pkg/encoding"
 )
 
 func MakeResourceID(rcTypeId []byte, idx uint32) string {
-	return fmt.Sprintf("%s_rc#%d", tools.BytesToString(rcTypeId), idx)
+	return fmt.Sprintf("%s_rc#%d", encoding.BytesToString(rcTypeId), idx)
 }
 
 func ResolveResourceID(rcId string) (rcTypeId []byte, err error) {
@@ -18,5 +18,5 @@ func ResolveResourceID(rcId string) (rcTypeId []byte, err error) {
 		return nil, errors.New("Bad ResourceID")
 	}
 
-	return tools.StringToBytes(arr[0])
+	return encoding.StringToBytes(arr[0])
 }

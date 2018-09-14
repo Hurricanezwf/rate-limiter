@@ -13,8 +13,9 @@ var (
 
 // Error Code
 var (
-	ErrCodeBadRequest    byte = 0x01
-	ErrCodeServerTooBusy byte = 0x02
+	TCPCodeOK            byte = 0x00
+	TCPCodeBadRequest    byte = 0x01
+	TCPCodeServerTooBusy byte = 0x02
 )
 
 var (
@@ -23,6 +24,6 @@ var (
 )
 
 var CodeToError = map[byte]error{
-	ErrCodeBadRequest:    ErrBadRequest,
-	ErrCodeServerTooBusy: ErrTooBusy,
+	TCPCodeBadRequest:    ErrBadRequest,
+	TCPCodeServerTooBusy: ErrTooBusy,
 }

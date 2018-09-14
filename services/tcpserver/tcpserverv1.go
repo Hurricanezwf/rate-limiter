@@ -72,7 +72,7 @@ func (s *tcpserverv1) handle(c *Connection) {
 	for {
 		action, _, seq, msgBody, err := encoding.DecodeMsg(c.reader())
 		if err != nil {
-			c.Write(action, proto.ErrCodeBadRequest, seq, nil)
+			c.Write(action, proto.TCPCodeBadRequest, seq, nil)
 			goto FINISH
 		}
 
@@ -87,7 +87,7 @@ func (s *tcpserverv1) handle(c *Connection) {
 		if err == nil {
 			continue
 		}
-		if err = c.Write(action, proto.ErrCodeServerTooBusy, seq, nil); err != nil {
+		if err = c.Write(action, proto.TCPCodeServerTooBusy, seq, nil); err != nil {
 			glog.Warningf("Write to remote '%s' failed, ", c.RemoteAddr(), err.Error())
 			continue
 		}

@@ -1,6 +1,7 @@
 package tcpserver
 
 import (
+	"cmp/public-cloud/proxy-layer/logging/glog"
 	"errors"
 	"sync"
 
@@ -78,19 +79,28 @@ func (mgr *EventDispatcher) handleEventsLoop() {
 }
 
 func (mgr *EventDispatcher) handle(e *Event) {
+	var rp proto.Message
+
 	switch e.Action {
 	case proto.ActionBorrow:
-		e.Limiter.BorrowWith(e.Msg)
+		rp = e.Limiter.BorrowWith(e.Msg)
 	case proto.ActionReturn:
-		e.Limiter.ReturnWith(e.Msg)
+		rp = e.Limiter.ReturnWith(e.Msg)
 	case proto.ActionReturnAll:
-		e.Limiter.ReturnAllWith(e.Msg)
+		rp = e.Limiter.ReturnAllWith(e.Msg)
 	case proto.ActionRegistQuota:
-		e.Limiter.RegistQuotaWith(e.Msg)
+		rp = e.Limiter.RegistQuotaWith(e.Msg)
 	case proto.ActionDeleteQuota:
-		e.Limiter.DeleteQuotaWith(e.Msg)
+		rp = e.Limiter.DeleteQuotaWith(e.Msg)
 	case proto.ActionResourceList:
-		e.Limiter.ResourceListWith(e.Msg)
+		rp = e.Limiter.ResourceListWith(e.Msg)
+	default:
+		glog.Warningf("Unknown action '%#v'", e.Action)
+		return
+	}
+
+	if err := e.Conn.Write(e.Action, proto.TCPCodeOK, e.Seq, rp); err != nil {
+		glog.Warningf("Write error: %v", err)
 	}
 }
 

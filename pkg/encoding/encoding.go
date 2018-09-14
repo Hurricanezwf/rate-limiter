@@ -24,8 +24,8 @@ var msgMagicNumber byte = 0x01
 
 // EncodeMsg 自定义协议格式
 // [1 Byte ] Magic Number
-// [1 Byte ] Action Type
 // [1 Byte ] Result Code
+// [1 Byte ] Action Type
 // [4 Bytes] Sequence Number
 // [4 Bytes] Data Len
 // [N Bytes] Data Content
@@ -38,10 +38,10 @@ func EncodeMsg(action, resultCode byte, seq uint32, message proto.Message) ([]by
 	if err = msg.WriteByte(msgMagicNumber); err != nil {
 		goto FINISH
 	}
-	if err = msg.WriteByte(action); err != nil {
+	if err = msg.WriteByte(resultCode); err != nil {
 		goto FINISH
 	}
-	if err = msg.WriteByte(resultCode); err != nil {
+	if err = msg.WriteByte(action); err != nil {
 		goto FINISH
 	}
 	if err = binary.Write(msg, binary.BigEndian, seq); err != nil {
@@ -84,17 +84,17 @@ func DecodeMsg(reader *bufio.Reader) (action, resultCode byte, seq uint32, msgBo
 		return
 	}
 
+	// Result Code
+	resultCode, err = reader.ReadByte()
+	if err != nil {
+		err = fmt.Errorf("Read result code failed, %v", err)
+		return
+	}
+
 	// Action
 	action, err = reader.ReadByte()
 	if err != nil {
 		err = fmt.Errorf("Read action failed, %v", err)
-		return
-	}
-
-	// 结果码
-	resultCode, err = reader.ReadByte()
-	if err != nil {
-		err = fmt.Errorf("Read result code failed, %v", err)
 		return
 	}
 
