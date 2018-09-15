@@ -291,7 +291,6 @@ func resolveRequest(w http.ResponseWriter, req *http.Request, message proto.Mess
 	// 解析请求
 	buf := bytes.NewBuffer(nil)
 	buf.ReadFrom(req.Body)
-	req.Body.Close()
 
 	glog.V(1).Infof("%s [%s] REQ: %s", req.Method, req.RequestURI, buf.String())
 

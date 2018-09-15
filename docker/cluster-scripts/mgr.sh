@@ -1,9 +1,9 @@
 #!/bin/bash
 
-cluster="127.0.0.1:20000,127.0.0.1:20001,127.0.0.1:20002"
+cluster="127.0.0.1:20002,127.0.0.1:20001,127.0.0.1:20002"
 
-rctype="cWNsb3VkI0VJUExpc3Q="
-#rctype=""
+#rctype="cWNsb3VkI0VJUExpc3Q="
+rctype=""
 
 
 
