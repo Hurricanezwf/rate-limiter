@@ -7,6 +7,8 @@ import (
 	"syscall"
 	"time"
 
+	_ "net/http/pprof"
+
 	"github.com/Hurricanezwf/rate-limiter/g"
 	"github.com/Hurricanezwf/rate-limiter/services"
 	"github.com/Hurricanezwf/rate-limiter/version"
