@@ -36,7 +36,7 @@ func Run() (err error) {
 	tcpserv = tcpserver.Default()
 	err = tcpserv.Open(
 		&tcpserver.Config{
-			Listen:        "192.168.2.100:19999",
+			Listen:        "127.0.0.1:19999",
 			MaxConnection: 100,
 			ConnectionConfig: &tcpserver.ConnectionConfig{
 				KeepAliveInterval: time.Second,
