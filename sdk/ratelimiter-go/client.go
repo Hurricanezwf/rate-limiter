@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"math/rand"
 	"net"
 	"net/http"
@@ -303,7 +302,7 @@ func (c *RateLimiterClient) highlightLeader(leader string) {
 	}
 }
 
-func (c *RateLimiterClient) sendPost(uri string, body io.Reader) ([]byte, error) {
+func (c *RateLimiterClient) sendPost(uri string, body *bytes.Buffer) ([]byte, error) {
 	var url string
 	var buf = bytes.NewBuffer(nil)
 
@@ -313,7 +312,11 @@ func (c *RateLimiterClient) sendPost(uri string, body io.Reader) ([]byte, error)
 			url = fmt.Sprintf("http://%s%s", host, uri)
 		}
 
-		rp, err := c.httpClient.Post(url, "application/json", body)
+		// HTTP请求时会将内容从buf读尽，如果遇到重定向的时候不再写入，那么将返回EOF
+		buf.Reset()
+		buf.Write(body.Bytes())
+
+		rp, err := c.httpClient.Post(url, "application/json", buf)
 		if err != nil {
 			if i >= c.clusterSize-1 {
 				// 集群所有结点均失败

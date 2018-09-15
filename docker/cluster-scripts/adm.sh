@@ -33,6 +33,7 @@ function start() {
             -v ${__NODE_LOCAL_CONF_DIR__}:/rate-limiter/conf \
             -v ${__NODE_LOCAL_LOG_DIR__}:/rate-limiter/logs \
             -v ${__NODE_LOCAL_META_DIR__}:/rate-limiter/meta \
+            -v /etc/localtime:/etc/localtime:ro \
             ${IMAGE}
     done
 }
