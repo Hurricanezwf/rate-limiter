@@ -3,6 +3,7 @@ package ratelimiter
 import (
 	"errors"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/Hurricanezwf/rate-limiter/proto"
@@ -86,4 +87,25 @@ func New(name string, conf *ClientConfig) (Interface, error) {
 		return f(conf)
 	}
 	return nil, fmt.Errorf("No ratelimiter client found for '%s'", name)
+}
+
+func ValidateConfig(config *ClientConfig) error {
+	if config == nil {
+		return errors.New("Config is nil")
+	}
+	if len(config.Cluster) <= 0 {
+		return errors.New("Missing cluster address")
+	}
+
+	// 简单校验集群地址
+	for _, addr := range config.Cluster {
+		a, err := net.ResolveTCPAddr("tcp", addr)
+		if err != nil {
+			return fmt.Errorf("Invalid cluster address `%s` in config", addr)
+		}
+		if a.IP.IsUnspecified() {
+			return fmt.Errorf("Invalid cluster address `%s` in config, it is not advertisable")
+		}
+	}
+	return nil
 }

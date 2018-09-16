@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -17,8 +16,8 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-// RateLimiter服务客户端代理库
-type RateLimiterClient struct {
+// RateLimiter客户端代理库,走HTTP协议
+type HTTPClient struct {
 	mutex *sync.RWMutex
 
 	// 客户端ID，每个实例不重复
@@ -36,22 +35,9 @@ type RateLimiterClient struct {
 }
 
 func NewHTTPClient(config *ClientConfig) (Interface, error) {
-	if config == nil {
-		return nil, errors.New("Config is nil")
-	}
-	if len(config.Cluster) <= 0 {
-		return nil, errors.New("Missing cluster address")
-	}
-
-	// 简单校验集群地址
-	for _, addr := range config.Cluster {
-		a, err := net.ResolveTCPAddr("tcp", addr)
-		if err != nil {
-			return nil, fmt.Errorf("Invalid cluster address `%s` in config", addr)
-		}
-		if a.IP.IsUnspecified() {
-			return nil, fmt.Errorf("Invalid cluster address `%s` in config, it is not advertisable")
-		}
+	// 校验配置
+	if err := ValidateConfig(config); err != nil {
+		return nil, err
 	}
 
 	// 生成随机ClientID
@@ -60,13 +46,12 @@ func NewHTTPClient(config *ClientConfig) (Interface, error) {
 		return nil, fmt.Errorf("Generate uuid for client failed, %v", err)
 	}
 
-	c := RateLimiterClient{
-		mutex:       &sync.RWMutex{},
-		clientId:    clientId.Bytes(),
-		cluster:     config.Cluster,
-		clusterSize: len(config.Cluster),
-		usedRCType:  make(map[string]struct{}),
-		httpClient:  &http.Client{},
+	c := HTTPClient{
+		mutex:      &sync.RWMutex{},
+		clientId:   clientId.Bytes(),
+		config:     config,
+		usedRCType: make(map[string]struct{}),
+		httpClient: &http.Client{},
 	}
 
 	return &c, nil
@@ -74,7 +59,7 @@ func NewHTTPClient(config *ClientConfig) (Interface, error) {
 
 // Close 关闭limiter，释放该客户端占用的所有资源配额. 一般在程序退出时使用
 // 注意：不调用Close操作会使得该客户端占用的资源持续占用直到超时。
-func (c *RateLimiterClient) Close() error {
+func (c *HTTPClient) Close() error {
 	var err, lastErr error
 	var rcType []byte
 	var encoder jsonpb.Marshaler
@@ -112,7 +97,7 @@ func (c *RateLimiterClient) Close() error {
 // resourceTypei : 用户自定义资源类型
 // quota         : 资源配额，例如quota为10表示限流10次/s
 // resetInterval : 资源配额重置周期，单位秒
-func (c *RateLimiterClient) RegistQuota(resourceType []byte, quota uint32, resetInterval int64) error {
+func (c *HTTPClient) RegistQuota(resourceType []byte, quota uint32, resetInterval int64) error {
 	var encoder jsonpb.Marshaler
 	var buf = bytes.NewBuffer(nil)
 	var err = encoder.Marshal(buf, &proto.APIRegistQuotaReq{
@@ -130,7 +115,7 @@ func (c *RateLimiterClient) RegistQuota(resourceType []byte, quota uint32, reset
 
 // DeleteQuota 删除资源配额
 // resourceTypei : 用户自定义资源类型
-func (c *RateLimiterClient) DeleteQuota(resourceType []byte) error {
+func (c *HTTPClient) DeleteQuota(resourceType []byte) error {
 	var encoder jsonpb.Marshaler
 	var buf = bytes.NewBuffer(nil)
 	var err = encoder.Marshal(buf, &proto.APIDeleteQuotaReq{
@@ -147,7 +132,7 @@ func (c *RateLimiterClient) DeleteQuota(resourceType []byte) error {
 // Borrow 借用资源
 // resourceType: 用户自定义资源类型
 // expire      : 过期自动回收时间，单位秒。该时间建议与请求超时时间一致
-func (c *RateLimiterClient) Borrow(resourceType []byte, expire int64) (resourceId string, err error) {
+func (c *HTTPClient) Borrow(resourceType []byte, expire int64) (resourceId string, err error) {
 	var encoder jsonpb.Marshaler
 	var buf = bytes.NewBuffer(nil)
 	err = encoder.Marshal(buf, &proto.APIBorrowReq{
@@ -173,7 +158,7 @@ func (c *RateLimiterClient) Borrow(resourceType []byte, expire int64) (resourceI
 // BorrowWithTimeout 带超时的借用资源
 // @resourceType: 用户自定义资源类型
 // @expire      : 过期自动回收时间，单位秒。该时间建议与请求超时时间一致
-func (c *RateLimiterClient) BorrowWithTimeout(resourceType []byte, expire int64, timeout time.Duration) (resourceId string, err error) {
+func (c *HTTPClient) BorrowWithTimeout(resourceType []byte, expire int64, timeout time.Duration) (resourceId string, err error) {
 	var encoder jsonpb.Marshaler
 	var buf = bytes.NewBuffer(nil)
 	err = encoder.Marshal(buf, &proto.APIBorrowReq{
@@ -225,7 +210,7 @@ func (c *RateLimiterClient) BorrowWithTimeout(resourceType []byte, expire int64,
 // Return 归还资源
 // resourceType: 用户自定义资源类型
 // resourceId  : 要归还的资源ID
-func (c *RateLimiterClient) Return(resourceId string) error {
+func (c *HTTPClient) Return(resourceId string) error {
 	var encoder jsonpb.Marshaler
 	var buf = bytes.NewBuffer(nil)
 	var err = encoder.Marshal(buf, &proto.APIReturnReq{
@@ -242,7 +227,7 @@ func (c *RateLimiterClient) Return(resourceId string) error {
 
 // ResourceList 查询资源列表
 // rcType : 资源类型，如果不填则表示全量查询
-func (c *RateLimiterClient) ResourceList(rcType []byte) ([]*proto.APIResourceDetail, error) {
+func (c *HTTPClient) ResourceList(rcType []byte) ([]*proto.APIResourceDetail, error) {
 	var encoder jsonpb.Marshaler
 	var buf = bytes.NewBuffer(nil)
 	err := encoder.Marshal(buf, &proto.APIResourceListReq{
@@ -267,7 +252,7 @@ func (c *RateLimiterClient) ResourceList(rcType []byte) ([]*proto.APIResourceDet
 	return rp.RCList, err
 }
 
-func (c *RateLimiterClient) getCluster(idx int) string {
+func (c *HTTPClient) getCluster(idx int) string {
 	if idx < 0 || idx >= c.clusterSize {
 		panic("idx overflow")
 	}
@@ -276,7 +261,7 @@ func (c *RateLimiterClient) getCluster(idx int) string {
 	return c.cluster[idx]
 }
 
-func (c *RateLimiterClient) highlightLeader(leader string) {
+func (c *HTTPClient) highlightLeader(leader string) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -287,7 +272,7 @@ func (c *RateLimiterClient) highlightLeader(leader string) {
 	}
 }
 
-func (c *RateLimiterClient) sendPost(uri string, body *bytes.Buffer) ([]byte, error) {
+func (c *HTTPClient) sendPost(uri string, body *bytes.Buffer) ([]byte, error) {
 	var url string
 	var buf = bytes.NewBuffer(nil)
 
@@ -350,7 +335,7 @@ func (c *RateLimiterClient) sendPost(uri string, body *bytes.Buffer) ([]byte, er
 }
 
 // setUsedRCType 记录使用过的资源类型，用户在Close的时候进行资源释放
-func (c *RateLimiterClient) setUsedRCType(resourceType []byte) {
+func (c *HTTPClient) setUsedRCType(resourceType []byte) {
 	rcTypeStr := encoding.BytesToString(resourceType)
 
 	c.mutex.RLock()
