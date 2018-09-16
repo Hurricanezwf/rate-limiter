@@ -84,7 +84,7 @@ func (c *HTTPClient) Close() error {
 			continue
 		}
 
-		if _, err = c.sendPost(proto.ReturnAllURI, buf); err != nil {
+		if _, err = c.sendRequest(proto.ReturnAllURI, buf); err != nil {
 			lastErr = err
 			continue
 		}
@@ -107,7 +107,7 @@ func (c *HTTPClient) RegistQuota(resourceType []byte, quota uint32, resetInterva
 	})
 
 	if err == nil {
-		_, err = c.sendPost(proto.RegistQuotaURI, buf)
+		_, err = c.sendRequest(proto.RegistQuotaURI, buf)
 	}
 
 	return err
@@ -123,7 +123,7 @@ func (c *HTTPClient) DeleteQuota(resourceType []byte) error {
 	})
 
 	if err == nil {
-		_, err = c.sendPost(proto.DeleteQuotaURI, buf)
+		_, err = c.sendRequest(proto.DeleteQuotaURI, buf)
 	}
 
 	return err
@@ -144,7 +144,7 @@ func (c *HTTPClient) Borrow(resourceType []byte, expire int64) (resourceId strin
 		return resourceId, err
 	}
 
-	rcId, err := c.sendPost(proto.BorrowURI, buf)
+	rcId, err := c.sendRequest(proto.BorrowURI, buf)
 	if err != nil {
 		return resourceId, err
 	}
@@ -178,7 +178,7 @@ func (c *HTTPClient) BorrowWithTimeout(resourceType []byte, expire int64, timeou
 
 	for {
 		tmpBuf := bytes.NewBuffer(buf.Bytes())
-		rcId, err := c.sendPost(proto.BorrowURI, tmpBuf)
+		rcId, err := c.sendRequest(proto.BorrowURI, tmpBuf)
 
 		// 请求成功
 		if err == nil {
@@ -219,7 +219,7 @@ func (c *HTTPClient) Return(resourceId string) error {
 	})
 
 	if err == nil {
-		_, err = c.sendPost(proto.ReturnURI, buf)
+		_, err = c.sendRequest(proto.ReturnURI, buf)
 	}
 
 	return err
@@ -237,7 +237,7 @@ func (c *HTTPClient) ResourceList(rcType []byte) ([]*proto.APIResourceDetail, er
 		return nil, err
 	}
 
-	if body, err := c.sendPost(proto.ResourceListURI, buf); err != nil {
+	if body, err := c.sendRequest(proto.ResourceListURI, buf); err != nil {
 		return nil, err
 	} else {
 		buf.Reset()
@@ -272,7 +272,7 @@ func (c *HTTPClient) highlightLeader(leader string) {
 	}
 }
 
-func (c *HTTPClient) sendPost(uri string, body *bytes.Buffer) ([]byte, error) {
+func (c *HTTPClient) sendRequest(uri string, body *bytes.Buffer) ([]byte, error) {
 	var url string
 	var buf = bytes.NewBuffer(nil)
 
