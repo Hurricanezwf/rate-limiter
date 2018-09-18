@@ -6,6 +6,13 @@ import (
 	"sync"
 )
 
+// SessionMgrInterface 管理了一个TCP连接，并管理了基于这个连接通信的所有会话。
+// 在这个连接上的所有会话均是异步的，SessionMgr会分别在两个协程里进行socket读写。
+//
+// 发送请求样例：
+// s := sessionMgr.GetSession()
+// s.Do(action, msg, time.Minute)
+//
 type SessionMgrInterface interface {
 	// Open 打开会话管理器
 	Open(conf *SessionMgrConfig, transfer TransferInterface) error
@@ -20,16 +27,16 @@ type SessionMgrInterface interface {
 	Unstage(sessionId uint32) error
 }
 
+func DefaultSessionMgr() *SessionMgrInterface {
+	return newSessionMgrV1()
+}
+
 type SessionMgrConfig struct {
 	// MaxCallbackBacklog 最大回调积压
 	MaxCallbackBacklog int
 
 	// ReadWorkers 读取响应的协程数
 	ReadWorkers int
-}
-
-func DefaultSessionMgr() *SessionMgrInterface {
-	return newSessionMgrV1()
 }
 
 func DefaultSessionMgrConfig() *SessionMgrConfig {

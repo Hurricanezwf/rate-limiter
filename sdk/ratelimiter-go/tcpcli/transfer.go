@@ -2,6 +2,11 @@ package ratelimiter
 
 import "time"
 
+// TransferInterface 传输层负责与集群建立连接并收发消息, 传输层自身维护与集群所有结点的TCP连接，并keepalive。
+//
+// 高可用要求:
+// * 当与Leader出现网络隔离后，要求能通过Follower结点转发至Leader
+// * 自动断线重连
 type TransferInterface interface {
 	// Open 打开传输层
 	Open(conf *TransferConfig) error
