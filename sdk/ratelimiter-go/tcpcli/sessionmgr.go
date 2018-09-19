@@ -91,7 +91,7 @@ func (mgr *sessionMgrV1) Open(conf *SessionMgrConfig, transfer TransferInterface
 		return err
 	}
 
-	//transfer.SetCallback(mgr.readCh)
+	//transfer.SetReadCallback(mgr.readCh)
 
 	return err
 }
