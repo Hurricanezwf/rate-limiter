@@ -31,7 +31,7 @@ type followerReplication struct {
 	peer Server
 
 	// commitment tracks the entries acknowledged by followers so that the
-	// leader's commit index can advance. It is updated on successful
+	// leader's commit index can advance. It is updated on successsful
 	// AppendEntries responses.
 	commitment *commitment
 
