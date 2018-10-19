@@ -262,6 +262,7 @@ func (c *clusterV2) initRaftCluster() error {
 // initRaftWatcher 初始化启动Raft Leader监听器
 func (c *clusterV2) initRaftLeaderWatcher() {
 	ticker := time.NewTicker(time.Duration(g.Config.Raft.LeaderWatchInterval) * time.Second)
+	defer ticker.Stop()
 
 	for {
 		select {
@@ -305,6 +306,8 @@ func (c *clusterV2) initRaftLeaderWatcher() {
 // initMetaCleaner 周期性清理过期资源和重用已回收的资源
 func (c *clusterV2) initMetaCleaner(clusterEnabled bool) {
 	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-c.stopC:
