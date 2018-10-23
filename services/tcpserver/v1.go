@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/Hurricanezwf/rate-limiter/limiter"
 	"github.com/Hurricanezwf/rate-limiter/pkg/encoding"
@@ -78,6 +79,8 @@ func (s *tcpserverv1) Open(conf *Config, limiter limiter.Interface) error {
 }
 
 func (s *tcpserverv1) serveLoop() {
+	var dropCount uint64 = 0
+
 	for {
 		conn, err := s.listener.AcceptTCP()
 		if err != nil {
@@ -85,8 +88,17 @@ func (s *tcpserverv1) serveLoop() {
 			continue
 		}
 
-		// 连接数控制
-		s.maxConnCtrl <- struct{}{}
+		// 连接数控制, 3秒超时
+		select {
+		case s.maxConnCtrl <- struct{}{}:
+			// do nothing
+		case <-time.After(3 * time.Second):
+			conn.Close()
+			dropCount++
+			if dropCount%uint64(100) == uint64(1) {
+				glog.Warningf("Drop connection because I'm too busy. DropCount=%d", dropCount)
+			}
+		}
 
 		go s.handle(newConnection(conn, s.conf.ConnectionConfig))
 	}

@@ -18,8 +18,6 @@ var tcpserv tcpserver.Interface
 func Run() (err error) {
 	glog.Infof("Be starting, wait a while...")
 
-	l = limiter.Default()
-
 	// 启动HTTP服务
 	if err := runHttpd(g.Config.Httpd.Listen); err != nil {
 		return fmt.Errorf("Run HTTP Server on %s failed, %v", g.Config.Httpd.Listen, err)
@@ -27,6 +25,7 @@ func Run() (err error) {
 	glog.Infof("Run HTTP Service OK, listen at %s.", g.Config.Httpd.Listen)
 
 	// limiter依赖于httpd服务
+	l = limiter.Default()
 	if err = l.Open(); err != nil {
 		return fmt.Errorf("Open limiter failed, %v", err)
 	}
