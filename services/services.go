@@ -43,8 +43,9 @@ func Run() (err error) {
 				RWTimeout:         30 * time.Second,
 			},
 			DispatcherConfig: &tcpserver.DispatcherConfig{
-				QueueSize: 100,
-				WorkerNum: 8,
+				QueueSize:       100,
+				WorkerNum:       8,
+				PushBackTimeout: 2 * time.Second,
 			},
 		},
 		l,

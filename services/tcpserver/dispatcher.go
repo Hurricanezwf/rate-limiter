@@ -3,6 +3,7 @@ package tcpserver
 import (
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/Hurricanezwf/rate-limiter/limiter"
 	. "github.com/Hurricanezwf/rate-limiter/proto"
@@ -11,8 +12,9 @@ import (
 )
 
 type DispatcherConfig struct {
-	QueueSize int
-	WorkerNum int
+	QueueSize       int
+	WorkerNum       int
+	PushBackTimeout time.Duration
 }
 
 type Event struct {
@@ -65,8 +67,9 @@ func (mgr *EventDispatcher) PushBack(e *Event) error {
 	select {
 	case mgr.queue <- e:
 		return nil
+	case <-time.After(mgr.conf.PushBackTimeout):
+		return errors.New("Too many events")
 	}
-	return errors.New("Too many events")
 }
 
 func (mgr *EventDispatcher) handleEventsLoop() {

@@ -107,6 +107,9 @@ func (s *tcpserverv1) serveLoop() {
 func (s *tcpserverv1) handle(c *Connection) {
 	for {
 		// 检测服务器关闭
+		if s.IsOpen() == false {
+			goto FINISH
+		}
 
 		// 读取请求
 		action, _, seq, msgBody, err := encoding.DecodeMsg(c.Reader())
