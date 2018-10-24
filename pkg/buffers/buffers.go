@@ -50,3 +50,8 @@ func PutBytesBuffer(buf *bytes.Buffer) {
 func GetBufioReader() *bufio.Reader {
 	return bufioReaderPool.Get().(*bufio.Reader)
 }
+
+func PutBufioReader(r *bufio.Reader) {
+	r.Reset()
+	bufioReaderPool.Put(r)
+}

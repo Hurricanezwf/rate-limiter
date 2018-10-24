@@ -15,7 +15,6 @@ import (
 
 // RateLimiter客户端代理库，走TCP协议
 type TCPClient struct {
-
 	// 配置
 	config *ClientConfig
 
@@ -59,30 +58,27 @@ func NewTCPClient(config *ClientConfig) (Interface, error) {
 		mutex:      &sync.RWMutex{},
 		usedRCType: make(map[string]struct{}),
 	}
-	if err = c.dial(); err != nil {
-		return err
-	}
-
-	return c
+	return c, c.dial()
 }
 
 func (c *TCPClient) dial() error {
+	// 初始化的时候，必须保证所有结点都可以进行连接
+	// 后续如果在服务端做了消息重定向之后，可以放松这里的限制
 	for _, server := range c.config.Cluster {
 		addr, err := net.ResolveTCPAddr("tcp", server)
 		if err != nil {
+			glog.Warning(err.Error())
 			return err
 		}
 		conn, err := net.DialTCP("tcp", nil, addr)
 		if err != nil {
 			glog.Warningf("Dial %s failed, %v", server, err)
-			continue
+			return err
 		}
-		ok = true
 		c.connections = append(c.connections, conn)
 	}
-
 	if len(c.connections) <= 0 {
-		return errors.New("Dial cluster failed.")
+		return errors.New("No active connections with server cluster")
 	}
 	return nil
 }
