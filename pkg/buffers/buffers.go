@@ -52,6 +52,5 @@ func GetBufioReader() *bufio.Reader {
 }
 
 func PutBufioReader(r *bufio.Reader) {
-	r.Reset()
 	bufioReaderPool.Put(r)
 }
